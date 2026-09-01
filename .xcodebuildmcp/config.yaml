@@ -1,0 +1,11 @@
+schemaVersion: 1
+
+enabledWorkflows:
+  - simulator
+  - debugging
+  - ui-automation
+
+sessionDefaults:
+  projectPath: "./BulletGO.xcodeproj"
+  scheme: "BulletGO"
+  simulatorName: "iPhone 17 Pro Max"
