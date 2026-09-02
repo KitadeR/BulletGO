@@ -6,6 +6,8 @@
 
 ## Product Context
 
+- BulletGOは ToDo /「今すぐやること」アプリではない。旅行全体を理解し、ユーザーが「今は何を気にすればいいか」を整理する（詳細: Knowledge `開発方針_本番基盤優先_2026-09-02`）。
+- デモ用プロトタイプ・ハードコード専用データ・捨てるスローワウェイは作らない。未実装機能は導線 + Coming Soon（本番ルーティングは本物）。
 - BulletGOの仕様・プロダクト判断の正は BulletGO-Knowledge 側にある。
 - BulletGOの機能実装や仕様に関わる変更をする前に、まず Workspace root `BulletGO-Knowledge` にある `Hub.md` を読む。
 - Hubが示す最新の `現在地_*.md` を現在の正として読む。
