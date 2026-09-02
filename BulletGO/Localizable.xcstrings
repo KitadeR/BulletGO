@@ -1,0 +1,281 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Baggage check" : {
+      "comment" : "Feature hub title for checking oversized luggage rules.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "荷物の確認"
+          }
+        }
+      }
+    },
+    "Check oversized luggage rules before you travel." : {
+      "comment" : "One-line explanation of baggage check.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "特大荷物のルールを、乗る前に確認できます。"
+          }
+        }
+      }
+    },
+    "Coming soon" : {
+      "comment" : "Title on the shared Coming Soon screen.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "準備中です"
+          }
+        }
+      }
+    },
+    "Departure reminder" : {
+      "comment" : "Feature hub title for departure reminders.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "出発リマインド"
+          }
+        }
+      }
+    },
+    "Features" : {
+      "comment" : "Toolbar and navigation title for the feature list.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "機能"
+          }
+        }
+      }
+    },
+    "Find the booking option that fits you." : {
+      "comment" : "One-line explanation of booking method guidance.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "あなたに合う予約の仕方を整理します。"
+          }
+        }
+      }
+    },
+    "Gate to platform time" : {
+      "comment" : "Feature hub title for typical ticket-gate-to-platform time.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "改札〜ホーム"
+          }
+        }
+      }
+    },
+    "Get a heads-up before you need to leave." : {
+      "comment" : "One-line explanation of departure reminder.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "出発前に、いつ動き出せばよいか知らせます。"
+          }
+        }
+      }
+    },
+    "How to book" : {
+      "comment" : "Feature hub title for choosing a booking method.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "予約方法"
+          }
+        }
+      }
+    },
+    "How to check delays and what to do next." : {
+      "comment" : "One-line explanation of service updates.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "遅れの確認方法と、そのあとにできることを案内します。"
+          }
+        }
+      }
+    },
+    "Keep the current step on the Lock Screen." : {
+      "comment" : "One-line explanation of Live Activity.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "いまの状況をロック画面に表示します。"
+          }
+        }
+      }
+    },
+    "Live Activity" : {
+      "comment" : "Feature hub title for Lock Screen Live Activity.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live Activity"
+          }
+        }
+      }
+    },
+    "Scan itinerary" : {
+      "comment" : "Feature hub title for reading a ticket email or screenshot.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅程の読み取り"
+          }
+        }
+      }
+    },
+    "Seats, outlets, and onboard equipment." : {
+      "comment" : "One-line explanation of train facilities.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "座席・コンセントなどの車内設備を調べます。"
+          }
+        }
+      }
+    },
+    "Service updates" : {
+      "comment" : "Feature hub title for delay and service-status guidance.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "運行状況"
+          }
+        }
+      }
+    },
+    "Share the itinerary with companions." : {
+      "comment" : "One-line explanation of trip sharing.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同行者と旅程を共有します。"
+          }
+        }
+      }
+    },
+    "Station info" : {
+      "comment" : "Feature hub title for station layout and nearby tips.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "駅情報"
+          }
+        }
+      }
+    },
+    "Station layout and nearby tips." : {
+      "comment" : "One-line explanation of station info.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "駅の案内や周辺のヒントです。"
+          }
+        }
+      }
+    },
+    "Train facilities" : {
+      "comment" : "Feature hub title for onboard train facilities.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "車両の設備"
+          }
+        }
+      }
+    },
+    "Trip" : {
+      "comment" : "Navigation title for the trip timeline home.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行"
+          }
+        }
+      }
+    },
+    "Trip sharing" : {
+      "comment" : "Hidden feature title for sharing a trip with companions.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅程の共有"
+          }
+        }
+      }
+    },
+    "Turn a ticket email or screenshot into a trip." : {
+      "comment" : "One-line explanation of itinerary scanning.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "予約メールやスクショから旅程を取り込みます。"
+          }
+        }
+      }
+    },
+    "Typical time from ticket gate to platform." : {
+      "comment" : "One-line explanation of gate-to-platform estimates.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "改札からホームまでの目安時間です。"
+          }
+        }
+      }
+    },
+    "When a trip is added, you’ll see the whole journey here." : {
+      "comment" : "Empty-state description on the trip timeline home.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行を追加すると、全体の見通しがここに並びます。"
+          }
+        }
+      }
+    },
+    "Your trip will appear here" : {
+      "comment" : "Empty-state title on the trip timeline home.",
+      "localizations" : {
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旅行はここに表示されます"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
