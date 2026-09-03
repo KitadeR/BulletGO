@@ -87,4 +87,18 @@ struct DeferredPresentationTests {
         #expect(second.updatedTrip.legs[0].seatPreference.updatedAt == first.updatedTrip.legs[0].seatPreference.updatedAt)
         #expect(second.updatedTrip.changeEvents.count == first.updatedTrip.changeEvents.count)
     }
+
+    @Test func snapshotForLegDoesNotUseFocusLegWhenAnotherLegIsSelected() throws {
+        let brain = try EngineTestSupport.brain()
+        var trip = try DomainTestSupport.sampleTrip()
+        trip = try brain.process(
+            trip: trip,
+            command: .applyMutation(.setSeatPreference(trip.legs[0].id, .mountFujiView))
+        ).updatedTrip
+        let focusSnapshot = DeferredPresentationProjector.snapshot(for: trip)
+        let otherSnapshot = DeferredPresentationProjector.snapshot(for: trip, legID: trip.legs[1].id)
+        #expect(focusSnapshot.remembered.count == 1)
+        #expect(focusSnapshot.next.count == 1)
+        #expect(otherSnapshot == .empty)
+    }
 }

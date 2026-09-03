@@ -4,6 +4,7 @@ enum DesignTokens {
     enum Color {
         static let canvas = SwiftUI.Color(uiColor: .systemBackground)
         static let grouped = SwiftUI.Color(uiColor: .secondarySystemBackground)
+        static let quietFill = SwiftUI.Color(uiColor: .tertiarySystemFill)
         static let tint = SwiftUI.Color.accentColor
         static let primaryText = SwiftUI.Color.primary
         static let secondaryText = SwiftUI.Color.secondary

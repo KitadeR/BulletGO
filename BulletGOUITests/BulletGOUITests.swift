@@ -6,12 +6,38 @@ final class BulletGOUITests: XCTestCase {
     }
 
     @MainActor
-    func testEmptyTimelineOpensComingSoonFromFeatureHub() throws {
+    func testSeededTimelineShowsJourneyAndOpensLegDetail() throws {
         let app = XCUIApplication()
         app.launch()
 
-        let emptyState = app.descendants(matching: .any)["trip-timeline-empty"]
-        XCTAssertTrue(emptyState.waitForExistence(timeout: 5))
+        let timeline = app.descendants(matching: .any)["trip-timeline"]
+        XCTAssertTrue(timeline.waitForExistence(timeout: 10))
+
+        XCTAssertTrue(app.staticTexts["Tokyo → Kyoto"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Kinkaku-ji"].exists)
+        XCTAssertTrue(app.staticTexts["Kyoto → Osaka"].exists)
+        XCTAssertTrue(app.staticTexts["Dotonbori"].exists)
+        XCTAssertTrue(app.staticTexts["Osaka → Hakata"].exists)
+        XCTAssertTrue(app.staticTexts["Hakata sightseeing"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["coming-up-section"].exists)
+
+        let tokyoKyoto = app.descendants(matching: .any)["timeline-leg-A1E0B001-0000-4000-8000-000000000011"]
+        XCTAssertTrue(tokyoKyoto.waitForExistence(timeout: 5))
+        tokyoKyoto.tap()
+
+        let detail = app.descendants(matching: .any)["leg-detail"]
+        XCTAssertTrue(detail.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Tokyo → Kyoto"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["remembered-section"].exists)
+    }
+
+    @MainActor
+    func testFeatureHubStillOpensComingSoonFromTimeline() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let timeline = app.descendants(matching: .any)["trip-timeline"]
+        XCTAssertTrue(timeline.waitForExistence(timeout: 10))
 
         let openFeatureHub = app.buttons["open-feature-hub"]
         XCTAssertTrue(openFeatureHub.waitForExistence(timeout: 5))

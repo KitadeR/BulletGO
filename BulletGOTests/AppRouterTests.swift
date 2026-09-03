@@ -30,4 +30,14 @@ struct AppRouterTests {
         router.popToRoot()
         #expect(router.path.isEmpty)
     }
+
+    @Test func pushLegDetailUsesTripAndLegIDs() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        let router = AppRouter()
+        let route = AppRoute.legDetail(trip.id, trip.legs[0].id)
+        router.push(route)
+        #expect(router.path == [route])
+        #expect(route != .featureHub)
+        #expect(AppRoute.legDetail(trip.id, trip.legs[1].id) != route)
+    }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-enum AppFeature: String, CaseIterable, Hashable, Identifiable, Sendable {
+nonisolated enum AppFeature: String, CaseIterable, Hashable, Identifiable, Sendable {
     case baggageCheck = "baggage_check"
     case departureReminder = "departure_reminder"
     case operationStatus = "operation_status"

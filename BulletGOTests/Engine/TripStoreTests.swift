@@ -88,4 +88,16 @@ struct TripStoreTests {
         #expect(saved?.legs[0].seatPreference.value == .mountFujiView)
         #expect(saved?.legs[1].seatPreference == otherPreference)
     }
+
+    @Test func fetchAllAndFetchDoNotSave() async throws {
+        let repository = InMemoryTripRepository()
+        let trip = try DomainTestSupport.sampleTrip()
+        try await repository.save(trip)
+        let store = TripStore(repository: repository, brain: try EngineTestSupport.brain())
+        let all = try await store.fetchAll()
+        let fetched = try await store.fetch(id: trip.id)
+        #expect(all.map(\.id) == [trip.id])
+        #expect(fetched == trip)
+        #expect(await repository.saveCount == 1)
+    }
 }

@@ -19,7 +19,14 @@ nonisolated enum DeferredPresentationProjector {
     static let seatPreferenceContentKey = "leg.seatPreference"
 
     static func snapshot(for trip: Trip) -> DeferredPresentationSnapshot {
-        guard let leg = try? trip.focusLeg() else {
+        guard let focusID = trip.focusLegID else {
+            return .empty
+        }
+        return snapshot(for: trip, legID: focusID)
+    }
+
+    static func snapshot(for trip: Trip, legID: LegID) -> DeferredPresentationSnapshot {
+        guard let leg = trip.legs.first(where: { $0.id == legID }) else {
             return .empty
         }
         guard let item = seatPreferenceItem(for: leg) else {
@@ -28,7 +35,7 @@ nonisolated enum DeferredPresentationProjector {
         var remembered: [DeferredPresentationItem] = []
         var next: [DeferredPresentationItem] = []
         remembered.append(item)
-        if item.presentationTiming != .immediate {
+        if case .deferred = item.presentationTiming {
             next.append(item)
         }
         return DeferredPresentationSnapshot(remembered: remembered, next: next)

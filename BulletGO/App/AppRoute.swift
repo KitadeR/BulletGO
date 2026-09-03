@@ -1,6 +1,7 @@
 import Foundation
 
-enum AppRoute: Hashable {
+nonisolated enum AppRoute: Hashable, Sendable {
     case featureHub
     case comingSoon(AppFeature)
+    case legDetail(TripID, LegID)
 }

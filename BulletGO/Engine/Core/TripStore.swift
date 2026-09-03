@@ -9,6 +9,14 @@ actor TripStore {
         self.brain = brain
     }
 
+    func fetchAll() async throws -> [Trip] {
+        try await repository.fetchAll()
+    }
+
+    func fetch(id: TripID) async throws -> Trip? {
+        try await repository.fetch(id: id)
+    }
+
     func process(tripID: TripID, command: TypedCommand) async throws -> BrainResult {
         guard let trip = try await repository.fetch(id: tripID) else {
             throw EngineError.tripNotFound
