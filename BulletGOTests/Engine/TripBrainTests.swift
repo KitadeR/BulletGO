@@ -53,4 +53,23 @@ struct TripBrainTests {
             try brain.process(trip: trip, command: .answerQuestion(QuestionID(rawValue: "q_missing"), .skip))
         }
     }
+
+    @Test func userInputReturnsSummaryWhilePhaseEventDoesNot() throws {
+        let brain = try EngineTestSupport.brain()
+        var trip = try PolicyScenarioSupport.trip(
+            reservation: .booked,
+            reservationSource: .userConfirmed,
+            baggagePresence: .no,
+            bags: []
+        )
+        let mutationResult = try brain.process(
+            trip: trip,
+            command: .applyMutation(.setSeatPreference(trip.legs[0].id, .mountFujiView))
+        )
+        #expect(mutationResult.understandingSummary != nil)
+        trip = mutationResult.updatedTrip
+        let phase = try brain.process(trip: trip, command: .applyPhaseEvent(.startPreparing))
+        #expect(phase.understandingSummary == nil)
+        #expect(phase.updatedTrip.legs[0].seatPreference.presentationTiming == .deferred(until: .seatSelection))
+    }
 }

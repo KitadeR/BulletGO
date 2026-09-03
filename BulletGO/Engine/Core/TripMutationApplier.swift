@@ -1,6 +1,14 @@
 import Foundation
 
 nonisolated enum TripMutationApplier {
+    static func apply(_ mutations: [TripMutation], to trip: Trip, at now: Date) throws -> Trip {
+        var updated = trip
+        for mutation in mutations {
+            updated = try apply(mutation, to: updated, at: now)
+        }
+        return updated
+    }
+
     static func apply(_ mutation: TripMutation, to trip: Trip, at now: Date) throws -> Trip {
         var updated = trip
         let impact = ImpactAnalyzer.analyze(mutation)
@@ -85,6 +93,17 @@ nonisolated enum TripMutationApplier {
                     at: now
                 )
             }
+        case .setSeatPreference(let legID, let preference):
+            try updated.updateLeg(id: legID) { leg in
+                leg.seatPreference = try leg.seatPreference.updating(
+                    value: preference,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    presentationTiming: .deferred(until: .seatSelection),
+                    at: now
+                )
+            }
         }
 
         updated.changeEvents.append(
@@ -150,7 +169,8 @@ nonisolated enum TripMutationApplier {
              .setReservationStatus(let legID, _, _),
              .setBookingService(let legID, _),
              .setBaggagePresence(let legID, _, _),
-             .addBag(let legID, _):
+             .addBag(let legID, _),
+             .setSeatPreference(let legID, _):
             .leg(legID)
         case .setBagDimensions:
             .trip

@@ -58,4 +58,19 @@ struct MutationTests {
         #expect(impact.assessment.level == .high)
         #expect(impact.assessment.targetLegs == [legID])
     }
+
+    @Test func setSeatPreferenceWritesDeferredUserStatedSlot() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        let updated = try TripMutationApplier.apply(
+            .setSeatPreference(trip.legs[0].id, .mountFujiView),
+            to: trip,
+            at: EngineTestSupport.now
+        )
+        #expect(updated.legs[0].seatPreference.value == .mountFujiView)
+        #expect(updated.legs[0].seatPreference.status == .confirmed)
+        #expect(updated.legs[0].seatPreference.source == .userStated)
+        #expect(updated.legs[0].seatPreference.presentationTiming == .deferred(until: .seatSelection))
+        #expect(updated.legs[0].seatPreference.revisions.last?.presentationTiming == .immediate)
+        #expect(updated.changeEvents.last?.changedPaths == [.leg(trip.legs[0].id, .seatPreference)])
+    }
 }

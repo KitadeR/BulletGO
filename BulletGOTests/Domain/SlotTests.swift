@@ -88,6 +88,8 @@ struct SlotTests {
         #expect(updated.presentationTiming == .immediate)
         #expect(updated.revisions.count == 1)
         #expect(updated.revisions[0].status == .unknown)
+        #expect(updated.revisions[0].collectionTiming == .immediate)
+        #expect(updated.revisions[0].presentationTiming == .immediate)
     }
 
     @Test func negativeAllowsFalseValue() throws {

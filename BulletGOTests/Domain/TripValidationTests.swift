@@ -23,6 +23,7 @@ struct TripValidationTests {
             transportMode: trip.legs[1].transportMode,
             partyCount: trip.legs[1].partyCount,
             baggagePresence: trip.legs[1].baggagePresence,
+            seatPreference: trip.legs[1].seatPreference,
             bagIDs: trip.legs[1].bagIDs,
             reservation: trip.legs[1].reservation,
             phase: trip.legs[1].phase,

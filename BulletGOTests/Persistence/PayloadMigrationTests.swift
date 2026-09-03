@@ -9,13 +9,15 @@ struct PayloadMigrationTests {
         let encoded = try v1Record(from: trip, statuses: ["unknown", "unknown", "unknown"])
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
         #expect(decoded.trip.id == trip.id)
-        #expect(decoded.trip.schemaVersion == 2)
-        #expect(decoded.rewritten?.payloadVersion == 2)
-        #expect(decoded.rewritten?.domainSchemaVersion == 2)
+        #expect(decoded.trip.schemaVersion == 3)
+        #expect(decoded.rewritten?.payloadVersion == 3)
+        #expect(decoded.rewritten?.domainSchemaVersion == 3)
         for leg in decoded.trip.legs {
             #expect(leg.reservation.status.status == .unknown)
             #expect(leg.reservation.status.value == nil)
             #expect(leg.reservation.status.revisions.isEmpty)
+            #expect(leg.seatPreference.status == .unknown)
+            #expect(leg.seatPreference.value == nil)
         }
         #expect(decoded.trip.name.revisions == trip.name.revisions)
     }
@@ -50,12 +52,34 @@ struct PayloadMigrationTests {
         )
 
         let loaded = try await repository.fetch(id: trip.id)
-        #expect(loaded?.schemaVersion == 2)
+        #expect(loaded?.schemaVersion == 3)
         #expect(loaded?.legs[0].reservation.status.value == .notBooked)
 
         let reloaded = try await repository.fetch(id: trip.id)
         #expect(reloaded == loaded)
-        #expect(reloaded?.schemaVersion == 2)
+        #expect(reloaded?.schemaVersion == 3)
+        #expect(reloaded?.legs[0].seatPreference.status == .unknown)
+    }
+
+    @Test func v2PayloadGainsUnknownSeatPreference() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        var encoded = try TripRecordMapper.encode(trip)
+        encoded.payloadVersion = 2
+        encoded.domainSchemaVersion = 2
+        encoded.payload = try mutatedPayload(encoded.payload) { json in
+            json["schemaVersion"] = 2
+            var legs = json["legs"] as! [[String: Any]]
+            for index in legs.indices {
+                legs[index].removeValue(forKey: "seatPreference")
+            }
+            json["legs"] = legs
+        }
+        let decoded = try TripRecordMapper.decodeWithMigration(encoded)
+        #expect(decoded.trip.schemaVersion == 3)
+        #expect(decoded.rewritten?.payloadVersion == 3)
+        #expect(decoded.trip.legs.allSatisfy { $0.seatPreference.status == .unknown })
+        #expect(decoded.trip.id == trip.id)
+        #expect(decoded.trip.name.revisions == trip.name.revisions)
     }
 
     private func v1Record(from trip: Trip, statuses: [String]) throws -> EncodedTripRecord {
@@ -69,6 +93,7 @@ struct PayloadMigrationTests {
                 var reservation = legs[index]["reservation"] as! [String: Any]
                 reservation["status"] = statuses[index]
                 legs[index]["reservation"] = reservation
+                legs[index].removeValue(forKey: "seatPreference")
             }
             json["legs"] = legs
             if var activities = json["activities"] as? [[String: Any]] {

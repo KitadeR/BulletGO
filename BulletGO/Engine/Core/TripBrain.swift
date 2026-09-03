@@ -4,6 +4,8 @@ nonisolated struct BrainResult: Hashable, Sendable {
     var updatedTrip: Trip
     var nextQuestion: QuestionSpec?
     var displaySnapshot: TaskDisplaySnapshot
+    var deferredSnapshot: DeferredPresentationSnapshot
+    var understandingSummary: UnderstandingSummary?
     var phaseProposal: PhaseProposal?
     var actions: [ActionRequirement]
 }
@@ -21,8 +23,11 @@ nonisolated struct TripBrain: Sendable {
 
     func process(trip: Trip, command: TypedCommand) throws -> BrainResult {
         let now = clock.now()
+        let before = trip
         var working = trip
         var impact = ImpactAssessment(level: .low, targetLegs: [], changedPaths: [])
+        var reachedDecisionPoints: Set<DecisionPointID> = []
+        let includeSummary: Bool
 
         switch command {
         case .answerQuestion(let questionID, let answer):
@@ -30,19 +35,24 @@ nonisolated struct TripBrain: Sendable {
                 throw EngineError.unknownQuestion(questionID.rawValue)
             }
             let mutations = try QuestionAnswerMapper.mutations(for: spec, answer: answer, trip: working)
-            for mutation in mutations {
-                let analyzed = ImpactAnalyzer.analyze(mutation)
-                impact = merge(impact, analyzed.assessment)
-                working = try TripMutationApplier.apply(mutation, to: working, at: now)
-            }
+            (working, impact) = try applyMutations(mutations, to: working, impact: impact, at: now)
+            includeSummary = true
         case .applyMutation(let mutation):
-            impact = ImpactAnalyzer.analyze(mutation).assessment
-            working = try TripMutationApplier.apply(mutation, to: working, at: now)
+            (working, impact) = try applyMutations([mutation], to: working, impact: impact, at: now)
+            includeSummary = true
+        case .applyMutations(let mutations):
+            (working, impact) = try applyMutations(mutations, to: working, impact: impact, at: now)
+            includeSummary = true
         case .applyPhaseEvent(let event):
             working = try PhaseEngine.apply(event, to: working)
             working.updatedAt = now
+            includeSummary = false
+        case .reachDecisionPoint(let point):
+            try DecisionPointResolver.validate(point)
+            reachedDecisionPoints.insert(point)
+            includeSummary = false
         case .reevaluate:
-            break
+            includeSummary = false
         }
 
         let phaseResult = try PhaseEngine.applyAutomaticTransition(to: working)
@@ -58,14 +68,60 @@ nonisolated struct TripBrain: Sendable {
                 impact: impact
             )
         }
+
+        let activeDecisionPoints = DecisionPointResolver.activePoints(
+            in: working,
+            reached: reachedDecisionPoints
+        )
+        working = try DeferredPresentationEngine.apply(
+            to: working,
+            activeDecisionPoints: activeDecisionPoints,
+            at: now
+        )
         try working.validate()
+
+        let understandingSummary: UnderstandingSummary?
+        if includeSummary {
+            understandingSummary = UnderstandingSummaryBuilder.build(
+                before: before,
+                after: working,
+                changedPaths: impact.changedPaths,
+                catalog: catalog,
+                activeDecisionPoints: activeDecisionPoints
+            )
+        } else {
+            understandingSummary = nil
+        }
+
         return BrainResult(
             updatedTrip: working,
-            nextQuestion: QuestionEngine.nextQuestion(in: working, catalog: catalog),
+            nextQuestion: QuestionEngine.nextQuestion(
+                in: working,
+                catalog: catalog,
+                activeDecisionPoints: activeDecisionPoints
+            ),
             displaySnapshot: TaskDisplayPipeline.snapshot(for: working),
+            deferredSnapshot: DeferredPresentationProjector.snapshot(for: working),
+            understandingSummary: understandingSummary,
             phaseProposal: phaseResult.1,
             actions: actions
         )
+    }
+
+    private func applyMutations(
+        _ mutations: [TripMutation],
+        to trip: Trip,
+        impact: ImpactAssessment,
+        at now: Date
+    ) throws -> (Trip, ImpactAssessment) {
+        var working = trip
+        var merged = impact
+        for mutation in mutations {
+            let analyzed = ImpactAnalyzer.analyze(mutation)
+            merged = merge(merged, analyzed.assessment)
+            working = try TripMutationApplier.apply(mutation, to: working, at: now)
+        }
+        return (working, merged)
     }
 
     private func merge(_ lhs: ImpactAssessment, _ rhs: ImpactAssessment) -> ImpactAssessment {

@@ -8,6 +8,7 @@ nonisolated enum TripMutation: Hashable, Sendable {
     case setBaggagePresence(LegID, BaggagePresence?, SlotStatus)
     case addBag(LegID, BagID)
     case setBagDimensions(BagID, BaggageDimensions)
+    case setSeatPreference(LegID, SeatPreference)
 }
 
 nonisolated enum QuestionAnswer: Hashable, Sendable {
@@ -30,6 +31,8 @@ nonisolated enum PhaseManualEvent: Hashable, Sendable {
 nonisolated enum TypedCommand: Hashable, Sendable {
     case answerQuestion(QuestionID, QuestionAnswer)
     case applyMutation(TripMutation)
+    case applyMutations([TripMutation])
     case applyPhaseEvent(PhaseManualEvent)
+    case reachDecisionPoint(DecisionPointID)
     case reevaluate
 }

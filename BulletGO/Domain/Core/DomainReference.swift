@@ -66,6 +66,7 @@ nonisolated enum LegField: String, Hashable, Codable, Sendable {
     case transportMode
     case partyCount
     case baggagePresence
+    case seatPreference
     case bagIDs
     case reservation
     case phase

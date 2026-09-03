@@ -58,7 +58,7 @@ enum DomainTestSupport {
 
         let trip = Trip(
             id: tripID,
-            schemaVersion: 2,
+            schemaVersion: 3,
             name: try Slot.inferred(value: "Japan trip", updatedAt: timestamp),
             startDate: try Slot.confirmed(value: start, source: .userStated, updatedAt: timestamp),
             endDate: try Slot.confirmed(value: end, source: .userStated, updatedAt: timestamp),
@@ -98,6 +98,7 @@ enum DomainTestSupport {
             transportMode: try Slot.unknown(updatedAt: timestamp),
             partyCount: try Slot.unknown(updatedAt: timestamp),
             baggagePresence: try Slot.unknown(updatedAt: timestamp),
+            seatPreference: try Slot.unknown(updatedAt: timestamp),
             bagIDs: [],
             reservation: try emptyReservation(),
             phase: phase,

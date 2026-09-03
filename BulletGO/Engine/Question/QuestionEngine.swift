@@ -1,19 +1,47 @@
 import Foundation
 
 nonisolated enum QuestionEngine {
-    static func nextQuestion(in trip: Trip, catalog: QuestionCatalog) -> QuestionSpec? {
+    static func nextQuestion(
+        in trip: Trip,
+        catalog: QuestionCatalog,
+        activeDecisionPoints: Set<DecisionPointID>? = nil
+    ) -> QuestionSpec? {
+        applicableUnsatisfiedQuestions(
+            in: trip,
+            catalog: catalog,
+            activeDecisionPoints: activeDecisionPoints ?? DecisionPointResolver.activePoints(in: trip)
+        ).first
+    }
+
+    static func applicableUnsatisfiedQuestions(
+        in trip: Trip,
+        catalog: QuestionCatalog,
+        activeDecisionPoints: Set<DecisionPointID>
+    ) -> [QuestionSpec] {
         guard let leg = try? trip.focusLeg() else {
-            return nil
+            return []
         }
         return catalog.questions
             .sorted { $0.priority < $1.priority }
-            .first { question in
-                conditionHolds(question.when, leg: leg)
+            .filter { question in
+                conditionHolds(question.when, in: trip)
+                    && collectionTimingHasArrived(
+                        question.target,
+                        trip: trip,
+                        leg: leg,
+                        activeDecisionPoints: activeDecisionPoints
+                    )
                     && !isSatisfied(question.target, trip: trip, leg: leg)
             }
     }
 
-    static func conditionHolds(_ condition: QuestionCondition, leg: Leg) -> Bool {
+    static func conditionHolds(
+        _ condition: QuestionCondition,
+        in trip: Trip
+    ) -> Bool {
+        guard let leg = try? trip.focusLeg() else {
+            return false
+        }
         switch condition {
         case .always:
             return true
@@ -22,14 +50,11 @@ nonisolated enum QuestionEngine {
         case .transportIs(let mode):
             return leg.transportMode.status == .confirmed && leg.transportMode.value == mode
         case .policyNeedsDimensions:
-            return leg.policyEvaluations.contains { evaluation in
-                evaluation.status == .needsMoreInformation
-                    && evaluation.missingFieldPaths.contains(where: isBagDimensionsPath)
-            }
+            return DecisionPointResolver.needsBaggageDimensions(in: trip)
         }
     }
 
-    private static func isSatisfied(_ target: QuestionTarget, trip: Trip, leg: Leg) -> Bool {
+    static func isSatisfied(_ target: QuestionTarget, trip: Trip, leg: Leg) -> Bool {
         switch target {
         case .legScheduledAt:
             return leg.scheduledAt.isSatisfiedForQuestioning
@@ -47,16 +72,33 @@ nonisolated enum QuestionEngine {
         }
     }
 
+    private static func collectionTimingHasArrived(
+        _ target: QuestionTarget,
+        trip: Trip,
+        leg: Leg,
+        activeDecisionPoints: Set<DecisionPointID>
+    ) -> Bool {
+        switch target {
+        case .legScheduledAt:
+            return leg.scheduledAt.collectionTimingHasArrived(activeDecisionPoints: activeDecisionPoints)
+        case .legTransportMode:
+            return leg.transportMode.collectionTimingHasArrived(activeDecisionPoints: activeDecisionPoints)
+        case .legReservationStatus:
+            return leg.reservation.status.collectionTimingHasArrived(activeDecisionPoints: activeDecisionPoints)
+        case .legReservationService:
+            return leg.reservation.service.collectionTimingHasArrived(activeDecisionPoints: activeDecisionPoints)
+        case .legBaggagePresence:
+            return leg.baggagePresence.collectionTimingHasArrived(activeDecisionPoints: activeDecisionPoints)
+        case .bagDimensions:
+            return focusBags(in: trip, leg: leg).allSatisfy {
+                $0.dimensions.collectionTimingHasArrived(activeDecisionPoints: activeDecisionPoints)
+            }
+        }
+    }
+
     private static func focusBags(in trip: Trip, leg: Leg) -> [Bag] {
         leg.bagIDs.compactMap { bagID in
             trip.baggageInventory.first { $0.id == bagID }
         }
-    }
-
-    private static func isBagDimensionsPath(_ path: DomainPath) -> Bool {
-        if case .bag(_, .dimensions) = path {
-            return true
-        }
-        return false
     }
 }

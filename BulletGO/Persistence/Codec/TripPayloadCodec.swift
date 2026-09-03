@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated enum TripPayloadCodec {
-    static let currentPayloadVersion = 2
+    static let currentPayloadVersion = 3
 
     static func encode(_ trip: Trip) throws -> Data {
         do {
@@ -23,6 +23,9 @@ nonisolated enum TripPayloadCodec {
         switch payloadVersion {
         case currentPayloadVersion:
             return (try decode(payload), payload, payloadVersion)
+        case 2:
+            let migrated = try TripPayloadMigrator.migrateV2Payload(payload)
+            return (try decode(migrated), migrated, currentPayloadVersion)
         case 1:
             let migrated = try TripPayloadMigrator.migrateV1Payload(payload)
             return (try decode(migrated), migrated, currentPayloadVersion)

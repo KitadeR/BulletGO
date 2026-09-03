@@ -148,6 +148,7 @@ nonisolated enum TaskDisplayPipeline {
             case .transportMode: return leg.transportMode.isSatisfiedForQuestioning
             case .partyCount: return leg.partyCount.isSatisfiedForQuestioning
             case .baggagePresence: return leg.baggagePresence.isSatisfiedForQuestioning
+            case .seatPreference: return leg.seatPreference.isSatisfiedForQuestioning
             case .bagIDs: return !leg.bagIDs.isEmpty
             case .reservation: return leg.reservation.status.isSatisfiedForQuestioning
             case .phase: return true

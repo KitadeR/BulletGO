@@ -60,5 +60,26 @@ struct QuestionEngineTests {
             at: EngineTestSupport.now
         )
         #expect(QuestionEngine.nextQuestion(in: evaluated, catalog: catalog)?.id == .baggageDimensions)
+        #expect(DecisionPointResolver.activePoints(in: evaluated).contains(.baggagePolicyEvaluation))
+        #expect(
+            evaluated.baggageInventory[0].dimensions.collectionTimingHasArrived(
+                activeDecisionPoints: DecisionPointResolver.activePoints(in: evaluated)
+            )
+        )
+    }
+
+    @Test func dimensionsQuestionStaysClosedWithoutPolicyNeedEvenIfSeatSelectionArrives() throws {
+        let catalog = try EngineTestSupport.catalog()
+        let withLuggage = try PolicyScenarioSupport.trip(
+            reservation: .booked,
+            bags: [(PolicyScenarioSupport.bagA, nil)]
+        )
+        #expect(
+            QuestionEngine.nextQuestion(
+                in: withLuggage,
+                catalog: catalog,
+                activeDecisionPoints: [.seatSelection]
+            )?.id != .baggageDimensions
+        )
     }
 }

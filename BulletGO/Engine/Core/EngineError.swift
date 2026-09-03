@@ -22,6 +22,7 @@ nonisolated enum EngineError: Error, Equatable, Sendable {
     case tripNotFound
     case noFocusLeg
     case invalidPhaseTransition
+    case unknownDecisionPoint(String)
 }
 
 nonisolated struct EngineClock: Sendable {

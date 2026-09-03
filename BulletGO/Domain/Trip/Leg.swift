@@ -21,6 +21,7 @@ nonisolated struct Leg: Hashable, Codable, Sendable {
     var transportMode: Slot<TransportMode>
     var partyCount: Slot<Int>
     var baggagePresence: Slot<BaggagePresence>
+    var seatPreference: Slot<SeatPreference>
     var bagIDs: [BagID]
     var reservation: Reservation
     var phase: LegPhase

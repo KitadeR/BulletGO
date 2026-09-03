@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated enum TripPayloadMigrator {
-    static let currentDomainSchemaVersion = 2
+    static let currentDomainSchemaVersion = 3
 
     static func migrateV1Payload(_ data: Data) throws -> Data {
         guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -9,6 +9,17 @@ nonisolated enum TripPayloadMigrator {
         }
         let timestamp = json["updatedAt"] as? Double ?? json["createdAt"] as? Double ?? 0
         migrateReservations(in: &json, timestamp: timestamp)
+        migrateSeatPreferences(in: &json, timestamp: timestamp)
+        json["schemaVersion"] = currentDomainSchemaVersion
+        return try JSONSerialization.data(withJSONObject: json)
+    }
+
+    static func migrateV2Payload(_ data: Data) throws -> Data {
+        guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw PersistenceError.decodingFailed
+        }
+        let timestamp = json["updatedAt"] as? Double ?? json["createdAt"] as? Double ?? 0
+        migrateSeatPreferences(in: &json, timestamp: timestamp)
         json["schemaVersion"] = currentDomainSchemaVersion
         return try JSONSerialization.data(withJSONObject: json)
     }
@@ -36,6 +47,16 @@ nonisolated enum TripPayloadMigrator {
             reservation["status"] = slotJSON(for: status, timestamp: timestamp)
         }
         owner["reservation"] = reservation
+    }
+
+    private static func migrateSeatPreferences(in trip: inout [String: Any], timestamp: Double) {
+        guard var legs = trip["legs"] as? [[String: Any]] else {
+            return
+        }
+        for index in legs.indices where legs[index]["seatPreference"] == nil {
+            legs[index]["seatPreference"] = slotJSON(for: "unknown", timestamp: timestamp)
+        }
+        trip["legs"] = legs
     }
 
     private static func slotJSON(for status: String, timestamp: Double) -> [String: Any] {

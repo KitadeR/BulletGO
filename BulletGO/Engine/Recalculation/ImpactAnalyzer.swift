@@ -66,6 +66,15 @@ nonisolated enum ImpactAnalyzer {
                     changedPaths: [.bag(bagID, .dimensions)]
                 )
             )
+        case .setSeatPreference(let legID, _):
+            (
+                .other,
+                ImpactAssessment(
+                    level: .low,
+                    targetLegs: [legID],
+                    changedPaths: [.leg(legID, .seatPreference)]
+                )
+            )
         }
     }
 }

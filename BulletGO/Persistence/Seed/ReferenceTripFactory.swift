@@ -77,7 +77,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
 
         let trip = Trip(
             id: ReferenceTripIdentity.trip,
-            schemaVersion: 2,
+            schemaVersion: 3,
             name: try Slot.inferred(value: "Japan trip", updatedAt: timestamp),
             startDate: try Slot.confirmed(
                 value: LocalDate(year: 2026, month: 10, day: 1),
@@ -142,6 +142,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
             transportMode: try Slot.unknown(updatedAt: updatedAt),
             partyCount: try Slot.unknown(updatedAt: updatedAt),
             baggagePresence: try Slot.unknown(updatedAt: updatedAt),
+            seatPreference: try Slot.unknown(updatedAt: updatedAt),
             bagIDs: [],
             reservation: try emptyReservation(id: reservationID, updatedAt: updatedAt),
             phase: .planning,

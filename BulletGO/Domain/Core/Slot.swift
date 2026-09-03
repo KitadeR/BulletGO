@@ -228,6 +228,8 @@ nonisolated struct Slot<Value: Hashable & Codable & Sendable>: Hashable, Codable
             value: self.value,
             status: self.status,
             source: self.source,
+            collectionTiming: self.collectionTiming,
+            presentationTiming: self.presentationTiming,
             changedAt: date
         )
         return try Slot(
@@ -248,6 +250,34 @@ nonisolated struct Slot<Value: Hashable & Codable & Sendable>: Hashable, Codable
             true
         case .unknown, .inferred:
             false
+        }
+    }
+
+    var isDeferredPresentation: Bool {
+        if case .deferred = presentationTiming {
+            return true
+        }
+        return false
+    }
+
+    var hasDeferredPresentationHistory: Bool {
+        if isDeferredPresentation {
+            return true
+        }
+        return revisions.contains { revision in
+            if case .deferred = revision.presentationTiming {
+                return true
+            }
+            return false
+        }
+    }
+
+    func collectionTimingHasArrived(activeDecisionPoints: Set<DecisionPointID>) -> Bool {
+        switch collectionTiming {
+        case .immediate:
+            true
+        case .justInTime(let point):
+            activeDecisionPoints.contains(point)
         }
     }
 
