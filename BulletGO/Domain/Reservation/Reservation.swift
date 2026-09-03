@@ -33,7 +33,7 @@ nonisolated struct ReservationDetails: Hashable, Codable, Sendable {
 
 nonisolated struct Reservation: Hashable, Codable, Sendable {
     let id: ReservationID
-    var status: ReservationStatus
+    var status: Slot<ReservationStatus>
     var service: Slot<BookingService>
     var progress: ReservationProgress
     var evidenceLevel: ReservationEvidenceLevel

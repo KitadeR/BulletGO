@@ -1,0 +1,23 @@
+{
+  "catalogVersion": 1,
+  "questions": [
+    {
+      "id": "q_dup",
+      "priority": 1,
+      "target": { "kind": "legTransportMode" },
+      "uiKind": "singleChoice",
+      "answerType": "transportMode",
+      "when": { "kind": "always" },
+      "choices": [{ "value": "shinkansen", "labelKey": "transport.shinkansen" }]
+    },
+    {
+      "id": "q_dup",
+      "priority": 2,
+      "target": { "kind": "legTransportMode" },
+      "uiKind": "singleChoice",
+      "answerType": "transportMode",
+      "when": { "kind": "always" },
+      "choices": [{ "value": "airplane", "labelKey": "transport.airplane" }]
+    }
+  ]
+}

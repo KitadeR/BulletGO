@@ -27,7 +27,7 @@ struct TaskSeparationTests {
         )
 
         var reservation = try DomainTestSupport.emptyReservation()
-        reservation.status = .booked
+        reservation.status = try Slot.confirmed(value: .booked, source: .userStated, updatedAt: now)
         reservation.progress = .completed
         reservation.evidenceLevel = .userStated
         reservation.evidenceHistory = [

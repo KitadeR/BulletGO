@@ -8,7 +8,7 @@ actor SwiftDataTripRepository: TripRepository {
             sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
         )
         return try modelContext.fetch(descriptor).map { record in
-            try TripRecordMapper.decode(snapshot(from: record))
+            try decodeRecord(record)
         }
     }
 
@@ -16,7 +16,7 @@ actor SwiftDataTripRepository: TripRepository {
         guard let record = try record(for: id.rawValue) else {
             return nil
         }
-        return try TripRecordMapper.decode(snapshot(from: record))
+        return try decodeRecord(record)
     }
 
     func save(_ trip: Trip) throws {
@@ -77,6 +77,15 @@ actor SwiftDataTripRepository: TripRepository {
             existing.payload = payload
         }
         try modelContext.save()
+    }
+
+    private func decodeRecord(_ record: TripRecord) throws -> Trip {
+        let decoded = try TripRecordMapper.decodeWithMigration(snapshot(from: record))
+        if let rewritten = decoded.rewritten {
+            apply(rewritten, to: record)
+            try modelContext.save()
+        }
+        return decoded.trip
     }
 
     private func record(for tripID: UUID) throws -> TripRecord? {

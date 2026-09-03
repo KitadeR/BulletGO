@@ -31,22 +31,35 @@ nonisolated enum TripRecordMapper {
     }
 
     static func decode(_ encoded: EncodedTripRecord) throws -> Trip {
-        guard encoded.payloadVersion == TripPayloadCodec.currentPayloadVersion else {
-            throw PersistenceError.unsupportedPayloadVersion(encoded.payloadVersion)
-        }
-        let trip = try TripPayloadCodec.decode(encoded.payload)
+        try decodeWithMigration(encoded).trip
+    }
+
+    static func decodeWithMigration(_ encoded: EncodedTripRecord) throws -> (trip: Trip, rewritten: EncodedTripRecord?) {
+        let decoded = try TripPayloadCodec.decodeMigrating(
+            payload: encoded.payload,
+            payloadVersion: encoded.payloadVersion
+        )
         do {
-            try trip.validate()
+            try decoded.trip.validate()
         } catch let error as TripValidationError {
             throw PersistenceError.invalidAggregate(error)
         }
-        guard trip.id.rawValue == encoded.tripID else {
+        guard decoded.trip.id.rawValue == encoded.tripID else {
             throw PersistenceError.tripIDMismatch
         }
-        guard trip.schemaVersion == encoded.domainSchemaVersion else {
-            throw PersistenceError.domainSchemaVersionMismatch
+
+        if encoded.payloadVersion == TripPayloadCodec.currentPayloadVersion {
+            guard decoded.trip.schemaVersion == encoded.domainSchemaVersion else {
+                throw PersistenceError.domainSchemaVersionMismatch
+            }
+            return (decoded.trip, nil)
         }
-        return trip
+
+        var rewritten = encoded
+        rewritten.payload = decoded.payload
+        rewritten.payloadVersion = decoded.payloadVersion
+        rewritten.domainSchemaVersion = decoded.trip.schemaVersion
+        return (decoded.trip, rewritten)
     }
 
     private static func sortKey(for date: LocalDate) -> String {

@@ -77,7 +77,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
 
         let trip = Trip(
             id: ReferenceTripIdentity.trip,
-            schemaVersion: 1,
+            schemaVersion: 2,
             name: try Slot.inferred(value: "Japan trip", updatedAt: timestamp),
             startDate: try Slot.confirmed(
                 value: LocalDate(year: 2026, month: 10, day: 1),
@@ -170,7 +170,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
     private func emptyReservation(id: ReservationID, updatedAt: Date) throws -> Reservation {
         Reservation(
             id: id,
-            status: .unknown,
+            status: try Slot.unknown(updatedAt: updatedAt),
             service: try Slot.unknown(updatedAt: updatedAt),
             progress: .notStarted,
             evidenceLevel: .userStated,

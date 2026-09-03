@@ -1,0 +1,19 @@
+{
+  "id": "jr_shinkansen_oversized_baggage",
+  "version": "1",
+  "effectiveFrom": "2020-05-20",
+  "effectiveUntil": null,
+  "appliesToTransport": ["shinkansen"],
+  "totalSizeUpperBoundInclusiveCM": 250,
+  "oversizedUpperBoundInclusiveCM": 160,
+  "resultKey": "reservation_requirement",
+  "sourceURL": "http://example.com/baggage",
+  "sourceTitle": "not official",
+  "results": {
+    "not_required": { "labelKey": "baggage.not_required" },
+    "required": { "labelKey": "baggage.required" },
+    "not_allowed": { "labelKey": "baggage.not_allowed" }
+  },
+  "actionTemplates": [],
+  "taskTemplates": []
+}

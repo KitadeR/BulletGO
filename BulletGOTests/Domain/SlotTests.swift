@@ -74,6 +74,22 @@ struct SlotTests {
         #expect(updated.revisions[0].value == 2)
     }
 
+    @Test func updatingCanChangeCollectionTimingWhileKeepingRevisions() throws {
+        let original = try Slot<BaggageDimensions>.unknown(updatedAt: now)
+        let updated = try original.updating(
+            value: nil,
+            status: .unknown,
+            source: nil,
+            confidence: nil,
+            collectionTiming: .justInTime(.baggagePolicyEvaluation),
+            at: now.addingTimeInterval(30)
+        )
+        #expect(updated.collectionTiming == .justInTime(.baggagePolicyEvaluation))
+        #expect(updated.presentationTiming == .immediate)
+        #expect(updated.revisions.count == 1)
+        #expect(updated.revisions[0].status == .unknown)
+    }
+
     @Test func negativeAllowsFalseValue() throws {
         let slot = try Slot.negative(value: false, updatedAt: now)
         #expect(slot.status == .negative)

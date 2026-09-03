@@ -12,7 +12,7 @@ enum DomainTestSupport {
     static func emptyReservation() throws -> Reservation {
         Reservation(
             id: ReservationID(),
-            status: .unknown,
+            status: try Slot.unknown(updatedAt: timestamp),
             service: try Slot.unknown(updatedAt: timestamp),
             progress: .notStarted,
             evidenceLevel: .userStated,
@@ -58,7 +58,7 @@ enum DomainTestSupport {
 
         let trip = Trip(
             id: tripID,
-            schemaVersion: 1,
+            schemaVersion: 2,
             name: try Slot.inferred(value: "Japan trip", updatedAt: timestamp),
             startDate: try Slot.confirmed(value: start, source: .userStated, updatedAt: timestamp),
             endDate: try Slot.confirmed(value: end, source: .userStated, updatedAt: timestamp),

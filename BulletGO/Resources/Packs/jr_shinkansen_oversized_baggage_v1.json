@@ -1,0 +1,73 @@
+{
+  "id": "jr_shinkansen_oversized_baggage",
+  "version": "1",
+  "effectiveFrom": "2020-05-20",
+  "effectiveUntil": null,
+  "appliesToTransport": ["shinkansen"],
+  "totalSizeUpperBoundInclusiveCM": 160,
+  "oversizedUpperBoundInclusiveCM": 250,
+  "resultKey": "reservation_requirement",
+  "sourceURL": "https://global.jr-central.co.jp/en/info/oversized-baggage/index.html",
+  "sourceTitle": "JR Central oversized baggage",
+  "results": {
+    "not_required": { "labelKey": "baggage.not_required" },
+    "required": { "labelKey": "baggage.required" },
+    "not_allowed": { "labelKey": "baggage.not_allowed" }
+  },
+  "actionTemplates": [
+    {
+      "purposeKey": "capture_dimensions",
+      "importance": "mustDo",
+      "requiredStateSummary": "bag_dimensions_known",
+      "completionCondition": "dimensions_captured"
+    },
+    {
+      "purposeKey": "select_booking_method",
+      "importance": "mustDo",
+      "requiredStateSummary": "booking_service_selected",
+      "completionCondition": "service_selected"
+    },
+    {
+      "purposeKey": "reserve_oversized_seat",
+      "importance": "mustDo",
+      "requiredStateSummary": "oversized_seat_reserved",
+      "completionCondition": "reservation_booked"
+    },
+    {
+      "purposeKey": "verify_reservation_meets_baggage",
+      "importance": "checkRequired",
+      "requiredStateSummary": "existing_reservation_checked",
+      "completionCondition": "reservation_verified"
+    }
+  ],
+  "taskTemplates": [
+    {
+      "contentKey": "capture_dimensions",
+      "type": "check",
+      "importance": "required",
+      "relevantPhases": ["planning", "booking"],
+      "completionCondition": "userConfirmsDone"
+    },
+    {
+      "contentKey": "select_booking_method",
+      "type": "prepare",
+      "importance": "required",
+      "relevantPhases": ["booking"],
+      "completionCondition": "userConfirmsDone"
+    },
+    {
+      "contentKey": "reserve_oversized_seat",
+      "type": "book",
+      "importance": "required",
+      "relevantPhases": ["booking"],
+      "completionCondition": "reservationDetailsConfirmed"
+    },
+    {
+      "contentKey": "verify_reservation_meets_baggage",
+      "type": "verify",
+      "importance": "important",
+      "relevantPhases": ["preparing", "booking"],
+      "completionCondition": "userConfirmsDone"
+    }
+  ]
+}

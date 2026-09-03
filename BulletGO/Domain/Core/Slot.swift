@@ -220,6 +220,8 @@ nonisolated struct Slot<Value: Hashable & Codable & Sendable>: Hashable, Codable
         status: SlotStatus,
         source: SlotSource?,
         confidence: SlotConfidence?,
+        collectionTiming: SlotCollectionTiming? = nil,
+        presentationTiming: SlotPresentationTiming? = nil,
         at date: Date
     ) throws -> Slot {
         let revision = SlotRevision(
@@ -233,11 +235,20 @@ nonisolated struct Slot<Value: Hashable & Codable & Sendable>: Hashable, Codable
             status: status,
             source: source,
             confidence: confidence,
-            collectionTiming: collectionTiming,
-            presentationTiming: presentationTiming,
+            collectionTiming: collectionTiming ?? self.collectionTiming,
+            presentationTiming: presentationTiming ?? self.presentationTiming,
             updatedAt: date,
             revisions: revisions + [revision]
         )
+    }
+
+    var isSatisfiedForQuestioning: Bool {
+        switch status {
+        case .confirmed, .negative, .notApplicable, .skipped:
+            true
+        case .unknown, .inferred:
+            false
+        }
     }
 
     static func validate(value: Value?, status: SlotStatus, source: SlotSource?) throws {

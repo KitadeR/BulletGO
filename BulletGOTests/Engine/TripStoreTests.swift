@@ -1,0 +1,53 @@
+import Foundation
+import Testing
+@testable import BulletGO
+
+@MainActor
+struct TripStoreTests {
+    @Test func successfulCommandSavesUpdatedTrip() async throws {
+        let repository = InMemoryTripRepository()
+        let trip = try DomainTestSupport.sampleTrip()
+        try await repository.save(trip)
+        let store = TripStore(repository: repository, brain: try EngineTestSupport.brain())
+        let result = try await store.process(
+            tripID: trip.id,
+            command: .answerQuestion(.transport, .choice("shinkansen"))
+        )
+        #expect(result.updatedTrip.legs[0].transportMode.value == .shinkansen)
+        let saved = try await repository.fetch(id: trip.id)
+        #expect(saved?.legs[0].transportMode.value == .shinkansen)
+        #expect(await repository.saveCount == 2)
+    }
+
+    @Test func failedCommandLeavesPersistedTripUnchanged() async throws {
+        let repository = InMemoryTripRepository()
+        let trip = try DomainTestSupport.sampleTrip()
+        try await repository.save(trip)
+        let store = TripStore(repository: repository, brain: try EngineTestSupport.brain())
+        await #expect(throws: EngineError.unknownQuestion("q_missing")) {
+            _ = try await store.process(
+                tripID: trip.id,
+                command: .answerQuestion(QuestionID(rawValue: "q_missing"), .skip)
+            )
+        }
+        let saved = try await repository.fetch(id: trip.id)
+        #expect(saved == trip)
+        #expect(await repository.saveCount == 1)
+    }
+
+    @Test func referenceTripOnlyEvaluatesFocusLeg() async throws {
+        let repository = InMemoryTripRepository()
+        let factory = ReferenceTripFactory(now: { EngineTestSupport.now })
+        let trip = try factory.makeReferenceTrip()
+        try await repository.save(trip)
+        let store = TripStore(repository: repository, brain: try EngineTestSupport.brain())
+        let result = try await store.process(
+            tripID: trip.id,
+            command: .answerQuestion(.transport, .choice("shinkansen"))
+        )
+        #expect(result.updatedTrip.legs[0].transportMode.value == .shinkansen)
+        #expect(result.updatedTrip.legs[1].transportMode.status == .unknown)
+        #expect(result.updatedTrip.legs[2].policyEvaluations.isEmpty)
+        #expect(result.updatedTrip.legs[1].policyEvaluations.isEmpty)
+    }
+}

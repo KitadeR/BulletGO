@@ -6,6 +6,8 @@ nonisolated struct PolicyID: RawRepresentable, Hashable, Codable, Sendable {
     init(rawValue: String) {
         self.rawValue = rawValue
     }
+
+    static let jrShinkansenOversizedBaggage = PolicyID(rawValue: "jr_shinkansen_oversized_baggage")
 }
 
 nonisolated struct ProcedureID: RawRepresentable, Hashable, Codable, Sendable {

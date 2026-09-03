@@ -1,0 +1,77 @@
+{
+  "catalogVersion": 1,
+  "questions": [
+    {
+      "id": "q_leg_date",
+      "priority": 20,
+      "target": { "kind": "legScheduledAt" },
+      "uiKind": "dateTime",
+      "answerType": "scheduledMoment",
+      "when": { "kind": "always" },
+      "choices": []
+    },
+    {
+      "id": "q_transport",
+      "priority": 30,
+      "target": { "kind": "legTransportMode" },
+      "uiKind": "singleChoice",
+      "answerType": "transportMode",
+      "when": { "kind": "always" },
+      "choices": [
+        { "value": "shinkansen", "labelKey": "transport.shinkansen" },
+        { "value": "airplane", "labelKey": "transport.airplane" },
+        { "value": "localTrain", "labelKey": "transport.localTrain" },
+        { "value": "other", "labelKey": "transport.other" }
+      ]
+    },
+    {
+      "id": "q_ticket_status",
+      "priority": 40,
+      "target": { "kind": "legReservationStatus" },
+      "uiKind": "singleChoice",
+      "answerType": "reservationStatus",
+      "when": { "kind": "always" },
+      "choices": [
+        { "value": "booked", "labelKey": "ticket.purchased" },
+        { "value": "notBooked", "labelKey": "ticket.notPurchased" },
+        { "value": "unsure", "labelKey": "ticket.unsure" }
+      ]
+    },
+    {
+      "id": "q_select_service",
+      "priority": 50,
+      "target": { "kind": "legReservationService" },
+      "uiKind": "singleChoice",
+      "answerType": "bookingService",
+      "when": { "kind": "reservationStatusIs", "status": "notBooked" },
+      "choices": [
+        { "value": "smartEX", "labelKey": "service.smartEX" },
+        { "value": "klook", "labelKey": "service.klook" },
+        { "value": "ticketMachine", "labelKey": "service.ticketMachine" },
+        { "value": "other", "labelKey": "service.other" }
+      ]
+    },
+    {
+      "id": "q_luggage_presence",
+      "priority": 55,
+      "target": { "kind": "legBaggagePresence" },
+      "uiKind": "singleChoice",
+      "answerType": "baggagePresence",
+      "when": { "kind": "transportIs", "mode": "shinkansen" },
+      "choices": [
+        { "value": "yes", "labelKey": "luggage.yes" },
+        { "value": "no", "labelKey": "luggage.no" },
+        { "value": "skip", "labelKey": "luggage.skip" }
+      ]
+    },
+    {
+      "id": "q_baggage_dimensions",
+      "priority": 70,
+      "target": { "kind": "bagDimensions" },
+      "uiKind": "dimensions",
+      "answerType": "baggageDimensions",
+      "when": { "kind": "policyNeedsDimensions" },
+      "choices": []
+    }
+  ]
+}
