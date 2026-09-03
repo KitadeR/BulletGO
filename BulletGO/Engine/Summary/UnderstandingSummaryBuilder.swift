@@ -26,7 +26,8 @@ nonisolated enum UnderstandingSummaryBuilder {
         let unconfirmed = QuestionEngine.applicableUnsatisfiedQuestions(
             in: after,
             catalog: catalog,
-            activeDecisionPoints: activeDecisionPoints
+            activeDecisionPoints: activeDecisionPoints,
+            role: .setup
         ).compactMap { question in
             unconfirmedItem(for: question, trip: after)
         }

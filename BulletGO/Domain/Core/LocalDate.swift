@@ -49,4 +49,20 @@ nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable {
     static func < (lhs: LocalDate, rhs: LocalDate) -> Bool {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }
+
+    init(date: Date, timeZone: TimeZone) throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year, let month = components.month, let day = components.day else {
+            throw DomainError.invalidDate(year: 0, month: 0, day: 0)
+        }
+        try self.init(year: year, month: month, day: day)
+    }
+
+    func date(in timeZone: TimeZone) -> Date? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.date(from: DateComponents(year: year, month: month, day: day))
+    }
 }

@@ -18,6 +18,12 @@ struct CatalogLoaderTests {
         #expect(catalog.spec(id: .selectService)?.when == .reservationStatusIs(.notBooked))
         #expect(catalog.spec(id: .luggagePresence)?.when == .transportIs(.shinkansen))
         #expect(catalog.spec(id: .baggageDimensions)?.when == .policyNeedsDimensions)
+        #expect(catalog.spec(id: .legDate)?.role == .setup)
+        #expect(catalog.spec(id: .transport)?.role == .setup)
+        #expect(catalog.spec(id: .ticketStatus)?.role == .setup)
+        #expect(catalog.spec(id: .luggagePresence)?.role == .setup)
+        #expect(catalog.spec(id: .selectService)?.role == .action)
+        #expect(catalog.spec(id: .baggageDimensions)?.role == .action)
     }
 
     @Test func productionPackLoadsFromAppBundle() throws {

@@ -8,7 +8,8 @@
       "uiKind": "dateTime",
       "answerType": "scheduledMoment",
       "when": { "kind": "always" },
-      "choices": []
+      "choices": [],
+      "role": "setup"
     },
     {
       "id": "q_transport",
@@ -22,7 +23,8 @@
         { "value": "airplane", "labelKey": "transport.airplane" },
         { "value": "localTrain", "labelKey": "transport.localTrain" },
         { "value": "other", "labelKey": "transport.other" }
-      ]
+      ],
+      "role": "setup"
     },
     {
       "id": "q_ticket_status",
@@ -35,7 +37,8 @@
         { "value": "booked", "labelKey": "ticket.purchased" },
         { "value": "notBooked", "labelKey": "ticket.notPurchased" },
         { "value": "unsure", "labelKey": "ticket.unsure" }
-      ]
+      ],
+      "role": "setup"
     },
     {
       "id": "q_select_service",
@@ -49,7 +52,8 @@
         { "value": "klook", "labelKey": "service.klook" },
         { "value": "ticketMachine", "labelKey": "service.ticketMachine" },
         { "value": "other", "labelKey": "service.other" }
-      ]
+      ],
+      "role": "action"
     },
     {
       "id": "q_luggage_presence",
@@ -62,7 +66,8 @@
         { "value": "yes", "labelKey": "luggage.yes" },
         { "value": "no", "labelKey": "luggage.no" },
         { "value": "skip", "labelKey": "luggage.skip" }
-      ]
+      ],
+      "role": "setup"
     },
     {
       "id": "q_baggage_dimensions",
@@ -71,7 +76,8 @@
       "uiKind": "dimensions",
       "answerType": "baggageDimensions",
       "when": { "kind": "policyNeedsDimensions" },
-      "choices": []
+      "choices": [],
+      "role": "action"
     }
   ]
 }

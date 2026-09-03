@@ -11,23 +11,52 @@ final class TripSessionModel {
         case failed
     }
 
-    private(set) var loadState: LoadState
-    private(set) var trip: Trip?
-    private(set) var lastBrainResult: BrainResult?
-    private let store: TripStore?
-
-    init(store: TripStore) {
-        self.store = store
-        self.loadState = .loading
-        self.trip = nil
-        self.lastBrainResult = nil
+    enum ProcessState: Equatable, Sendable {
+        case idle
+        case processing
+        case failed
     }
 
-    init(previewState: LoadState, trip: Trip? = nil) {
-        self.store = nil
-        self.loadState = previewState
-        self.trip = trip
+    private(set) var loadState: LoadState
+    private(set) var processState: ProcessState
+    private(set) var trip: Trip?
+    private(set) var lastBrainResult: BrainResult?
+    private(set) var catalog: QuestionCatalog?
+    private(set) var pack: BaggagePolicyPack?
+    private let store: TripStore?
+    private let interpreter: any TripInputInterpreting
+
+    init(store: TripStore, interpreter: any TripInputInterpreting = LocalDeterministicTripInputInterpreter()) {
+        self.store = store
+        self.interpreter = interpreter
+        self.loadState = .loading
+        self.processState = .idle
+        self.trip = nil
         self.lastBrainResult = nil
+        self.catalog = try? QuestionCatalogLoader.loadProduction(from: .main)
+        self.pack = try? PackLoader.loadProduction(from: .main)
+    }
+
+    init(
+        previewState: LoadState,
+        trip: Trip? = nil,
+        lastBrainResult: BrainResult? = nil
+    ) {
+        self.store = nil
+        self.interpreter = LocalDeterministicTripInputInterpreter()
+        self.loadState = previewState
+        self.processState = .idle
+        self.trip = trip
+        self.lastBrainResult = lastBrainResult
+        self.catalog = try? QuestionCatalogLoader.loadProduction(from: .main)
+        self.pack = try? PackLoader.loadProduction(from: .main)
+    }
+
+    func interpret(_ text: String, legID: LegID) -> TripInputInterpretation {
+        guard let trip else {
+            return .empty
+        }
+        return interpreter.interpret(text, trip: trip, legID: legID)
     }
 
     func load() async {
@@ -69,5 +98,22 @@ final class TripSessionModel {
         trip = result.updatedTrip
         lastBrainResult = result
         loadState = .loaded
+        processState = .idle
+    }
+
+    @discardableResult
+    func process(_ command: TypedCommand) async -> BrainResult? {
+        guard let store, let trip else {
+            return nil
+        }
+        processState = .processing
+        do {
+            let result = try await store.process(tripID: trip.id, command: command)
+            apply(result)
+            return result
+        } catch {
+            processState = .failed
+            return nil
+        }
     }
 }

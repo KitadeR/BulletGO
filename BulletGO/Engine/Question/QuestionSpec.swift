@@ -142,6 +142,20 @@ nonisolated struct QuestionChoice: Hashable, Codable, Sendable {
     var labelKey: String
 }
 
+nonisolated enum QuestionRole: String, Hashable, Codable, Sendable {
+    case setup
+    case action
+
+    static func defaultRole(for target: QuestionTarget) -> QuestionRole {
+        switch target {
+        case .legReservationService, .bagDimensions:
+            .action
+        case .legScheduledAt, .legTransportMode, .legReservationStatus, .legBaggagePresence:
+            .setup
+        }
+    }
+}
+
 nonisolated struct QuestionSpec: Hashable, Codable, Sendable {
     var id: QuestionID
     var priority: Int
@@ -150,6 +164,65 @@ nonisolated struct QuestionSpec: Hashable, Codable, Sendable {
     var answerType: QuestionAnswerType
     var `when`: QuestionCondition
     var choices: [QuestionChoice]
+    var role: QuestionRole
+
+    init(
+        id: QuestionID,
+        priority: Int,
+        target: QuestionTarget,
+        uiKind: QuestionUIKind,
+        answerType: QuestionAnswerType,
+        when: QuestionCondition,
+        choices: [QuestionChoice],
+        role: QuestionRole? = nil
+    ) {
+        self.id = id
+        self.priority = priority
+        self.target = target
+        self.uiKind = uiKind
+        self.answerType = answerType
+        self.when = when
+        self.choices = choices
+        self.role = role ?? .defaultRole(for: target)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case priority
+        case target
+        case uiKind
+        case answerType
+        case when
+        case choices
+        case role
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let target = try container.decode(QuestionTarget.self, forKey: .target)
+        self.init(
+            id: try container.decode(QuestionID.self, forKey: .id),
+            priority: try container.decode(Int.self, forKey: .priority),
+            target: target,
+            uiKind: try container.decode(QuestionUIKind.self, forKey: .uiKind),
+            answerType: try container.decode(QuestionAnswerType.self, forKey: .answerType),
+            when: try container.decode(QuestionCondition.self, forKey: .when),
+            choices: try container.decode([QuestionChoice].self, forKey: .choices),
+            role: try container.decodeIfPresent(QuestionRole.self, forKey: .role)
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(priority, forKey: .priority)
+        try container.encode(target, forKey: .target)
+        try container.encode(uiKind, forKey: .uiKind)
+        try container.encode(answerType, forKey: .answerType)
+        try container.encode(`when`, forKey: .when)
+        try container.encode(choices, forKey: .choices)
+        try container.encode(role, forKey: .role)
+    }
 }
 
 nonisolated struct QuestionCatalog: Hashable, Codable, Sendable {

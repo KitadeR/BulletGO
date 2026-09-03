@@ -21,7 +21,7 @@ struct TimelinePresentationTests {
         let items = TimelineNextComposer.items(for: trip)
         #expect(items.count == 2)
         #expect(items[0].kind == .task(nextTask.id))
-        #expect(items[0].destination == nil)
+        #expect(items[0].destination == .taskDetail(trip.id, nextTask.id))
         guard case .remembered(let remembered) = items[1].kind else {
             Issue.record("Expected remembered Coming Up row")
             return
@@ -101,6 +101,78 @@ struct TimelinePresentationTests {
         #expect(unknownTask.title.key.contains("mystery.task") == false)
     }
 
+    @Test func nowUsesSnapshotNowOnlyWhenSetupIsReady() throws {
+        let catalog = try EngineTestSupport.catalog()
+        let brain = try EngineTestSupport.brain()
+        var trip = try DomainTestSupport.sampleTrip()
+        trip = try brain.process(
+            trip: trip,
+            command: .applyMutations([
+                .setTransportMode(trip.legs[0].id, .shinkansen),
+                .setSeatPreference(trip.legs[0].id, .mountFujiView),
+            ])
+        ).updatedTrip
+        let afterInput = TimelineNowComposer.items(for: trip, catalog: catalog)
+        #expect(afterInput.count == 1)
+        guard case .resume = afterInput[0].kind else {
+            Issue.record("Expected a resume card before setup is confirmed")
+            return
+        }
+        #expect(TaskDisplayPipeline.snapshot(for: trip).now.isEmpty)
+
+        let moment = try EngineTestSupport.moment(try LocalDate(year: 2026, month: 10, day: 1))
+        trip = try brain.process(
+            trip: trip,
+            command: .answerQuestion(.legDate, .scheduledMoment(moment))
+        ).updatedTrip
+        trip = try brain.process(
+            trip: trip,
+            command: .answerQuestion(.ticketStatus, .choice("notBooked"))
+        ).updatedTrip
+        trip = try brain.process(
+            trip: trip,
+            command: .answerQuestion(.luggagePresence, .choice("yes"))
+        ).updatedTrip
+
+        let ready = TimelineNowComposer.items(for: trip, catalog: catalog)
+        let snapshot = TaskDisplayPipeline.snapshot(for: trip)
+        #expect(ready.map(\.kind) == snapshot.now.map(TimelineNowKind.task))
+        #expect(snapshot.now.count >= 1)
+        #expect(ready.allSatisfy { item in
+            if case .task = item.kind { return true }
+            return false
+        })
+        #expect(ready.contains { item in
+            if case .resume = item.kind { return true }
+            return false
+        } == false)
+    }
+
+    @Test func skippedSetupKeepsResumeInsteadOfNow() throws {
+        let catalog = try EngineTestSupport.catalog()
+        let brain = try EngineTestSupport.brain()
+        var trip = try DomainTestSupport.sampleTrip()
+        trip = try brain.process(
+            trip: trip,
+            command: .applyMutation(.setTransportMode(trip.legs[0].id, .shinkansen))
+        ).updatedTrip
+        let moment = try EngineTestSupport.moment(try LocalDate(year: 2026, month: 10, day: 1))
+        trip = try brain.process(
+            trip: trip,
+            command: .answerQuestion(.legDate, .scheduledMoment(moment))
+        ).updatedTrip
+        trip = try brain.process(
+            trip: trip,
+            command: .answerQuestion(.ticketStatus, .choice("unsure"))
+        ).updatedTrip
+        let items = TimelineNowComposer.items(for: trip, catalog: catalog)
+        #expect(items.count == 1)
+        guard case .resume = items[0].kind else {
+            Issue.record("Expected resume after skipped booking status")
+            return
+        }
+    }
+
     @Test func timelineRowsFollowTripOrderAndKeepActivitiesDisplayOnly() throws {
         let trip = try ReferenceTripFactory(now: { EngineTestSupport.now }).makeReferenceTrip()
         let rows = TimelineRowComposer.rows(for: trip)
@@ -113,8 +185,10 @@ struct TimelinePresentationTests {
             "Hakata sightseeing",
         ])
         #expect(rows[0].isCurrent)
+        #expect(rows[0].isLeg)
         #expect(rows[0].destination == .legDetail(trip.id, ReferenceTripIdentity.tokyoKyoto))
         #expect(rows[1].destination == nil)
+        #expect(rows[1].isLeg == false)
         if case .localized(let resource) = rows[0].subtitle {
             #expect(resource.key == "Not decided yet")
         } else {

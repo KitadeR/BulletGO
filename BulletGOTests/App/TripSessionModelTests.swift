@@ -54,4 +54,24 @@ struct TripSessionModelTests {
         #expect(session.lastBrainResult?.deferredSnapshot.next.count == 1)
         #expect(session.lastBrainResult?.updatedTrip.id == trip.id)
     }
+
+    @Test func processSavesThroughStoreAndSurfacesFailure() async throws {
+        let repository = InMemoryTripRepository()
+        let trip = try DomainTestSupport.sampleTrip()
+        try await repository.save(trip)
+        let session = TripSessionModel(
+            store: TripStore(repository: repository, brain: try EngineTestSupport.brain())
+        )
+        await session.load()
+        await session.process(.applyMutation(.setTransportMode(trip.legs[0].id, .shinkansen)))
+        #expect(session.processState == .idle)
+        #expect(session.trip?.legs[0].transportMode.value == .shinkansen)
+
+        let failing = TripSessionModel(
+            store: TripStore(repository: SaveFailingTripRepository(trip: trip), brain: try EngineTestSupport.brain())
+        )
+        await failing.load()
+        await failing.process(.applyMutation(.setTransportMode(trip.legs[0].id, .shinkansen)))
+        #expect(failing.processState == .failed)
+    }
 }

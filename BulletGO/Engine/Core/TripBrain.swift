@@ -51,6 +51,13 @@ nonisolated struct TripBrain: Sendable {
             try DecisionPointResolver.validate(point)
             reachedDecisionPoints.insert(point)
             includeSummary = false
+        case .focusLeg(let legID):
+            guard working.legs.contains(where: { $0.id == legID }) else {
+                throw EngineError.unknownLeg
+            }
+            working.currentContext.focus = .leg(legID)
+            working.updatedAt = now
+            includeSummary = false
         case .reevaluate:
             includeSummary = false
         }

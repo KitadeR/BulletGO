@@ -33,6 +33,63 @@ nonisolated struct TimelineNextItem: Identifiable, Equatable, Sendable {
     var destination: AppRoute?
 }
 
+nonisolated enum TimelineNowKind: Hashable, Sendable {
+    case task(TaskID)
+    case resume(LegID)
+}
+
+nonisolated struct TimelineNowItem: Identifiable, Equatable, Sendable {
+    enum ID: Hashable, Sendable {
+        case task(TaskID)
+        case resume(LegID)
+    }
+
+    var id: ID
+    var kind: TimelineNowKind
+    var contentKey: String
+    var content: ResolvedContent
+    var destination: AppRoute?
+}
+
+nonisolated enum TimelineNowComposer {
+    static func items(for trip: Trip, catalog: QuestionCatalog?) -> [TimelineNowItem] {
+        guard let catalog else {
+            return []
+        }
+        switch GuidanceProgressEvaluator.evaluate(trip: trip, catalog: catalog) {
+        case .ready:
+            let snapshot = TaskDisplayPipeline.snapshot(for: trip)
+            return snapshot.now.compactMap { taskID in
+                guard let task = trip.tasks.first(where: { $0.id == taskID }) else {
+                    return nil
+                }
+                return TimelineNowItem(
+                    id: .task(task.id),
+                    kind: .task(task.id),
+                    contentKey: task.contentKey,
+                    content: TripContentResolver.task(contentKey: task.contentKey),
+                    destination: .taskDetail(trip.id, task.id)
+                )
+            }
+        case .needsSetup, .paused:
+            guard let legID = trip.focusLegID else {
+                return []
+            }
+            return [
+                TimelineNowItem(
+                    id: .resume(legID),
+                    kind: .resume(legID),
+                    contentKey: "resume",
+                    content: TripContentResolver.resumeGuidance(trip: trip, legID: legID),
+                    destination: nil
+                ),
+            ]
+        case .notStarted:
+            return []
+        }
+    }
+}
+
 nonisolated enum TimelineNextComposer {
     static func items(for trip: Trip) -> [TimelineNextItem] {
         let display = TaskDisplayPipeline.snapshot(for: trip)
@@ -47,7 +104,7 @@ nonisolated enum TimelineNextComposer {
                     id: .task(task.id),
                     kind: .task(task.id),
                     content: TripContentResolver.task(contentKey: task.contentKey),
-                    destination: nil
+                    destination: .taskDetail(trip.id, task.id)
                 )
             )
         }
@@ -91,7 +148,8 @@ nonisolated struct TimelineRow: Identifiable, Equatable, Sendable {
     var id: TimelineRowKind
     var title: String
     var subtitle: DisplayText
-    var systemImage: String
+    var visualKind: JourneyVisualKind
+    var isLeg: Bool
     var isCurrent: Bool
     var destination: AppRoute?
 }
@@ -110,7 +168,8 @@ nonisolated enum TimelineRowComposer {
                     id: .leg(id),
                     title: "\(origin) → \(destination)",
                     subtitle: .localized(TripContentResolver.transportSummary(for: leg)),
-                    systemImage: "arrow.triangle.swap",
+                    visualKind: JourneyVisualProvider.kind(for: leg),
+                    isLeg: true,
                     isCurrent: trip.focusLegID == id,
                     destination: .legDetail(trip.id, id)
                 )
@@ -122,7 +181,8 @@ nonisolated enum TimelineRowComposer {
                     id: .activity(id),
                     title: activity.title.value ?? "",
                     subtitle: .verbatim(activity.place.value ?? ""),
-                    systemImage: "mappin.and.ellipse",
+                    visualKind: JourneyVisualProvider.kind(for: activity),
+                    isLeg: false,
                     isCurrent: false,
                     destination: nil
                 )

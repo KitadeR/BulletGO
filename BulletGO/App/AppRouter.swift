@@ -4,6 +4,7 @@ import Observation
 @Observable
 final class AppRouter {
     var path: [AppRoute] = []
+    var presentation: AppPresentation?
 
     func push(_ route: AppRoute) {
         path.append(route)
@@ -16,5 +17,13 @@ final class AppRouter {
 
     func popToRoot() {
         path.removeAll()
+    }
+
+    func present(_ presentation: AppPresentation) {
+        self.presentation = presentation
+    }
+
+    func dismissPresentation() {
+        presentation = nil
     }
 }

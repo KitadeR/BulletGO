@@ -34,5 +34,6 @@ nonisolated enum TypedCommand: Hashable, Sendable {
     case applyMutations([TripMutation])
     case applyPhaseEvent(PhaseManualEvent)
     case reachDecisionPoint(DecisionPointID)
+    case focusLeg(LegID)
     case reevaluate
 }

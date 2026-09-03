@@ -6,51 +6,133 @@ final class BulletGOUITests: XCTestCase {
     }
 
     @MainActor
-    func testSeededTimelineShowsJourneyAndOpensLegDetail() throws {
-        let app = XCUIApplication()
-        app.launch()
+    func testHomeHasNoFeatureCatalogAndOpensJourney() throws {
+        let app = launchApp()
 
-        let timeline = app.descendants(matching: .any)["trip-timeline"]
-        XCTAssertTrue(timeline.waitForExistence(timeout: 10))
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["open-feature-hub"].exists)
+        XCTAssertFalse(app.buttons["Features"].exists)
 
-        XCTAssertTrue(app.staticTexts["Tokyo → Kyoto"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Kinkaku-ji"].exists)
-        XCTAssertTrue(app.staticTexts["Kyoto → Osaka"].exists)
-        XCTAssertTrue(app.staticTexts["Dotonbori"].exists)
-        XCTAssertTrue(app.staticTexts["Osaka → Hakata"].exists)
-        XCTAssertTrue(app.staticTexts["Hakata sightseeing"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["coming-up-section"].exists)
-
-        let tokyoKyoto = app.descendants(matching: .any)["timeline-leg-A1E0B001-0000-4000-8000-000000000011"]
-        XCTAssertTrue(tokyoKyoto.waitForExistence(timeout: 5))
-        tokyoKyoto.tap()
-
-        let detail = app.descendants(matching: .any)["leg-detail"]
-        XCTAssertTrue(detail.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Tokyo → Kyoto"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["remembered-section"].exists)
+        openTokyoKyoto(in: app)
+        XCTAssertTrue(element(app, "start-guidance").exists)
     }
 
     @MainActor
-    func testFeatureHubStillOpensComingSoonFromTimeline() throws {
+    func testGuidanceCloseReturnsToJourney() throws {
+        let app = launchApp()
+
+        openTokyoKyoto(in: app)
+        tapID(app, "start-guidance")
+        XCTAssertTrue(element(app, "guidance-sheet").waitForExistence(timeout: 5))
+        tapID(app, "guidance-close")
+        XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testVerticalSliceFromTalkToBaggageResult() throws {
+        let app = launchApp()
+
+        openTokyoKyoto(in: app)
+        tapID(app, "start-guidance")
+        enterReferenceTalk(in: app)
+        tapID(app, "guidance-continue")
+        XCTAssertTrue(element(app, "guidance-question").waitForExistence(timeout: 10))
+        tapID(app, "date-confirm")
+        tapID(app, "question-choice-notBooked")
+        tapID(app, "question-choice-yes")
+
+        XCTAssertTrue(element(app, "now-section").waitForExistence(timeout: 10))
+        tapID(app, "now-task-capture_dimensions")
+
+        XCTAssertTrue(element(app, "task-detail").waitForExistence(timeout: 5))
+        tapID(app, "task-primary-action")
+
+        XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 5))
+        fillBaggage(in: app, length: "80", width: "40", height: "41")
+        tapID(app, "baggage-submit")
+        XCTAssertTrue(element(app, "baggage-result").waitForExistence(timeout: 8))
+    }
+
+    @MainActor
+    func testBookingMethodComingSoonStaysInContext() throws {
+        let app = launchApp()
+
+        openTokyoKyoto(in: app)
+        tapID(app, "start-guidance")
+        enterReferenceTalk(in: app)
+        tapID(app, "guidance-continue")
+        XCTAssertTrue(element(app, "guidance-question").waitForExistence(timeout: 10))
+        tapID(app, "date-confirm")
+        tapID(app, "question-choice-notBooked")
+        tapID(app, "question-choice-yes")
+        tapID(app, "now-task-select_booking_method", timeout: 10)
+        XCTAssertTrue(element(app, "task-detail").waitForExistence(timeout: 5))
+        tapID(app, "task-primary-action")
+        XCTAssertTrue(element(app, "coming-soon-view").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "feature-hub-list").exists)
+    }
+
+    @MainActor
+    private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
+        if app.state != .notRunning {
+            app.terminate()
+        }
+        app.launchArguments = ["-ui-testing"]
         app.launch()
+        return app
+    }
 
-        let timeline = app.descendants(matching: .any)["trip-timeline"]
-        XCTAssertTrue(timeline.waitForExistence(timeout: 10))
+    @MainActor
+    private func openTokyoKyoto(in app: XCUIApplication) {
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 15))
+        tapID(app, "timeline-leg-A1E0B001-0000-4000-8000-000000000011")
+        XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 8))
+    }
 
-        let openFeatureHub = app.buttons["open-feature-hub"]
-        XCTAssertTrue(openFeatureHub.waitForExistence(timeout: 5))
-        openFeatureHub.tap()
+    @MainActor
+    private func enterReferenceTalk(in app: XCUIApplication) {
+        let input = app.textViews["guidance-input"].firstMatch.exists
+            ? app.textViews["guidance-input"].firstMatch
+            : app.textFields["guidance-input"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("I want to take the Shinkansen! I'd like a seat with a view of Mt. Fuji.")
+        tapID(app, "guidance-submit")
+        XCTAssertTrue(element(app, "guidance-summary").waitForExistence(timeout: 8))
+    }
 
-        let featureHub = app.descendants(matching: .any)["feature-hub-list"]
-        XCTAssertTrue(featureHub.waitForExistence(timeout: 5))
+    @MainActor
+    private func fillBaggage(in app: XCUIApplication, length: String, width: String, height: String) {
+        let lengthField = app.textFields["baggage-length"]
+        let widthField = app.textFields["baggage-width"]
+        let heightField = app.textFields["baggage-height"]
+        XCTAssertTrue(lengthField.waitForExistence(timeout: 5))
+        lengthField.tap()
+        lengthField.typeText(length)
+        widthField.tap()
+        widthField.typeText(width)
+        heightField.tap()
+        heightField.typeText(height)
+        let done = app.descendants(matching: .any)["keyboard-done"].firstMatch
+        if done.waitForExistence(timeout: 2) {
+            done.tap()
+        }
+    }
 
-        let baggageRow = app.descendants(matching: .any)["feature-row-baggage_check"]
-        XCTAssertTrue(baggageRow.waitForExistence(timeout: 5))
-        baggageRow.tap()
+    @MainActor
+    private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier].firstMatch
+    }
 
-        let comingSoon = app.descendants(matching: .any)["coming-soon-view"]
-        XCTAssertTrue(comingSoon.waitForExistence(timeout: 5))
+    @MainActor
+    private func tapID(_ app: XCUIApplication, _ identifier: String, timeout: TimeInterval = 8) {
+        let target = element(app, identifier)
+        XCTAssertTrue(target.waitForExistence(timeout: timeout), "Missing \(identifier)")
+        if target.isHittable {
+            target.tap()
+        } else {
+            target.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
     }
 }

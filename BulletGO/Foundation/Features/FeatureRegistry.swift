@@ -31,6 +31,26 @@ struct FeatureRegistry: Sendable {
         }
         return match
     }
+
+    func resolve(_ feature: AppFeature, in context: FeatureContext) -> AppRoute? {
+        let registration = registration(for: feature)
+        switch registration.availability {
+        case .hidden:
+            return nil
+        case .stub:
+            return .comingSoon(feature)
+        case .implemented:
+            switch registration.destinationKind {
+            case .baggageCheck:
+                guard let legID = context.legID, let taskID = context.taskID else {
+                    return nil
+                }
+                return .baggageCheck(context.tripID, legID, taskID)
+            case .none:
+                return nil
+            }
+        }
+    }
 }
 
 extension FeatureRegistry {
@@ -49,7 +69,8 @@ extension FeatureRegistry {
                             comment: "One-line explanation of baggage check."
                         ),
                         systemImage: "suitcase",
-                        availability: .stub
+                        availability: .implemented,
+                        destinationKind: .baggageCheck
                     ),
                     try FeatureRegistration(
                         feature: .departureReminder,

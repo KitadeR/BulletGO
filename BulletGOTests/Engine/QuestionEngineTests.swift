@@ -82,4 +82,11 @@ struct QuestionEngineTests {
             )?.id != .baggageDimensions
         )
     }
+
+    @Test func setupQueueSkipsBookingServiceAndDimensions() throws {
+        let catalog = try EngineTestSupport.catalog()
+        let notBooked = try PolicyScenarioSupport.trip(reservation: .notBooked, baggagePresence: nil, bags: [])
+        #expect(QuestionEngine.nextQuestion(in: notBooked, catalog: catalog)?.id == .selectService)
+        #expect(QuestionEngine.nextSetupQuestion(in: notBooked, catalog: catalog)?.id == .luggagePresence)
+    }
 }

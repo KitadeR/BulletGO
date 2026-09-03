@@ -12,6 +12,12 @@ nonisolated struct ResolvedContent: Equatable, Sendable {
     }
 }
 
+nonisolated enum PolicyResultTone: Equatable, Sendable {
+    case calm
+    case caution
+    case blocked
+}
+
 nonisolated enum TripContentResolver {
     static func remembered(
         _ item: DeferredPresentationItem,
@@ -115,6 +121,281 @@ nonisolated enum TripContentResolver {
                 "Other transport",
                 comment: "Confirmed other-transport label on a leg row."
             )
+        }
+    }
+
+    static func resumeGuidance(trip: Trip, legID: LegID) -> ResolvedContent {
+        _ = (trip, legID)
+        return ResolvedContent(
+            title: LocalizedStringResource(
+                "Continue setting this up",
+                comment: "Home card title when setup questions were skipped or left unfinished."
+            ),
+            subtitle: LocalizedStringResource(
+                "Finish a few details so we know what matters now.",
+                comment: "Home card subtitle for resuming unfinished guidance."
+            ),
+            systemImage: "ellipsis.circle"
+        )
+    }
+
+    static func tripDatesText(_ trip: Trip) -> String? {
+        guard let start = trip.startDate.value, let end = trip.endDate.value else {
+            return nil
+        }
+        return "\(start.year)/\(start.month)/\(start.day) – \(end.year)/\(end.month)/\(end.day)"
+    }
+
+    static func legTitle(trip: Trip, legID: LegID) -> String {
+        guard let leg = trip.legs.first(where: { $0.id == legID }) else {
+            return ""
+        }
+        return "\(leg.origin.value ?? "") → \(leg.destination.value ?? "")"
+    }
+
+    static func summaryTitle(_ item: UnderstandingSummaryItem) -> LocalizedStringResource {
+        switch item.contentKey {
+        case "leg.transportMode", QuestionID.transport.rawValue:
+            LocalizedStringResource("How you’re traveling", comment: "Summary heading for confirmed transport.")
+        case "leg.seatPreference":
+            LocalizedStringResource("Remembered for later", comment: "Summary heading for deferred seat preference.")
+        case "leg.scheduledAt", QuestionID.legDate.rawValue:
+            LocalizedStringResource("Travel date", comment: "Summary heading for the journey date.")
+        case "leg.reservationStatus", QuestionID.ticketStatus.rawValue:
+            LocalizedStringResource("Booking status", comment: "Summary heading for reservation status.")
+        case "leg.baggagePresence", QuestionID.luggagePresence.rawValue:
+            LocalizedStringResource("Luggage", comment: "Summary heading for luggage presence.")
+        default:
+            LocalizedStringResource("Still needed", comment: "Fallback summary heading.")
+        }
+    }
+
+    static func summaryValue(_ item: UnderstandingSummaryItem) -> DisplayText {
+        switch item.value {
+        case .transportMode(let mode):
+            .localized(transportLabel(mode))
+        case .seatPreference(.mountFujiView):
+            .localized(LocalizedStringResource(
+                "Mt. Fuji view seat",
+                comment: "Remembered seat preference for a Mount Fuji view."
+            ))
+        case .scheduledMoment(let moment):
+            .verbatim("\(moment.date.year)/\(moment.date.month)/\(moment.date.day)")
+        case .reservationStatus(let status):
+            .localized(reservationLabel(status))
+        case .baggagePresence(let presence):
+            .localized(luggageLabel(presence))
+        case .bookingService(let service):
+            .verbatim(service.rawValue)
+        case .baggageDimensions(let dimensions):
+            .verbatim("\(Int(dimensions.totalCM)) cm")
+        case .none:
+            .localized(LocalizedStringResource(
+                "We’ll ask this next.",
+                comment: "Summary value when a fact is still missing."
+            ))
+        }
+    }
+
+    static func questionPrompt(_ question: QuestionSpec) -> LocalizedStringResource {
+        switch question.id {
+        case .legDate:
+            LocalizedStringResource(
+                "When do you take this journey?",
+                comment: "Setup question prompt for the travel date."
+            )
+        case .transport:
+            LocalizedStringResource(
+                "How are you traveling?",
+                comment: "Setup question prompt for transport mode."
+            )
+        case .ticketStatus:
+            LocalizedStringResource(
+                "Have you booked this journey yet?",
+                comment: "Setup question prompt for reservation status."
+            )
+        case .luggagePresence:
+            LocalizedStringResource(
+                "Are you bringing luggage?",
+                comment: "Setup question prompt for luggage presence."
+            )
+        case .selectService:
+            LocalizedStringResource(
+                "How would you like to book?",
+                comment: "Action question prompt for booking service."
+            )
+        case .baggageDimensions:
+            LocalizedStringResource(
+                "What are your bag’s dimensions?",
+                comment: "Action question prompt for bag dimensions."
+            )
+        default:
+            LocalizedStringResource(
+                "A few details will help.",
+                comment: "Fallback prompt when a question has no dedicated copy."
+            )
+        }
+    }
+
+    static func questionChoiceTitle(_ choice: QuestionChoice) -> LocalizedStringResource {
+        switch choice.labelKey {
+        case "transport.shinkansen":
+            LocalizedStringResource("Shinkansen", comment: "Confirmed Shinkansen transport label on a leg row.")
+        case "transport.airplane":
+            LocalizedStringResource("Flight", comment: "Confirmed airplane transport label on a leg row.")
+        case "transport.localTrain":
+            LocalizedStringResource("Local train", comment: "Confirmed local-train transport label on a leg row.")
+        case "transport.other":
+            LocalizedStringResource("Other transport", comment: "Confirmed other-transport label on a leg row.")
+        case "ticket.purchased":
+            LocalizedStringResource("Already booked", comment: "Choice for a purchased reservation.")
+        case "ticket.notPurchased":
+            LocalizedStringResource("Not yet", comment: "Choice for a reservation that is not booked.")
+        case "ticket.unsure":
+            LocalizedStringResource("Not sure", comment: "Choice when the traveler does not know booking status.")
+        case "luggage.yes":
+            LocalizedStringResource("Yes, I have luggage", comment: "Choice confirming luggage is present.")
+        case "luggage.no":
+            LocalizedStringResource("No luggage", comment: "Choice confirming there is no luggage.")
+        case "luggage.skip":
+            LocalizedStringResource("I’ll answer later", comment: "Choice to defer luggage presence.")
+        default:
+            LocalizedStringResource("Choose this option", comment: "Fallback choice label.")
+        }
+    }
+
+    static func taskWhyNow(_ contentKey: String) -> LocalizedStringResource {
+        switch contentKey {
+        case ActionPurpose.captureDimensions:
+            LocalizedStringResource(
+                "Oversized-baggage rules depend on the total of three sides.",
+                comment: "Explanation of why luggage size matters now."
+            )
+        case ActionPurpose.selectBookingMethod:
+            LocalizedStringResource(
+                "This Shinkansen journey is not booked yet, so the booking path comes first.",
+                comment: "Explanation of why choosing a booking method matters now."
+            )
+        case ActionPurpose.reserveOversizedSeat:
+            LocalizedStringResource(
+                "Your bag is over 160 cm, so it needs a reserved oversized-baggage space.",
+                comment: "Explanation of why an oversized seat is needed now."
+            )
+        default:
+            LocalizedStringResource(
+                "This is the next thing that changes what you should do.",
+                comment: "Fallback explanation of why a concern appears now."
+            )
+        }
+    }
+
+    static func taskPrimaryAction(_ contentKey: String) -> LocalizedStringResource {
+        switch contentKey {
+        case ActionPurpose.captureDimensions:
+            LocalizedStringResource("Measure your bag", comment: "Primary action to open baggage measurement.")
+        case ActionPurpose.selectBookingMethod:
+            LocalizedStringResource("See booking methods", comment: "Primary action to open booking-method guidance.")
+        default:
+            LocalizedStringResource("Continue", comment: "Fallback primary action on a concern detail.")
+        }
+    }
+
+    static func feature(forTask contentKey: String) -> AppFeature? {
+        switch contentKey {
+        case ActionPurpose.captureDimensions:
+            .baggageCheck
+        case ActionPurpose.selectBookingMethod, ActionPurpose.verifyReservationMeetsBaggage:
+            .bookingMethod
+        case ActionPurpose.reserveOversizedSeat:
+            .vehicleEquipment
+        default:
+            nil
+        }
+    }
+
+    static func policyResultTitle(_ requirement: BaggagePolicyPack.ReservationRequirement) -> LocalizedStringResource {
+        switch requirement {
+        case .notRequired:
+            LocalizedStringResource(
+                "No oversized-baggage seat needed",
+                comment: "Calm result title when total size is 160 cm or less."
+            )
+        case .required:
+            LocalizedStringResource(
+                "Reserve an oversized-baggage space",
+                comment: "Calm result title when total size is 161 to 250 cm."
+            )
+        case .notAllowed:
+            LocalizedStringResource(
+                "This bag is over the limit",
+                comment: "Calm result title when total size is over 250 cm."
+            )
+        }
+    }
+
+    static func policyResultBody(_ requirement: BaggagePolicyPack.ReservationRequirement) -> LocalizedStringResource {
+        switch requirement {
+        case .notRequired:
+            LocalizedStringResource(
+                "The three sides add up to 160 cm or less, so the usual oversized-baggage reservation does not apply.",
+                comment: "Result explanation for bags at or under 160 cm."
+            )
+        case .required:
+            LocalizedStringResource(
+                "The three sides add up to 161–250 cm. On Tokaido-Sanyo Shinkansen, reserve an oversized-baggage area when you book.",
+                comment: "Result explanation for bags between 161 and 250 cm."
+            )
+        case .notAllowed:
+            LocalizedStringResource(
+                "The three sides add up to more than 250 cm, which is over the JR Central limit for this service.",
+                comment: "Result explanation for bags over 250 cm."
+            )
+        }
+    }
+
+    static func policyTone(_ requirement: BaggagePolicyPack.ReservationRequirement) -> PolicyResultTone {
+        switch requirement {
+        case .notRequired:
+            .calm
+        case .required:
+            .caution
+        case .notAllowed:
+            .blocked
+        }
+    }
+
+    private static func transportLabel(_ mode: TransportMode) -> LocalizedStringResource {
+        switch mode {
+        case .shinkansen:
+            LocalizedStringResource("Shinkansen", comment: "Confirmed Shinkansen transport label on a leg row.")
+        case .airplane:
+            LocalizedStringResource("Flight", comment: "Confirmed airplane transport label on a leg row.")
+        case .localTrain:
+            LocalizedStringResource("Local train", comment: "Confirmed local-train transport label on a leg row.")
+        case .other:
+            LocalizedStringResource("Other transport", comment: "Confirmed other-transport label on a leg row.")
+        }
+    }
+
+    private static func reservationLabel(_ status: ReservationStatus) -> LocalizedStringResource {
+        switch status {
+        case .booked:
+            LocalizedStringResource("Already booked", comment: "Choice for a purchased reservation.")
+        case .notBooked:
+            LocalizedStringResource("Not yet", comment: "Choice for a reservation that is not booked.")
+        case .unknown, .cancelled:
+            LocalizedStringResource("Not sure", comment: "Choice when the traveler does not know booking status.")
+        }
+    }
+
+    private static func luggageLabel(_ presence: BaggagePresence) -> LocalizedStringResource {
+        switch presence {
+        case .yes:
+            LocalizedStringResource("Yes, I have luggage", comment: "Choice confirming luggage is present.")
+        case .no:
+            LocalizedStringResource("No luggage", comment: "Choice confirming there is no luggage.")
+        case .unknown:
+            LocalizedStringResource("I’ll answer later", comment: "Choice to defer luggage presence.")
         }
     }
 

@@ -10,10 +10,7 @@ struct ComingSoonView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label(
-                "Coming soon",
-                systemImage: registration.systemImage
-            )
+            Label("Coming soon", systemImage: registration.systemImage)
         } description: {
             Text(registration.summary)
         }
@@ -27,6 +24,6 @@ struct ComingSoonView: View {
 
 #Preview {
     NavigationStack {
-        ComingSoonView(feature: .baggageCheck, registry: .production)
+        ComingSoonView(feature: .bookingMethod, registry: .production)
     }
 }

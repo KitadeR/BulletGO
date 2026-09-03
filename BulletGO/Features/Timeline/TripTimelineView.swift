@@ -3,6 +3,7 @@ import SwiftUI
 struct TripTimelineView: View {
     @Environment(AppRouter.self) private var router
     @Environment(TripSessionModel.self) private var session
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -23,16 +24,8 @@ struct TripTimelineView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Color.canvas)
-        .navigationTitle("Trip")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Features", systemImage: "square.grid.2x2") {
-                    router.push(.featureHub)
-                }
-                .accessibilityIdentifier(AccessibilityID.openFeatureHub)
-            }
-        }
+        .navigationTitle(session.trip?.name.value ?? "")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var loadingState: some View {
@@ -43,10 +36,7 @@ struct TripTimelineView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label(
-                "Your trip will appear here",
-                systemImage: "map"
-            )
+            Label("Your trip will appear here", systemImage: "map")
         } description: {
             Text("When a trip is added, you’ll see the whole journey here.")
         }
@@ -55,17 +45,12 @@ struct TripTimelineView: View {
 
     private var failedState: some View {
         ContentUnavailableView {
-            Label(
-                "Couldn’t load your trip",
-                systemImage: "exclamationmark.triangle"
-            )
+            Label("Couldn’t load your trip", systemImage: "exclamationmark.triangle")
         } description: {
             Text("Check your connection and try again.")
         } actions: {
             Button("Retry") {
-                Task {
-                    await session.retry()
-                }
+                Task { await session.retry() }
             }
             .accessibilityIdentifier(AccessibilityID.tripTimelineRetry)
         }
@@ -73,105 +58,139 @@ struct TripTimelineView: View {
     }
 
     private func loadedTimeline(_ trip: Trip) -> some View {
+        let nowItems = TimelineNowComposer.items(for: trip, catalog: session.catalog)
         let nextItems = TimelineNextComposer.items(for: trip)
         let rows = TimelineRowComposer.rows(for: trip)
-        return List {
-            if !nextItems.isEmpty {
-                Section {
-                    ForEach(nextItems) { item in
-                        comingUpRow(item)
-                    }
-                } header: {
-                    Text("Coming up")
-                }
-                .accessibilityIdentifier(AccessibilityID.comingUpSection)
-            }
+        let focusKind = trip.focusLegID.flatMap { id in trip.legs.first { $0.id == id } }
+            .map(JourneyVisualProvider.kind(for:)) ?? .generic
 
-            Section {
-                ForEach(rows) { row in
-                    timelineRow(row)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                JourneyHero(
+                    title: trip.name.value ?? "",
+                    subtitle: TripContentResolver.tripDatesText(trip),
+                    kind: focusKind
+                )
+                .padding(.horizontal, DesignTokens.Spacing.md)
+
+                if !nowItems.isEmpty {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                        Text("What matters now")
+                            .font(DesignTokens.Typography.headline)
+                            .padding(.horizontal, DesignTokens.Spacing.md)
+                        ForEach(nowItems) { item in
+                            nowRow(item)
+                                .padding(.horizontal, DesignTokens.Spacing.md)
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier(AccessibilityID.nowSection)
                 }
+
+                if !nextItems.isEmpty {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                        Text("Coming up")
+                            .font(DesignTokens.Typography.caption)
+                            .foregroundStyle(DesignTokens.Color.secondaryText)
+                            .padding(.horizontal, DesignTokens.Spacing.md)
+                        ForEach(nextItems) { item in
+                            comingUpRow(item)
+                                .padding(.horizontal, DesignTokens.Spacing.md)
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier(AccessibilityID.comingUpSection)
+                }
+
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                    Text("Journey")
+                        .font(DesignTokens.Typography.headline)
+                        .padding(.horizontal, DesignTokens.Spacing.md)
+                    ForEach(rows) { row in
+                        timelineRow(row)
+                            .padding(.horizontal, DesignTokens.Spacing.md)
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(AccessibilityID.routeRail)
             }
+            .padding(.vertical, DesignTokens.Spacing.md)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .listSectionSpacing(DesignTokens.Spacing.md)
+        .scrollIndicators(.hidden)
         .accessibilityIdentifier(AccessibilityID.tripTimeline)
+        .animation(DesignTokens.Motion.content(reduceMotion), value: nowItems.count)
+    }
+
+    @ViewBuilder
+    private func nowRow(_ item: TimelineNowItem) -> some View {
+        switch item.kind {
+        case .task:
+            NowConcernCard(
+                title: .localized(item.content.title),
+                subtitle: item.content.subtitle.map(DisplayText.localized),
+                systemImage: item.content.systemImage,
+                accessibilityID: nowIdentifier(item),
+                action: {
+                    if let destination = item.destination {
+                        router.push(destination)
+                    }
+                }
+            )
+        case .resume(let legID):
+            NowConcernCard(
+                title: .localized(item.content.title),
+                subtitle: item.content.subtitle.map(DisplayText.localized),
+                systemImage: item.content.systemImage,
+                accessibilityID: AccessibilityID.resumeGuidance,
+                action: {
+                    guard let tripID = session.trip?.id else { return }
+                    router.present(.guidance(tripID, legID, .resume))
+                }
+            )
+        }
     }
 
     @ViewBuilder
     private func comingUpRow(_ item: TimelineNextItem) -> some View {
-        let isRemembered = isRememberedItem(item)
-        let row = TimelineCardRow(
+        QuietComingUpRow(
             title: .localized(item.content.title),
             subtitle: item.content.subtitle.map(DisplayText.localized),
             systemImage: item.content.systemImage,
-            kind: isRemembered ? .remembered : .standard,
-            showsChevron: item.destination != nil
-        )
-        Group {
-            if let destination = item.destination {
-                Button {
+            showsChevron: item.destination != nil,
+            accessibilityID: comingUpIdentifier(item),
+            action: {
+                if let destination = item.destination {
                     router.push(destination)
-                } label: {
-                    row
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint(
-                    Text("Shows details for this journey.")
-                )
-            } else {
-                row
             }
-        }
-        .listRowInsets(timelineInsets)
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .accessibilityIdentifier(comingUpIdentifier(item))
+        )
     }
 
     @ViewBuilder
     private func timelineRow(_ row: TimelineRow) -> some View {
-        let card = TimelineCardRow(
-            title: .verbatim(row.title),
+        RouteRailRow(
+            title: row.title,
             subtitle: row.subtitle,
-            systemImage: row.systemImage,
-            kind: row.isCurrent ? .current : .standard,
-            showsChevron: row.destination != nil
-        )
-        Group {
-            if let destination = row.destination {
-                Button {
+            kind: row.visualKind,
+            isCurrent: row.isCurrent,
+            isLeg: row.isLeg,
+            accessibilityID: timelineIdentifier(row),
+            action: {
+                if let destination = row.destination {
                     router.push(destination)
-                } label: {
-                    card
                 }
-                .buttonStyle(.plain)
-            } else {
-                card
             }
-        }
-        .listRowInsets(timelineInsets)
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .accessibilityIdentifier(timelineIdentifier(row))
+        )
         .modifier(SelectedTrait(isSelected: row.isCurrent))
     }
 
-    private var timelineInsets: EdgeInsets {
-        EdgeInsets(
-            top: DesignTokens.Spacing.xs,
-            leading: DesignTokens.Spacing.md,
-            bottom: DesignTokens.Spacing.xs,
-            trailing: DesignTokens.Spacing.md
-        )
-    }
-
-    private func isRememberedItem(_ item: TimelineNextItem) -> Bool {
-        if case .remembered = item.kind {
-            return true
+    private func nowIdentifier(_ item: TimelineNowItem) -> String {
+        switch item.kind {
+        case .task:
+            AccessibilityID.nowTask(contentKey: item.contentKey)
+        case .resume:
+            AccessibilityID.resumeGuidance
         }
-        return false
     }
 
     private func comingUpIdentifier(_ item: TimelineNextItem) -> String {
@@ -222,12 +241,20 @@ private struct SelectedTrait: ViewModifier {
     .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.withComingUpAndRemembered))
 }
 
+#Preview("Ready now") {
+    NavigationStack {
+        TripTimelineView()
+    }
+    .environment(AppRouter())
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.readyForNow))
+}
+
 #Preview("Japanese") {
     NavigationStack {
         TripTimelineView()
     }
     .environment(AppRouter())
-    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.withComingUpAndRemembered))
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.readyForNow))
     .environment(\.locale, Locale(identifier: "ja"))
 }
 
@@ -236,7 +263,7 @@ private struct SelectedTrait: ViewModifier {
         TripTimelineView()
     }
     .environment(AppRouter())
-    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.withComingUpAndRemembered))
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.readyForNow))
     .preferredColorScheme(.dark)
 }
 
@@ -245,7 +272,7 @@ private struct SelectedTrait: ViewModifier {
         TripTimelineView()
     }
     .environment(AppRouter())
-    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.withComingUpAndRemembered))
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.readyForNow))
     .dynamicTypeSize(.accessibility3)
 }
 

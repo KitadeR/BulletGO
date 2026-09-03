@@ -62,3 +62,25 @@ actor FailingTripRepository: TripRepository {
 
     func delete(id: TripID) async throws {}
 }
+
+actor SaveFailingTripRepository: TripRepository {
+    private let trip: Trip
+
+    init(trip: Trip) {
+        self.trip = trip
+    }
+
+    func fetchAll() async throws -> [Trip] {
+        [trip]
+    }
+
+    func fetch(id: TripID) async throws -> Trip? {
+        trip
+    }
+
+    func save(_ trip: Trip) async throws {
+        throw EngineError.tripNotFound
+    }
+
+    func delete(id: TripID) async throws {}
+}

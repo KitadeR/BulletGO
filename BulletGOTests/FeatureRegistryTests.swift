@@ -4,8 +4,8 @@ import Testing
 
 @MainActor
 struct FeatureRegistryTests {
-    @Test func implementedRegistrationRequiresDestination() {
-        #expect(throws: FeatureRegistrationError.implementedRequiresRoute) {
+    @Test func implementedRegistrationRequiresDestinationKind() {
+        #expect(throws: FeatureRegistrationError.implementedRequiresDestinationKind) {
             try FeatureRegistration(
                 feature: .baggageCheck,
                 title: "Baggage check",
@@ -16,64 +16,30 @@ struct FeatureRegistryTests {
         }
     }
 
-    @Test func stubRegistrationMustNotHaveDestination() {
-        #expect(throws: FeatureRegistrationError.nonImplementedMustNotHaveRoute) {
+    @Test func stubRegistrationMustNotHaveDestinationKind() {
+        #expect(throws: FeatureRegistrationError.nonImplementedMustNotHaveDestinationKind) {
             try FeatureRegistration(
                 feature: .baggageCheck,
                 title: "Baggage check",
                 summary: "Check oversized luggage rules before you travel.",
                 systemImage: "suitcase",
                 availability: .stub,
-                destination: .featureHub
+                destinationKind: .baggageCheck
             )
         }
     }
 
-    @Test func hiddenRegistrationMustNotHaveDestination() {
-        #expect(throws: FeatureRegistrationError.nonImplementedMustNotHaveRoute) {
+    @Test func hiddenRegistrationMustNotHaveDestinationKind() {
+        #expect(throws: FeatureRegistrationError.nonImplementedMustNotHaveDestinationKind) {
             try FeatureRegistration(
                 feature: .tripSharing,
                 title: "Trip sharing",
                 summary: "Share the itinerary with companions.",
                 systemImage: "square.and.arrow.up",
                 availability: .hidden,
-                destination: .featureHub
+                destinationKind: .baggageCheck
             )
         }
-    }
-
-    @Test func implementedRegistrationExposesDestination() throws {
-        let registration = try FeatureRegistration(
-            feature: .baggageCheck,
-            title: "Baggage check",
-            summary: "Check oversized luggage rules before you travel.",
-            systemImage: "suitcase",
-            availability: .implemented,
-            destination: .featureHub
-        )
-        #expect(registration.navigationRoute == .featureHub)
-    }
-
-    @Test func stubRegistrationRoutesToComingSoon() throws {
-        let registration = try FeatureRegistration(
-            feature: .baggageCheck,
-            title: "Baggage check",
-            summary: "Check oversized luggage rules before you travel.",
-            systemImage: "suitcase",
-            availability: .stub
-        )
-        #expect(registration.navigationRoute == .comingSoon(.baggageCheck))
-    }
-
-    @Test func hiddenRegistrationHasNoNavigationRoute() throws {
-        let registration = try FeatureRegistration(
-            feature: .tripSharing,
-            title: "Trip sharing",
-            summary: "Share the itinerary with companions.",
-            systemImage: "square.and.arrow.up",
-            availability: .hidden
-        )
-        #expect(registration.navigationRoute == nil)
     }
 
     @Test func productionRegistryRegistersEveryFeature() {
@@ -81,13 +47,13 @@ struct FeatureRegistryTests {
         #expect(features == Set(AppFeature.allCases))
     }
 
-    @Test func productionImplementedFeaturesHaveDestinations() {
+    @Test func productionImplementedFeaturesHaveDestinationKinds() {
         for registration in FeatureRegistry.production.registrations {
             switch registration.availability {
             case .implemented:
-                #expect(registration.destination != nil)
+                #expect(registration.destinationKind != nil)
             case .stub, .hidden:
-                #expect(registration.destination == nil)
+                #expect(registration.destinationKind == nil)
             }
         }
     }
@@ -103,5 +69,40 @@ struct FeatureRegistryTests {
         #expect(throws: FeatureRegistryError.incompleteCoverage) {
             try FeatureRegistry(registrations: [])
         }
+    }
+
+    @Test func baggageCheckResolvesOnlyWithContext() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        let taskID = TaskID()
+        let resolved = FeatureRegistry.production.resolve(
+            .baggageCheck,
+            in: FeatureContext(tripID: trip.id, legID: trip.legs[0].id, taskID: taskID)
+        )
+        #expect(resolved == .baggageCheck(trip.id, trip.legs[0].id, taskID))
+        #expect(
+            FeatureRegistry.production.resolve(
+                .baggageCheck,
+                in: FeatureContext(tripID: trip.id)
+            ) == nil
+        )
+    }
+
+    @Test func bookingMethodStaysContextualComingSoon() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        let route = FeatureRegistry.production.resolve(
+            .bookingMethod,
+            in: FeatureContext(tripID: trip.id, legID: trip.legs[0].id, taskID: TaskID())
+        )
+        #expect(route == .comingSoon(.bookingMethod))
+    }
+
+    @Test func hiddenFeatureHasNoRoute() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        #expect(
+            FeatureRegistry.production.resolve(
+                .tripSharing,
+                in: FeatureContext(tripID: trip.id)
+            ) == nil
+        )
     }
 }

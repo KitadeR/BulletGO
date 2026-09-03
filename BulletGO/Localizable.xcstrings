@@ -1,600 +1,1403 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "Baggage check" : {
-      "comment" : "Feature hub title for checking oversized luggage rules.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "荷物の確認"
+  "sourceLanguage": "en",
+  "strings": {
+    "A few details will help.": {
+      "comment": "Fallback prompt when a question has no dedicated copy.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "少しだけ教えてください。"
           }
         }
       }
     },
-    "Check oversized luggage rules before you travel." : {
-      "comment" : "One-line explanation of baggage check.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "特大荷物のルールを、乗る前に確認できます。"
+    "Already booked": {
+      "comment": "Choice for a purchased reservation.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約済み"
           }
         }
       }
     },
-    "Check whether oversized-baggage rules apply." : {
-      "comment" : "NEXT task subtitle for capturing bag dimensions.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "特大荷物のルールが当てはまるか確認します。"
+    "Answer a few questions": {
+      "comment": "Fallback action when free text cannot be interpreted.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "質問に答える"
           }
         }
       }
     },
-    "Check your connection and try again." : {
-      "comment" : "Error-state description when the trip cannot be loaded.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "通信を確認して、もう一度試してください。"
+    "Are you bringing luggage?": {
+      "comment": "Setup question prompt for luggage presence.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物はありますか？"
           }
         }
       }
     },
-    "Check your reservation against luggage rules" : {
-      "comment" : "NEXT task title for verifying an existing reservation.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "予約が荷物ルールに合うか確認"
+    "Back": {
+      "comment": "Back button on journey detail.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "戻る"
           }
         }
       }
     },
-    "Choose how to book" : {
-      "comment" : "NEXT task title for selecting a booking service.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "予約の仕方を選ぶ"
+    "Baggage check": {
+      "comment": "Feature hub title for checking oversized luggage rules.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物の確認"
           }
         }
       }
     },
-    "Coming soon" : {
-      "comment" : "Title on the shared Coming Soon screen.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "準備中です"
+    "Based on JR Central oversized-baggage rules. 160 cm is the threshold; 161 cm needs a reserved space.": {
+      "comment": "Official-source footnote under a baggage rule result.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JR東海の特大荷物ルールに基づきます。160cmが境目で、161cmから予約が必要です。"
           }
         }
       }
     },
-    "Coming up" : {
-      "comment" : "Section title for upcoming items on the trip timeline.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "このあと"
+    "Booking status": {
+      "comment": "Summary heading for reservation status.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約の状況"
           }
         }
       }
     },
-    "Confirm luggage size" : {
-      "comment" : "NEXT task title for capturing bag dimensions.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "荷物のサイズを確認"
+    "Check oversized luggage rules before you travel.": {
+      "comment": "One-line explanation of baggage check.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特大荷物のルールを、乗る前に確認できます。"
           }
         }
       }
     },
-    "Couldn’t load your trip" : {
-      "comment" : "Error-state title when the trip cannot be loaded.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旅行を読み込めませんでした"
+    "Check this bag": {
+      "comment": "Primary action submitting bag dimensions.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この荷物を判定"
           }
         }
       }
     },
-    "Departure reminder" : {
-      "comment" : "Feature hub title for departure reminders.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "出発リマインド"
+    "Check whether oversized-baggage rules apply.": {
+      "comment": "NEXT task subtitle for capturing bag dimensions.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特大荷物のルールが当てはまるか確認します。"
           }
         }
       }
     },
-    "Features" : {
-      "comment" : "Toolbar and navigation title for the feature list.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "機能"
+    "Check your connection and try again.": {
+      "comment": "Error-state description when the trip cannot be loaded.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通信を確認して、もう一度試してください。"
           }
         }
       }
     },
-    "Find the booking option that fits you." : {
-      "comment" : "One-line explanation of booking method guidance.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "あなたに合う予約の仕方を整理します。"
+    "Check your reservation against luggage rules": {
+      "comment": "NEXT task title for verifying an existing reservation.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約が荷物ルールに合うか確認"
           }
         }
       }
     },
-    "Flight" : {
-      "comment" : "Confirmed airplane transport label on a leg row.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "飛行機"
+    "Choose how to book": {
+      "comment": "NEXT task title for selecting a booking service.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約の仕方を選ぶ"
           }
         }
       }
     },
-    "From" : {
-      "comment" : "Leg detail label for the origin city.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "出発"
+    "Choose this option": {
+      "comment": "Fallback choice label.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この選択肢"
           }
         }
       }
     },
-    "Gate to platform time" : {
-      "comment" : "Feature hub title for typical ticket-gate-to-platform time.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "改札〜ホーム"
+    "Close": {
+      "comment": "Close button on the guidance sheet.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じる"
           }
         }
       }
     },
-    "Get a heads-up before you need to leave." : {
-      "comment" : "One-line explanation of departure reminder.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "出発前に、いつ動き出せばよいか知らせます。"
+    "Coming soon": {
+      "comment": "Title on the shared Coming Soon screen.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "準備中です"
           }
         }
       }
     },
-    "How to book" : {
-      "comment" : "Feature hub title for choosing a booking method.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "予約方法"
+    "Coming up": {
+      "comment": "Section title for upcoming items on the trip timeline.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このあと"
           }
         }
       }
     },
-    "How to check delays and what to do next." : {
-      "comment" : "One-line explanation of service updates.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "遅れの確認方法と、そのあとにできることを案内します。"
+    "Confirm luggage size": {
+      "comment": "NEXT task title for capturing bag dimensions.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物のサイズを確認"
           }
         }
       }
     },
-    "Keep the current step on the Lock Screen." : {
-      "comment" : "One-line explanation of Live Activity.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "いまの状況をロック画面に表示します。"
+    "Continue": {
+      "comment": "Primary action to continue from a summary or concern.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "続ける"
           }
         }
       }
     },
-    "Live Activity" : {
-      "comment" : "Feature hub title for Lock Screen Live Activity.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Live Activity"
+    "Continue setting this up": {
+      "comment": "Home card title when setup questions were skipped or left unfinished.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "続きを設定する"
           }
         }
       }
     },
-    "Local train" : {
-      "comment" : "Confirmed local-train transport label on a leg row.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "在来線"
+    "Couldn’t load your trip": {
+      "comment": "Error-state title when the trip cannot be loaded.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅行を読み込めませんでした"
           }
         }
       }
     },
-    "Make sure the booking still fits your bags." : {
-      "comment" : "NEXT task subtitle for verifying an existing reservation.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "予約内容が荷物に合うか確かめます。"
+    "Couldn’t save that": {
+      "comment": "Error title when a guidance answer fails to save.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存できませんでした"
           }
         }
       }
     },
-    "Mt. Fuji view seat" : {
-      "comment" : "Remembered seat preference for a Mount Fuji view.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "富士山が見える席"
+    "Departure reminder": {
+      "comment": "Feature hub title for departure reminders.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出発リマインド"
           }
         }
       }
     },
-    "Not decided yet" : {
-      "comment" : "Leg row subtitle when transport mode is not confirmed.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未確定"
+    "Features": {
+      "comment": "Toolbar and navigation title for the feature list.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "機能"
           }
         }
       }
     },
-    "Other transport" : {
-      "comment" : "Confirmed other-transport label on a leg row.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "その他の移動"
+    "Find the booking option that fits you.": {
+      "comment": "One-line explanation of booking method guidance.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あなたに合う予約の仕方を整理します。"
           }
         }
       }
     },
-    "Pick the option that fits this journey." : {
-      "comment" : "NEXT task subtitle for selecting a booking service.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この移動に合う予約方法を選びます。"
+    "Finish a few details so we know what matters now.": {
+      "comment": "Home card subtitle for resuming unfinished guidance.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いま大事なことを出すために、あと少し教えてください。"
           }
         }
       }
     },
-    "Remembered" : {
-      "comment" : "Section title for remembered details on a journey.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "覚えていること"
+    "Flight": {
+      "comment": "Confirmed airplane transport label on a leg row.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "飛行機"
           }
         }
       }
     },
-    "Reserve an oversized-baggage seat" : {
-      "comment" : "NEXT task title for reserving an oversized-baggage seat.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "特大荷物シートを予約"
+    "From": {
+      "comment": "Leg detail label for the origin city.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出発"
           }
         }
       }
     },
-    "Retry" : {
-      "comment" : "Retry button after a trip failed to load.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "再試行"
+    "Gate to platform time": {
+      "comment": "Feature hub title for typical ticket-gate-to-platform time.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改札〜ホーム"
           }
         }
       }
     },
-    "Saved detail" : {
-      "comment" : "Fallback remembered-item title when the content key is unknown.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "保存した情報"
+    "Get a heads-up before you need to leave.": {
+      "comment": "One-line explanation of departure reminder.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出発前に、いつ動き出せばよいか知らせます。"
           }
         }
       }
     },
-    "Saved for this journey." : {
-      "comment" : "Remembered seat-preference subtitle after it is no longer deferred.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この移動のために残しています。"
+    "Have you booked this journey yet?": {
+      "comment": "Setup question prompt for reservation status.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この移動はもう予約しましたか？"
           }
         }
       }
     },
-    "Scan itinerary" : {
-      "comment" : "Feature hub title for reading a ticket email or screenshot.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旅程の読み取り"
+    "Height": {
+      "comment": "Bag height field label.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "高さ"
           }
         }
       }
     },
-    "Seats, outlets, and onboard equipment." : {
-      "comment" : "One-line explanation of train facilities.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "座席・コンセントなどの車内設備を調べます。"
+    "Here’s what we understood": {
+      "comment": "Guidance summary title after interpreting free text.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "こう理解しました"
           }
         }
       }
     },
-    "Service updates" : {
-      "comment" : "Feature hub title for delay and service-status guidance.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "運行状況"
+    "How are you traveling?": {
+      "comment": "Setup question prompt for transport mode.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どうやって移動しますか？"
           }
         }
       }
     },
-    "Share the itinerary with companions." : {
-      "comment" : "One-line explanation of trip sharing.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "同行者と旅程を共有します。"
+    "How to book": {
+      "comment": "Feature hub title for choosing a booking method.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約方法"
           }
         }
       }
     },
-    "Shinkansen" : {
-      "comment" : "Confirmed Shinkansen transport label on a leg row.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新幹線"
+    "How to check delays and what to do next.": {
+      "comment": "One-line explanation of service updates.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "遅れの確認方法と、そのあとにできることを案内します。"
           }
         }
       }
     },
-    "Shows details for this journey." : {
-      "comment" : "VoiceOver hint for a Coming Up remembered row.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この移動の詳細を開きます。"
+    "How to measure": {
+      "comment": "Help button for measuring a bag.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "測り方"
           }
         }
       }
     },
-    "Something to check" : {
-      "comment" : "Fallback Coming Up task title when the content key is unknown.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "確認することがあります"
+    "How would you like to book?": {
+      "comment": "Action question prompt for booking service.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どの方法で予約しますか？"
           }
         }
       }
     },
-    "Station info" : {
-      "comment" : "Feature hub title for station layout and nearby tips.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "駅情報"
+    "How you’re traveling": {
+      "comment": "Summary heading for confirmed transport.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動手段"
           }
         }
       }
     },
-    "Station layout and nearby tips." : {
-      "comment" : "One-line explanation of station info.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "駅の案内や周辺のヒントです。"
+    "I’ll answer later": {
+      "comment": "Choice to defer luggage presence.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとで答える"
           }
         }
       }
     },
-    "This journey isn’t available" : {
-      "comment" : "Unavailable-state title on the journey detail screen.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "この移動は表示できません"
+    "Journey": {
+      "comment": "Home section title for the full route rail.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅程"
           }
         }
       }
     },
-    "To" : {
-      "comment" : "Leg detail label for the destination city.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "到着"
+    "JR Central oversized baggage": {
+      "comment": "Link title for JR Central oversized-baggage rules.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JR東海 特大荷物"
           }
         }
       }
     },
-    "Train facilities" : {
-      "comment" : "Feature hub title for onboard train facilities.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "車両の設備"
+    "Keep the current step on the Lock Screen.": {
+      "comment": "One-line explanation of Live Activity.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いまの状況をロック画面に表示します。"
           }
         }
       }
     },
-    "Transport" : {
-      "comment" : "Leg detail label for the transport mode.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "移動手段"
+    "Length": {
+      "comment": "Bag length field label.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "長さ"
           }
         }
       }
     },
-    "Trip" : {
-      "comment" : "Navigation title for the trip timeline home.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旅行"
+    "Live Activity": {
+      "comment": "Feature hub title for Lock Screen Live Activity.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live Activity"
           }
         }
       }
     },
-    "Trip sharing" : {
-      "comment" : "Hidden feature title for sharing a trip with companions.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旅程の共有"
+    "Local train": {
+      "comment": "Confirmed local-train transport label on a leg row.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在来線"
           }
         }
       }
     },
-    "Turn a ticket email or screenshot into a trip." : {
-      "comment" : "One-line explanation of itinerary scanning.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "予約メールやスクショから旅程を取り込みます。"
+    "Luggage": {
+      "comment": "Summary heading for luggage presence.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物"
           }
         }
       }
     },
-    "Typical time from ticket gate to platform." : {
-      "comment" : "One-line explanation of gate-to-platform estimates.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "改札からホームまでの目安時間です。"
+    "Make sure the booking still fits your bags.": {
+      "comment": "NEXT task subtitle for verifying an existing reservation.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約内容が荷物に合うか確かめます。"
           }
         }
       }
     },
-    "We’ll bring this up at the right time." : {
-      "comment" : "Fallback remembered-item subtitle when the content key is unknown.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "必要なときに改めてお伝えします。"
+    "Measure the longest side, the width, and the height in centimetres, including wheels and handles. Add the three numbers.": {
+      "comment": "Help text explaining how to measure a bag.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車輪や取っ手を含めて、いちばん長い辺・幅・高さをセンチで測り、3つを足します。"
           }
         }
       }
     },
-    "We’ll mention this when you choose seats." : {
-      "comment" : "Deferred seat-preference subtitle on Coming Up and remembered lists.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "座席を選ぶときにお伝えします。"
+    "Measure your bag": {
+      "comment": "Primary action to open baggage measurement.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物を測る"
           }
         }
       }
     },
-    "When a trip is added, you’ll see the whole journey here." : {
-      "comment" : "Empty-state description on the trip timeline home.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旅行を追加すると、全体の見通しがここに並びます。"
+    "Mt. Fuji view seat": {
+      "comment": "Remembered seat preference for a Mount Fuji view.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "富士山が見える席"
           }
         }
       }
     },
-    "Your luggage needs a reserved space." : {
-      "comment" : "NEXT task subtitle for reserving an oversized-baggage seat.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "荷物のためのスペース予約が必要です。"
+    "No luggage": {
+      "comment": "Choice confirming there is no luggage.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物なし"
           }
         }
       }
     },
-    "Your trip will appear here" : {
-      "comment" : "Empty-state title on the trip timeline home.",
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "旅行はここに表示されます"
+    "No oversized-baggage seat needed": {
+      "comment": "Calm result title when total size is 160 cm or less.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特大荷物シートは不要です"
+          }
+        }
+      }
+    },
+    "Not decided yet": {
+      "comment": "Leg row subtitle when transport mode is not confirmed.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未確定"
+          }
+        }
+      }
+    },
+    "Not sure": {
+      "comment": "Choice when the traveler does not know booking status.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "わからない"
+          }
+        }
+      }
+    },
+    "Not yet": {
+      "comment": "Choice for a reservation that is not booked.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ"
+          }
+        }
+      }
+    },
+    "Nothing here yet.": {
+      "comment": "Empty summary group placeholder.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだありません。"
+          }
+        }
+      }
+    },
+    "Nothing was saved. Answer a few questions instead.": {
+      "comment": "Fallback body when free text cannot be interpreted.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "何も確定していません。質問に答えてください。"
+          }
+        }
+      }
+    },
+    "OK": {
+      "comment": "Dismiss button on the baggage measurement help alert.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Other transport": {
+      "comment": "Confirmed other-transport label on a leg row.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他の移動"
+          }
+        }
+      }
+    },
+    "Oversized-baggage rules depend on the total of three sides.": {
+      "comment": "Explanation of why luggage size matters now.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特大荷物のルールは、三辺の合計で決まります。"
+          }
+        }
+      }
+    },
+    "Pick the option that fits this journey.": {
+      "comment": "NEXT task subtitle for selecting a booking service.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この移動に合う予約方法を選びます。"
+          }
+        }
+      }
+    },
+    "Reading what you wrote": {
+      "comment": "Progress label while interpreting journey input.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力を読み取っています"
+          }
+        }
+      }
+    },
+    "Remembered": {
+      "comment": "Section title for remembered details on a journey.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "覚えていること"
+          }
+        }
+      }
+    },
+    "Remembered for later": {
+      "comment": "Summary heading for deferred seat preference.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとで覚えること"
+          }
+        }
+      }
+    },
+    "Reserve an oversized-baggage seat": {
+      "comment": "NEXT task title for reserving an oversized-baggage seat.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特大荷物シートを予約"
+          }
+        }
+      }
+    },
+    "Reserve an oversized-baggage space": {
+      "comment": "Calm result title when total size is 161 to 250 cm.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "特大荷物スペースを予約"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "comment": "Retry button after a trip failed to load.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再試行"
+          }
+        }
+      }
+    },
+    "Saved": {
+      "comment": "Collapsed answer fallback when a value is deferred.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存済み"
+          }
+        }
+      }
+    },
+    "Saved detail": {
+      "comment": "Fallback remembered-item title when the content key is unknown.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存した情報"
+          }
+        }
+      }
+    },
+    "Saved for this journey.": {
+      "comment": "Remembered seat-preference subtitle after it is no longer deferred.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この移動のために残しています。"
+          }
+        }
+      }
+    },
+    "Scan itinerary": {
+      "comment": "Feature hub title for reading a ticket email or screenshot.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅程の読み取り"
+          }
+        }
+      }
+    },
+    "Seats, outlets, and onboard equipment.": {
+      "comment": "One-line explanation of train facilities.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "座席・コンセントなどの車内設備を調べます。"
+          }
+        }
+      }
+    },
+    "See booking methods": {
+      "comment": "Primary action to open booking-method guidance.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約方法を見る"
+          }
+        }
+      }
+    },
+    "Service updates": {
+      "comment": "Feature hub title for delay and service-status guidance.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "運行状況"
+          }
+        }
+      }
+    },
+    "Share the itinerary with companions.": {
+      "comment": "One-line explanation of trip sharing.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同行者と旅程を共有します。"
+          }
+        }
+      }
+    },
+    "Shinkansen": {
+      "comment": "Confirmed Shinkansen transport label on a leg row.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新幹線"
+          }
+        }
+      }
+    },
+    "Shows details for this journey.": {
+      "comment": "VoiceOver hint for a Coming Up remembered row.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この移動の詳細を開きます。"
+          }
+        }
+      }
+    },
+    "Something to check": {
+      "comment": "Fallback Coming Up task title when the content key is unknown.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認することがあります"
+          }
+        }
+      }
+    },
+    "Station info": {
+      "comment": "Feature hub title for station layout and nearby tips.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "駅情報"
+          }
+        }
+      }
+    },
+    "Station layout and nearby tips.": {
+      "comment": "One-line explanation of station info.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "駅の案内や周辺のヒントです。"
+          }
+        }
+      }
+    },
+    "Still needed": {
+      "comment": "Fallback summary heading.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ必要"
+          }
+        }
+      }
+    },
+    "Suggested date": {
+      "comment": "Date picker label for the proposed travel date.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提案する日付"
+          }
+        }
+      }
+    },
+    "Tell us about this journey": {
+      "comment": "Contextual action to start guidance from a leg.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この移動について伝える"
+          }
+        }
+      }
+    },
+    "The three sides add up to 160 cm or less, so the usual oversized-baggage reservation does not apply.": {
+      "comment": "Result explanation for bags at or under 160 cm.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "三辺合計が160cm以下なので、通常の特大荷物予約は不要です。"
+          }
+        }
+      }
+    },
+    "The three sides add up to 161–250 cm. On Tokaido-Sanyo Shinkansen, reserve an oversized-baggage area when you book.": {
+      "comment": "Result explanation for bags between 161 and 250 cm.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "三辺合計が161〜250cmです。東海道・山陽新幹線では、予約時に特大荷物スペースを取ってください。"
+          }
+        }
+      }
+    },
+    "The three sides add up to more than 250 cm, which is over the JR Central limit for this service.": {
+      "comment": "Result explanation for bags over 250 cm.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "三辺合計が250cmを超えており、この列車の上限を超えています。"
+          }
+        }
+      }
+    },
+    "This bag is over the limit": {
+      "comment": "Calm result title when total size is over 250 cm.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この荷物は上限を超えています"
+          }
+        }
+      }
+    },
+    "This concern isn’t available": {
+      "comment": "Unavailable-state title on a concern detail screen.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この確認事項は表示できません"
+          }
+        }
+      }
+    },
+    "This is the next thing that changes what you should do.": {
+      "comment": "Fallback explanation of why a concern appears now.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次に気にすることを先に整理します。"
+          }
+        }
+      }
+    },
+    "This journey isn’t available": {
+      "comment": "Unavailable-state title on the journey detail screen.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この移動は表示できません"
+          }
+        }
+      }
+    },
+    "This Shinkansen journey is not booked yet, so the booking path comes first.": {
+      "comment": "Explanation of why choosing a booking method matters now.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この新幹線はまだ予約前なので、先に予約の仕方を決めます。"
+          }
+        }
+      }
+    },
+    "Three sides, in cm": {
+      "comment": "Caption on the baggage diagram.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "三辺、センチメートル"
+          }
+        }
+      }
+    },
+    "To": {
+      "comment": "Leg detail label for the destination city.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到着"
+          }
+        }
+      }
+    },
+    "Total \\(formattedTotal) cm": {
+      "comment": "Live total of bag dimensions in centimetres.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "合計 \\(formattedTotal) cm"
+          }
+        }
+      }
+    },
+    "Train facilities": {
+      "comment": "Feature hub title for onboard train facilities.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車両の設備"
+          }
+        }
+      }
+    },
+    "Transport": {
+      "comment": "Leg detail label for the transport mode.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動手段"
+          }
+        }
+      }
+    },
+    "Travel date": {
+      "comment": "Summary heading for the journey date.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動日"
+          }
+        }
+      }
+    },
+    "Trip": {
+      "comment": "Navigation title for the trip timeline home.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅行"
+          }
+        }
+      }
+    },
+    "Trip sharing": {
+      "comment": "Hidden feature title for sharing a trip with companions.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅程の共有"
+          }
+        }
+      }
+    },
+    "Try again without losing the rest of this journey.": {
+      "comment": "Error description when a guidance answer fails to save.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅のほかの情報はそのままに、もう一度試せます。"
+          }
+        }
+      }
+    },
+    "Turn a ticket email or screenshot into a trip.": {
+      "comment": "One-line explanation of itinerary scanning.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "予約メールやスクショから旅程を取り込みます。"
+          }
+        }
+      }
+    },
+    "Typical time from ticket gate to platform.": {
+      "comment": "One-line explanation of gate-to-platform estimates.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改札からホームまでの目安時間です。"
+          }
+        }
+      }
+    },
+    "Use this answer": {
+      "comment": "Primary action to interpret free-text journey input.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この内容で進む"
+          }
+        }
+      }
+    },
+    "Use this date": {
+      "comment": "Primary action confirming the suggested travel date.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この日付にする"
+          }
+        }
+      }
+    },
+    "We couldn’t read that as a confirmed fact": {
+      "comment": "Fallback title when free text cannot be interpreted.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確定できる内容ではありませんでした"
+          }
+        }
+      }
+    },
+    "We know this": {
+      "comment": "Summary section for confirmed facts.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分かっていること"
+          }
+        }
+      }
+    },
+    "We know what matters now": {
+      "comment": "Ready-state title after setup questions are complete.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いま大事なことが分かりました"
+          }
+        }
+      }
+    },
+    "We’ll ask this next.": {
+      "comment": "Summary value when a fact is still missing.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次に伺います。"
+          }
+        }
+      }
+    },
+    "We’ll bring this up at the right time.": {
+      "comment": "Fallback remembered-item subtitle when the content key is unknown.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "必要なときに改めてお伝えします。"
+          }
+        }
+      }
+    },
+    "We’ll mention this when you choose seats.": {
+      "comment": "Deferred seat-preference subtitle on Coming Up and remembered lists.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "座席を選ぶときにお伝えします。"
+          }
+        }
+      }
+    },
+    "We’ll remember this": {
+      "comment": "Summary section for deferred facts.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あとで覚えておくこと"
+          }
+        }
+      }
+    },
+    "What are your bag’s dimensions?": {
+      "comment": "Action question prompt for bag dimensions.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物の三辺は何cmですか？"
+          }
+        }
+      }
+    },
+    "What do you already know?": {
+      "comment": "Placeholder for free-text journey input.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すでに分かっていることを書いてください"
+          }
+        }
+      }
+    },
+    "What matters now": {
+      "comment": "Home section title for current concerns.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いま大事なこと"
+          }
+        }
+      }
+    },
+    "What to do": {
+      "comment": "Task detail heading for the next action.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "何をするか"
+          }
+        }
+      }
+    },
+    "What we know": {
+      "comment": "Leg detail section for confirmed facts.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分かっていること"
+          }
+        }
+      }
+    },
+    "When a trip is added, you’ll see the whole journey here.": {
+      "comment": "Empty-state description on the trip timeline home.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅行を追加すると、全体の見通しがここに並びます。"
+          }
+        }
+      }
+    },
+    "When do you take this journey?": {
+      "comment": "Setup question prompt for the travel date.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この移動はいつですか？"
+          }
+        }
+      }
+    },
+    "Which journey": {
+      "comment": "Task detail heading for the related leg.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どの移動か"
+          }
+        }
+      }
+    },
+    "Why this matters now": {
+      "comment": "Task detail heading explaining timing.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なぜ今か"
+          }
+        }
+      }
+    },
+    "Width": {
+      "comment": "Bag width field label.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幅"
+          }
+        }
+      }
+    },
+    "Yes, I have luggage": {
+      "comment": "Choice confirming luggage is present.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物がある"
+          }
+        }
+      }
+    },
+    "Your bag is over 160 cm, so it needs a reserved oversized-baggage space.": {
+      "comment": "Explanation of why an oversized seat is needed now.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物が160cmを超えるため、特大荷物スペースの予約が必要です。"
+          }
+        }
+      }
+    },
+    "Your luggage needs a reserved space.": {
+      "comment": "NEXT task subtitle for reserving an oversized-baggage seat.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "荷物のためのスペース予約が必要です。"
+          }
+        }
+      }
+    },
+    "Your trip will appear here": {
+      "comment": "Empty-state title on the trip timeline home.",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "旅行はここに表示されます"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
