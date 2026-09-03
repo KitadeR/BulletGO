@@ -18,6 +18,13 @@ struct BaggageTests {
         #expect(dimensions.totalCM == 160)
     }
 
+    @Test func decodeRejectsNonPositiveDimensions() {
+        let data = Data(#"{"lengthCM":0,"widthCM":50,"heightCM":30}"#.utf8)
+        #expect(throws: DomainError.invalidBaggageDimension) {
+            try JSONDecoder().decode(BaggageDimensions.self, from: data)
+        }
+    }
+
     @Test func bagDoesNotStorePolicyClassification() throws {
         let now = DomainTestSupport.timestamp
         let bag = Bag(

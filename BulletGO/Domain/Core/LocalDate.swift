@@ -24,6 +24,28 @@ nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable {
         self.day = day
     }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            year: try container.decode(Int.self, forKey: .year),
+            month: try container.decode(Int.self, forKey: .month),
+            day: try container.decode(Int.self, forKey: .day)
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(year, forKey: .year)
+        try container.encode(month, forKey: .month)
+        try container.encode(day, forKey: .day)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case year
+        case month
+        case day
+    }
+
     static func < (lhs: LocalDate, rhs: LocalDate) -> Bool {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }

@@ -79,4 +79,35 @@ struct SlotTests {
         #expect(slot.status == .negative)
         #expect(slot.value == false)
     }
+
+    @Test func decodeRejectsUnknownSlotWithValue() throws {
+        let slot = try Slot<String>.unknown(updatedAt: now)
+        var json = try jsonObject(from: slot)
+        json["value"] = "Tokyo"
+        #expect(throws: DomainError.invalidSlotCombination(status: .unknown, source: nil, hasValue: true)) {
+            try decodeSlot(json)
+        }
+    }
+
+    @Test func decodeRejectsConfirmedSlotWithAIInferredSource() throws {
+        let slot = try Slot.confirmed(value: "Kyoto", source: .userStated, updatedAt: now)
+        var json = try jsonObject(from: slot)
+        json["source"] = "aiInferred"
+        #expect(throws: DomainError.confirmedSlotRequiresNonInferredSource) {
+            try decodeSlot(json)
+        }
+    }
+
+    private func jsonObject(from slot: Slot<String>) throws -> [String: Any] {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
+        let data = try encoder.encode(slot)
+        return try JSONSerialization.jsonObject(with: data) as! [String: Any]
+    }
+
+    private func decodeSlot(_ json: [String: Any]) throws -> Slot<String> {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .millisecondsSince1970
+        return try decoder.decode(Slot<String>.self, from: JSONSerialization.data(withJSONObject: json))
+    }
 }

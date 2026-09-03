@@ -15,4 +15,26 @@ nonisolated struct BaggageDimensions: Hashable, Codable, Sendable {
         self.widthCM = widthCM
         self.heightCM = heightCM
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            lengthCM: try container.decode(Double.self, forKey: .lengthCM),
+            widthCM: try container.decode(Double.self, forKey: .widthCM),
+            heightCM: try container.decode(Double.self, forKey: .heightCM)
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(lengthCM, forKey: .lengthCM)
+        try container.encode(widthCM, forKey: .widthCM)
+        try container.encode(heightCM, forKey: .heightCM)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case lengthCM
+        case widthCM
+        case heightCM
+    }
 }
