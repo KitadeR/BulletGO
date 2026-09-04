@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProposedItineraryDraft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["items", "unresolved"],
+  "properties": {
+    "tripName": { "type": ["string", "null"] },
+    "startDate": { "type": ["string", "null"], "description": "ISO date YYYY-MM-DD or null" },
+    "endDate": { "type": ["string", "null"] },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "sourceQuote", "confidence"],
+        "properties": {
+          "kind": { "enum": ["leg", "stay", "activity", "tripNote", "baggageHint"] },
+          "origin": { "type": ["string", "null"] },
+          "destination": { "type": ["string", "null"] },
+          "place": { "type": ["string", "null"] },
+          "title": { "type": ["string", "null"] },
+          "date": { "type": ["string", "null"] },
+          "time": { "type": ["string", "null"] },
+          "transport": { "type": ["string", "null"] },
+          "checkIn": { "type": ["string", "null"] },
+          "checkOut": { "type": ["string", "null"] },
+          "baggageHint": { "type": ["string", "null"] },
+          "sourceQuote": { "type": "string", "minLength": 1 },
+          "confidence": { "enum": ["low", "medium", "high"] }
+        }
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

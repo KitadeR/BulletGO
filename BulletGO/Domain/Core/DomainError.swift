@@ -11,12 +11,14 @@ nonisolated enum DomainError: Error, Equatable, Sendable {
 
 nonisolated enum TripValidationError: Error, Equatable, Sendable {
     case duplicateLegIDs
+    case duplicateStayIDs
     case duplicateActivityIDs
     case duplicateBagIDs
     case duplicateTaskIDs
     case duplicateReadinessCheckIDs
     case duplicateChangeEventIDs
     case unresolvedTimelineItem(TripTimelineItem)
+    case orphanItineraryItem
     case bagNotInInventory(BagID)
     case currentContextTripMismatch
     case unresolvedCurrentFocus

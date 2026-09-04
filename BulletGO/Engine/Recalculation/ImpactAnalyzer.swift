@@ -3,6 +3,15 @@ import Foundation
 nonisolated enum ImpactAnalyzer {
     static func analyze(_ mutation: TripMutation) -> (kind: ChangeEventKind, assessment: ImpactAssessment) {
         switch mutation {
+        case .setTripName, .setTripStartDate, .setTripEndDate,
+             .addLeg, .updateLegOrigin, .updateLegDestination, .unscheduleLeg, .removeLeg,
+             .addStay, .updateStayPlace, .updateStayCheckIn, .updateStayCheckOut, .unscheduleStay, .removeStay,
+             .addActivity, .updateActivityTitle, .updateActivityPlace, .updateActivityScheduledAt, .unscheduleActivity, .removeActivity,
+             .moveTimelineItem:
+            (
+                .itineraryChanged,
+                ImpactAssessment(level: .medium, targetLegs: [], changedPaths: [.trip(.timeline)])
+            )
         case .setLegScheduledAt(let legID, _):
             (
                 .dateChanged,

@@ -25,4 +25,9 @@ actor TripStore {
         try await repository.save(result.updatedTrip)
         return result
     }
+
+    func create(_ trip: Trip) async throws {
+        try trip.validate()
+        try await repository.save(trip)
+    }
 }

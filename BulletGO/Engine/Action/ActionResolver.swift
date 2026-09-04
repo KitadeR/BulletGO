@@ -13,9 +13,6 @@ nonisolated enum ActionResolver {
             return []
         }
         var actions: [ActionRequirement] = []
-        if shouldSelectBookingMethod(leg) {
-            actions.append(makeAction(ActionPurpose.selectBookingMethod, pack: pack))
-        }
         for evaluation in leg.policyEvaluations where evaluation.policyID == pack.id && evaluation.status != .stale {
             if evaluation.status == .needsMoreInformation,
                evaluation.missingFieldPaths.contains(where: { path in
@@ -34,6 +31,9 @@ nonisolated enum ActionResolver {
                     actions.append(makeAction(ActionPurpose.reserveOversizedSeat, pack: pack))
                 }
             }
+        }
+        if shouldSelectBookingMethod(leg) {
+            actions.append(makeAction(ActionPurpose.selectBookingMethod, pack: pack))
         }
         return uniqued(actions)
     }

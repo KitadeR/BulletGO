@@ -24,8 +24,24 @@ struct TripTimelineView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Color.canvas)
-        .navigationTitle(session.trip?.name.value ?? "")
+        .navigationTitle(session.trip?.name.value ?? "BulletGO")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if session.loadState == .loaded, let trip = session.trip {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Add") {
+                        router.present(.addItineraryItem(trip.id))
+                    }
+                    .accessibilityIdentifier(AccessibilityID.addItineraryButton)
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Add with AI") {
+                        router.present(.itineraryTalk(trip.id, .trip))
+                    }
+                    .accessibilityIdentifier(AccessibilityID.talkAboutTrip)
+                }
+            }
+        }
     }
 
     private var loadingState: some View {
@@ -35,11 +51,25 @@ struct TripTimelineView: View {
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Your trip will appear here", systemImage: "map")
-        } description: {
-            Text("When a trip is added, you’ll see the whole journey here.")
+        VStack(spacing: DesignTokens.Spacing.md) {
+            Image(systemName: "map")
+                .font(.largeTitle)
+                .foregroundStyle(DesignTokens.Color.secondaryText)
+            Text("Your trip will appear here")
+                .font(DesignTokens.Typography.headline)
+            Text("Create a trip to start arranging dates, places, and journeys.")
+                .font(DesignTokens.Typography.body)
+                .foregroundStyle(DesignTokens.Color.secondaryText)
+                .multilineTextAlignment(.center)
+            Button("Create trip") {
+                router.present(.createTrip)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier(AccessibilityID.createTripButton)
         }
+        .padding(DesignTokens.Spacing.lg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.tripTimelineEmpty)
     }
 
@@ -58,9 +88,7 @@ struct TripTimelineView: View {
     }
 
     private func loadedTimeline(_ trip: Trip) -> some View {
-        let nowItems = TimelineNowComposer.items(for: trip, catalog: session.catalog)
-        let nextItems = TimelineNextComposer.items(for: trip)
-        let rows = TimelineRowComposer.rows(for: trip)
+        let sections = ItineraryDayComposer.sections(for: trip)
         let focusKind = trip.focusLegID.flatMap { id in trip.legs.first { $0.id == id } }
             .map(JourneyVisualProvider.kind(for:)) ?? .generic
 
@@ -73,139 +101,106 @@ struct TripTimelineView: View {
                 )
                 .padding(.horizontal, DesignTokens.Spacing.md)
 
-                if !nowItems.isEmpty {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                        Text("What matters now")
-                            .font(DesignTokens.Typography.headline)
-                            .padding(.horizontal, DesignTokens.Spacing.md)
-                        ForEach(nowItems) { item in
-                            nowRow(item)
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                    ForEach(sections) { section in
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+                            Text(section.title)
+                                .font(DesignTokens.Typography.headline)
                                 .padding(.horizontal, DesignTokens.Spacing.md)
+                            ForEach(section.rows) { row in
+                                timelineRow(row, trip: trip)
+                                    .padding(.horizontal, DesignTokens.Spacing.md)
+                            }
                         }
-                    }
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier(AccessibilityID.nowSection)
-                }
-
-                if !nextItems.isEmpty {
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                        Text("Coming up")
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundStyle(DesignTokens.Color.secondaryText)
-                            .padding(.horizontal, DesignTokens.Spacing.md)
-                        ForEach(nextItems) { item in
-                            comingUpRow(item)
-                                .padding(.horizontal, DesignTokens.Spacing.md)
-                        }
-                    }
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier(AccessibilityID.comingUpSection)
-                }
-
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
-                    Text("Journey")
-                        .font(DesignTokens.Typography.headline)
-                        .padding(.horizontal, DesignTokens.Spacing.md)
-                    ForEach(rows) { row in
-                        timelineRow(row)
-                            .padding(.horizontal, DesignTokens.Spacing.md)
+                        .accessibilityIdentifier(
+                            section.id == .unscheduled && section.title == String(localized: "Unscheduled")
+                                ? AccessibilityID.itineraryUnscheduled
+                                : AccessibilityID.routeRail
+                        )
                     }
                 }
-                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(AccessibilityID.routeRail)
             }
             .padding(.vertical, DesignTokens.Spacing.md)
         }
         .scrollIndicators(.hidden)
         .accessibilityIdentifier(AccessibilityID.tripTimeline)
-        .animation(DesignTokens.Motion.content(reduceMotion), value: nowItems.count)
+        .animation(DesignTokens.Motion.content(reduceMotion), value: sections.count)
     }
 
     @ViewBuilder
-    private func nowRow(_ item: TimelineNowItem) -> some View {
-        switch item.kind {
-        case .task:
-            NowConcernCard(
-                title: .localized(item.content.title),
-                subtitle: item.content.subtitle.map(DisplayText.localized),
-                systemImage: item.content.systemImage,
-                accessibilityID: nowIdentifier(item),
-                action: {
-                    if let destination = item.destination {
-                        router.push(destination)
-                    }
+    private func timelineRow(_ row: TimelineRow, trip: Trip) -> some View {
+        Group {
+            if let destination = row.destination {
+                NavigationLink(value: destination) {
+                    RouteRailRow(
+                        title: row.title,
+                        subtitle: row.subtitle,
+                        kind: row.visualKind,
+                        isCurrent: row.isCurrent,
+                        isLeg: row.isLeg,
+                        accessibilityID: timelineIdentifier(row),
+                        action: nil
+                    )
                 }
-            )
-        case .resume(let legID):
-            NowConcernCard(
-                title: .localized(item.content.title),
-                subtitle: item.content.subtitle.map(DisplayText.localized),
-                systemImage: item.content.systemImage,
-                accessibilityID: AccessibilityID.resumeGuidance,
-                action: {
-                    guard let tripID = session.trip?.id else { return }
-                    router.present(.guidance(tripID, legID, .resume))
-                }
-            )
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(timelineIdentifier(row))
+            } else {
+                RouteRailRow(
+                    title: row.title,
+                    subtitle: row.subtitle,
+                    kind: row.visualKind,
+                    isCurrent: row.isCurrent,
+                    isLeg: row.isLeg,
+                    accessibilityID: timelineIdentifier(row),
+                    action: nil
+                )
+            }
         }
-    }
-
-    @ViewBuilder
-    private func comingUpRow(_ item: TimelineNextItem) -> some View {
-        QuietComingUpRow(
-            title: .localized(item.content.title),
-            subtitle: item.content.subtitle.map(DisplayText.localized),
-            systemImage: item.content.systemImage,
-            showsChevron: item.destination != nil,
-            accessibilityID: comingUpIdentifier(item),
-            action: {
-                if let destination = item.destination {
-                    router.push(destination)
-                }
-            }
-        )
-    }
-
-    @ViewBuilder
-    private func timelineRow(_ row: TimelineRow) -> some View {
-        RouteRailRow(
-            title: row.title,
-            subtitle: row.subtitle,
-            kind: row.visualKind,
-            isCurrent: row.isCurrent,
-            isLeg: row.isLeg,
-            accessibilityID: timelineIdentifier(row),
-            action: {
-                if let destination = row.destination {
-                    router.push(destination)
-                }
-            }
-        )
         .modifier(SelectedTrait(isSelected: row.isCurrent))
+        .contextMenu {
+            Button("Move up") { move(row, in: trip, offset: -1) }
+            Button("Move down") { move(row, in: trip, offset: 1) }
+            if case .leg(let id) = row.id {
+                Button("Move to Unscheduled") {
+                    Task { _ = await session.process(.applyMutation(.unscheduleLeg(id))) }
+                }
+            }
+            if case .activity(let id) = row.id {
+                Button("Move to Unscheduled") {
+                    Task { _ = await session.process(.applyMutation(.unscheduleActivity(id))) }
+                }
+            }
+            if case .stay(let id) = row.id {
+                Button("Move to Unscheduled") {
+                    Task { _ = await session.process(.applyMutation(.unscheduleStay(id))) }
+                }
+            }
+        }
+        .accessibilityAction(named: Text("Move up")) { move(row, in: trip, offset: -1) }
+        .accessibilityAction(named: Text("Move down")) { move(row, in: trip, offset: 1) }
     }
 
-    private func nowIdentifier(_ item: TimelineNowItem) -> String {
-        switch item.kind {
-        case .task:
-            AccessibilityID.nowTask(contentKey: item.contentKey)
-        case .resume:
-            AccessibilityID.resumeGuidance
-        }
-    }
-
-    private func comingUpIdentifier(_ item: TimelineNextItem) -> String {
-        switch item.kind {
-        case .task(let id):
-            AccessibilityID.comingUpTask(id)
-        case .remembered(let remembered):
-            AccessibilityID.comingUpRemembered(contentKey: remembered.contentKey, scope: remembered.scope)
-        }
+    private func move(_ row: TimelineRow, in trip: Trip, offset: Int) {
+        guard let from = trip.timeline.firstIndex(where: { item in
+            switch (item, row.id) {
+            case (.leg(let id), .leg(let other)): id == other
+            case (.stay(let id), .stay(let other)): id == other
+            case (.activity(let id), .activity(let other)): id == other
+            default: false
+            }
+        }) else { return }
+        let to = offset > 0 ? from + offset + 1 : from + offset
+        guard to >= 0, to <= trip.timeline.count else { return }
+        Task { _ = await session.process(.applyMutation(.moveTimelineItem(from: from, to: to))) }
     }
 
     private func timelineIdentifier(_ row: TimelineRow) -> String {
         switch row.id {
         case .leg(let id):
             AccessibilityID.timelineLeg(id)
+        case .stay(let id):
+            AccessibilityID.timelineStay(id)
         case .activity(let id):
             AccessibilityID.timelineActivity(id)
         }

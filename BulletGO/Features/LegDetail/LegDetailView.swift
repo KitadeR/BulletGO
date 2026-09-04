@@ -4,11 +4,22 @@ struct LegDetailView: View {
     @Environment(TripSessionModel.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
 
     let tripID: TripID
     let legID: LegID
+    @State private var origin = ""
+    @State private var destination = ""
+    @State private var hasDate = false
+    @State private var date = Date()
+    @State private var confirmDateChange = false
+    @State private var pendingDate: Date?
+    @State private var didLoadFields = false
+    @State private var selectedDate = Date()
+    @State private var reopenedQuestionID: QuestionID?
+    @State private var isAnswering = false
+    @State private var stepError = false
+
+    private let timeZone = TimeZone(identifier: "Asia/Tokyo") ?? .gmt
 
     var body: some View {
         Group {
@@ -32,6 +43,16 @@ struct LegDetailView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.legDetail)
+        .onAppear {
+            loadLegFields()
+            if let start = trip?.startDate.value?.date(in: timeZone) {
+                selectedDate = start
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(100))
+                didLoadFields = true
+            }
+        }
     }
 
     private var trip: Trip? {
@@ -44,8 +65,8 @@ struct LegDetailView: View {
     }
 
     private func detail(trip: Trip, leg: Leg) -> some View {
+        let snapshot = LegDetailComposer.snapshot(trip: trip, leg: leg, catalog: session.catalog)
         let remembered = TimelineNextComposer.rememberedItems(for: trip, legID: leg.id)
-        let title = "\(leg.origin.value ?? "") → \(leg.destination.value ?? "")"
         return ZStack(alignment: .top) {
             DesignTokens.Color.canvas
                 .ignoresSafeArea()
@@ -58,15 +79,24 @@ struct LegDetailView: View {
                 VStack(spacing: 0) {
                     Color.clear.frame(height: 112)
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                        Text(verbatim: title)
+                        Text(verbatim: snapshot.title)
                             .font(DesignTokens.Typography.display)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(TripContentResolver.transportSummary(for: leg))
-                            .font(DesignTokens.Typography.caption)
-                            .foregroundStyle(DesignTokens.Color.secondaryText)
 
-                        knownSection(trip: trip, leg: leg)
-                        stillNeededSection(trip: trip, leg: leg)
+                        switch snapshot.mode {
+                        case .setup:
+                            if let setup = snapshot.setup {
+                                setupSection(setup)
+                            }
+                        case .cockpit:
+                            if let cockpit = snapshot.cockpit {
+                                LegCockpitContentView(cockpit: cockpit) { item in
+                                    handleWhatsNext(item, trip: trip)
+                                }
+                            }
+                        }
+
+                        secondaryTalkButton(mode: snapshot.mode)
 
                         if !remembered.isEmpty {
                             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
@@ -84,6 +114,8 @@ struct LegDetailView: View {
                                 }
                             }
                         }
+
+                        editSection(leg: leg)
                     }
                     .padding(DesignTokens.Spacing.lg)
                     .padding(.bottom, DesignTokens.Spacing.xl)
@@ -102,133 +134,210 @@ struct LegDetailView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .safeAreaInset(edge: .bottom) {
-            startGuidanceButton
-                .padding(.horizontal, DesignTokens.Spacing.md)
-                .padding(.vertical, DesignTokens.Spacing.sm)
-                .background(DesignTokens.Color.canvas)
-        }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func knownSection(trip: Trip, leg: Leg) -> some View {
-        let items = knownItems(trip: trip, leg: leg)
-        return Group {
-            if !items.isEmpty {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                    Text("What we know")
-                        .font(DesignTokens.Typography.headline)
-                        .accessibilityIdentifier(AccessibilityID.knownSection)
-                    ForEach(items, id: \.id) { item in
-                        labeled(title: item.title, value: item.value)
-                    }
-                }
+    private func setupSection(_ setup: LegSetupSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            ForEach(setup.steps) { step in
+                let expanded = isExpanded(step)
+                LegSetupStepView(
+                    step: step,
+                    isExpanded: expanded,
+                    selectedDate: $selectedDate,
+                    isBusy: isAnswering,
+                    hasError: expanded && stepError,
+                    onConfirmDate: { Task { await confirmDate(for: step.question) } },
+                    onChoice: { value in Task { await confirmChoice(value, for: step.question) } },
+                    onSkip: canSkip(step.question) ? { Task { await skip(step.question) } } : nil,
+                    onReopen: step.kind == .deferred ? { reopenedQuestionID = step.question.id } : nil
+                )
+            }
+            if setup.isPaused {
+                Text("You can confirm this later when it’s needed.")
+                    .font(DesignTokens.Typography.footnote)
+                    .foregroundStyle(DesignTokens.Color.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(AccessibilityID.legSetupPaused)
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(AccessibilityID.legSetup)
     }
 
-    private func stillNeededSection(trip: Trip, leg: Leg) -> some View {
-        let items = stillNeeded(trip: trip, leg: leg)
-        return Group {
-            if !items.isEmpty {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                    Text("Still needed")
-                        .font(DesignTokens.Typography.headline)
-                        .accessibilityIdentifier(AccessibilityID.stillNeededSection)
-                    ForEach(items, id: \.key) { item in
-                        Text(item.title)
-                            .font(DesignTokens.Typography.body)
-                            .padding(DesignTokens.Spacing.md)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                DesignTokens.Color.grouped,
-                                in: RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-                            )
-                    }
-                }
-            }
+    private func isExpanded(_ step: LegSetupStep) -> Bool {
+        if reopenedQuestionID == step.question.id {
+            return true
         }
+        return step.kind == .current && reopenedQuestionID == nil
     }
 
-    private var startGuidanceButton: some View {
-        let button = Button {
-            router.present(.guidance(tripID, legID, .compose))
+    private func canSkip(_ question: QuestionSpec) -> Bool {
+        question.id == .ticketStatus || question.id == .luggagePresence
+    }
+
+    private func secondaryTalkButton(mode: LegDetailMode) -> some View {
+        Button {
+            router.present(.guidance(tripID, legID, .compose, .stayInPlace))
         } label: {
-            Label("Tell us about this journey", systemImage: "text.bubble")
-                .font(DesignTokens.Typography.headline)
-                .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum)
+            Label {
+                Text(
+                    mode == .setup
+                        ? LocalizedStringResource(
+                            "Tell us in your own words",
+                            comment: "Secondary free-text action on journey setup."
+                        )
+                        : LocalizedStringResource(
+                            "Add more about this journey",
+                            comment: "Secondary free-text action on the journey cockpit."
+                        )
+                )
+            } icon: {
+                Image(systemName: "text.bubble")
+            }
+            .font(DesignTokens.Typography.body)
+            .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
         }
+        .buttonStyle(.bordered)
         .accessibilityIdentifier(AccessibilityID.startGuidance)
+    }
 
-        return Group {
-            if #available(iOS 26, *), GlassChrome.allowsGlass(
-                reduceTransparency: reduceTransparency,
-                increaseContrast: contrast == .increased
-            ) {
-                button.buttonStyle(.glassProminent)
-            } else {
-                button.buttonStyle(.borderedProminent)
+    private func handleWhatsNext(_ item: TimelineNowItem, trip: Trip) {
+        switch item.kind {
+        case .task:
+            if let destination = HomePrimaryActionComposer.destination(for: item, trip: trip) {
+                router.push(destination)
+            }
+        case .resume(let id):
+            router.present(.guidance(tripID, id, .compose, .stayInPlace))
+        }
+    }
+
+    private func editSection(leg: Leg) -> some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                TextField("From", text: $origin)
+                    .textFieldStyle(.roundedBorder)
+                TextField("To", text: $destination)
+                    .textFieldStyle(.roundedBorder)
+                Toggle("Has a date", isOn: $hasDate)
+                if hasDate {
+                    DatePicker("Travel date", selection: $date, displayedComponents: .date)
+                }
+                Button("Move to Unscheduled") {
+                    Task { _ = await session.process(.applyMutation(.unscheduleLeg(legID))) }
+                }
+                .disabled(leg.scheduledAt.status != .confirmed)
+                Button("Delete journey", role: .destructive) {
+                    Task {
+                        _ = await session.process(.applyMutation(.removeLeg(legID)))
+                        dismiss()
+                    }
+                }
+            }
+            .padding(.top, DesignTokens.Spacing.sm)
+        } label: {
+            Text("Edit this journey")
+                .font(DesignTokens.Typography.headline)
+        }
+        .onChange(of: origin) { _, newValue in
+            guard didLoadFields else { return }
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, trimmed != leg.origin.value else { return }
+            Task { _ = await session.process(.applyMutation(.updateLegOrigin(legID, trimmed))) }
+        }
+        .onChange(of: destination) { _, newValue in
+            guard didLoadFields else { return }
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, trimmed != leg.destination.value else { return }
+            Task { _ = await session.process(.applyMutation(.updateLegDestination(legID, trimmed))) }
+        }
+        .onChange(of: hasDate) { _, newValue in
+            guard didLoadFields else { return }
+            if !newValue {
+                Task { _ = await session.process(.applyMutation(.unscheduleLeg(legID))) }
             }
         }
+        .onChange(of: date) { _, newValue in
+            guard didLoadFields, hasDate else { return }
+            if leg.scheduledAt.status == .confirmed {
+                pendingDate = newValue
+                confirmDateChange = true
+            } else {
+                Task { await saveDate(newValue) }
+            }
+        }
+        .alert("Change this journey’s date?", isPresented: $confirmDateChange) {
+            Button("Change") {
+                if let pendingDate {
+                    Task { await saveDate(pendingDate) }
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingDate = nil }
+        } message: {
+            Text("Dragging does not change times. This updates the travel date.")
+        }
     }
 
-    private func labeled(title: LocalizedStringResource, value: DisplayText) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
-            Text(title)
-                .font(DesignTokens.Typography.caption)
-                .foregroundStyle(DesignTokens.Color.secondaryText)
-            DisplayTextLabel(text: value)
-                .font(DesignTokens.Typography.body)
-                .fixedSize(horizontal: false, vertical: true)
+    private func loadLegFields() {
+        origin = leg?.origin.value ?? ""
+        destination = leg?.destination.value ?? ""
+        if let scheduled = leg?.scheduledAt.value,
+           let dateValue = scheduled.date.date(in: TimeZone(identifier: scheduled.timeZoneIdentifier) ?? .current) {
+            hasDate = true
+            date = dateValue
+        } else {
+            hasDate = false
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(DesignTokens.Spacing.md)
-        .background(
-            DesignTokens.Color.grouped,
-            in: RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
-        )
-        .accessibilityElement(children: .combine)
     }
 
-    private func knownItems(trip: Trip, leg: Leg) -> [(id: String, title: LocalizedStringResource, value: DisplayText)] {
-        var items: [(id: String, title: LocalizedStringResource, value: DisplayText)] = [
-            (
-                "from",
-                LocalizedStringResource("From", comment: "Leg detail label for the origin city."),
-                .verbatim(leg.origin.value ?? "")
-            ),
-            (
-                "to",
-                LocalizedStringResource("To", comment: "Leg detail label for the destination city."),
-                .verbatim(leg.destination.value ?? "")
-            ),
-        ]
-        if leg.transportMode.status == .confirmed {
-            items.append((
-                "transport",
-                LocalizedStringResource("Transport", comment: "Leg detail label for the transport mode."),
-                .localized(TripContentResolver.transportSummary(for: leg))
-            ))
+    private func saveDate(_ value: Date) async {
+        let zone = TimeZone.current
+        guard let local = try? LocalDate(date: value, timeZone: zone),
+              let moment = try? ScheduledMoment(date: local, timeZoneIdentifier: zone.identifier) else {
+            return
         }
-        if let date = leg.scheduledAt.value?.date, leg.scheduledAt.status == .confirmed {
-            items.append((
-                "date",
-                LocalizedStringResource("Travel date", comment: "Summary heading for the journey date."),
-                .verbatim("\(date.year)/\(date.month)/\(date.day)")
-            ))
-        }
-        _ = trip
-        return items
+        _ = await session.process(.applyMutation(.setLegScheduledAt(legID, moment)))
     }
 
-    private func stillNeeded(trip: Trip, leg: Leg) -> [(key: String, title: LocalizedStringResource)] {
-        guard let catalog = session.catalog, trip.focusLegID == leg.id else {
-            return []
+    private func confirmDate(for question: QuestionSpec) async {
+        do {
+            let local = try LocalDate(date: selectedDate, timeZone: timeZone)
+            let moment = try ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier)
+            await answer(question, .scheduledMoment(moment))
+        } catch {
+            stepError = true
         }
-        return QuestionEngine.applicableQuestions(in: trip, catalog: catalog, role: .setup)
-            .filter { !QuestionEngine.isConfirmed($0.target, trip: trip, leg: leg) }
-            .map { ($0.id.rawValue, TripContentResolver.questionPrompt($0)) }
+    }
+
+    private func confirmChoice(_ value: String, for question: QuestionSpec) async {
+        await answer(question, .choice(value))
+    }
+
+    private func skip(_ question: QuestionSpec) async {
+        switch question.id {
+        case .ticketStatus:
+            await answer(question, .choice("unsure"))
+        case .luggagePresence:
+            await answer(question, .choice("skip"))
+        default:
+            break
+        }
+    }
+
+    private func answer(_ question: QuestionSpec, _ answer: QuestionAnswer) async {
+        isAnswering = true
+        defer { isAnswering = false }
+        if session.trip?.focusLegID != legID {
+            _ = await session.process(.focusLeg(legID))
+        }
+        guard await session.process(.answerQuestion(question.id, answer)) != nil else {
+            stepError = true
+            return
+        }
+        reopenedQuestionID = nil
+        stepError = false
     }
 
     private func rememberedContentKey(_ item: TimelineNextItem) -> String {
@@ -240,12 +349,60 @@ struct LegDetailView: View {
 }
 
 #if DEBUG
-#Preview("Tokyo to Kyoto") {
+#Preview("Setup") {
     NavigationStack {
         LegDetailView(tripID: PreviewTrips.reference.id, legID: ReferenceTripIdentity.tokyoKyoto)
     }
     .environment(AppRouter())
     .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.reference))
+}
+
+#Preview("Setup Japanese") {
+    NavigationStack {
+        LegDetailView(tripID: PreviewTrips.reference.id, legID: ReferenceTripIdentity.tokyoKyoto)
+    }
+    .environment(AppRouter())
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.reference))
+    .environment(\.locale, Locale(identifier: "ja"))
+}
+
+#Preview("Deferred") {
+    NavigationStack {
+        LegDetailView(tripID: PreviewTrips.setupPaused.id, legID: ReferenceTripIdentity.tokyoKyoto)
+    }
+    .environment(AppRouter())
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.setupPaused))
+}
+
+#Preview("Airplane") {
+    NavigationStack {
+        LegDetailView(tripID: PreviewTrips.airplaneSetup.id, legID: ReferenceTripIdentity.tokyoKyoto)
+    }
+    .environment(AppRouter())
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.airplaneSetup))
+}
+
+#Preview("Cockpit") {
+    NavigationStack {
+        LegDetailView(
+            tripID: PreviewTrips.readyForNow.id,
+            legID: ReferenceTripIdentity.tokyoKyoto
+        )
+    }
+    .environment(AppRouter())
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.readyForNow))
+}
+
+#Preview("Cockpit Japanese") {
+    NavigationStack {
+        LegDetailView(
+            tripID: PreviewTrips.readyForNow.id,
+            legID: ReferenceTripIdentity.tokyoKyoto
+        )
+    }
+    .environment(AppRouter())
+    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.readyForNow))
+    .environment(\.locale, Locale(identifier: "ja"))
 }
 
 #Preview("Remembered") {
@@ -257,18 +414,6 @@ struct LegDetailView: View {
     }
     .environment(AppRouter())
     .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.withComingUpAndRemembered))
-}
-
-#Preview("Japanese") {
-    NavigationStack {
-        LegDetailView(
-            tripID: PreviewTrips.readyForNow.id,
-            legID: ReferenceTripIdentity.tokyoKyoto
-        )
-    }
-    .environment(AppRouter())
-    .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.readyForNow))
-    .environment(\.locale, Locale(identifier: "ja"))
 }
 
 #Preview("Dark") {

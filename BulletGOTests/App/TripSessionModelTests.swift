@@ -6,7 +6,7 @@ import Testing
 struct TripSessionModelTests {
     @Test func loadAfterBootstrapSelectsReferenceTrip() async throws {
         let persistence = try PersistenceStack.inMemory()
-        try await persistence.bootstrap()
+        try await persistence.bootstrap(seedReferenceTrip: true)
         let session = TripSessionModel(
             store: TripStore(repository: persistence.repository, brain: try EngineTestSupport.brain())
         )
@@ -73,5 +73,20 @@ struct TripSessionModelTests {
         await failing.load()
         await failing.process(.applyMutation(.setTransportMode(trip.legs[0].id, .shinkansen)))
         #expect(failing.processState == .failed)
+    }
+
+    @Test func createTripLoadsAnEmptyUserTrip() async throws {
+        let session = TripSessionModel(
+            store: TripStore(repository: InMemoryTripRepository(), brain: try EngineTestSupport.brain())
+        )
+        let created = try await session.createTrip(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8)
+        )
+        #expect(created)
+        #expect(session.loadState == .loaded)
+        #expect(session.trip?.name.value == "Japan trip")
+        #expect(session.trip?.timeline.isEmpty == true)
     }
 }

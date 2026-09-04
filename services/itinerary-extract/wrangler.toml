@@ -1,0 +1,6 @@
+name = "bulletgo-itinerary-extract"
+main = "src/index.js"
+compatibility_date = "2026-09-04"
+
+[vars]
+OPENAI_MODEL = "gpt-5.4-nano-2026-03-17"

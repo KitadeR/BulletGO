@@ -86,6 +86,7 @@ nonisolated struct TripBrain: Sendable {
             at: now
         )
         try working.validate()
+        working.currentContext.tripPhase = TripPhaseResolver.resolve(trip: working, now: now)
 
         let understandingSummary: UnderstandingSummary?
         if includeSummary {

@@ -11,6 +11,9 @@ nonisolated enum AppFeature: String, CaseIterable, Hashable, Identifiable, Senda
     case liveActivity = "live_activity"
     case stationInfo = "station_info"
     case tripSharing = "trip_sharing"
+    case travelerLanguage = "traveler_language"
+    case savedDocuments = "saved_documents"
+    case appSettings = "app_settings"
 
     var id: String { rawValue }
 }

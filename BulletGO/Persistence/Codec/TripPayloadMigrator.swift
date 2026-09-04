@@ -1,27 +1,46 @@
 import Foundation
 
 nonisolated enum TripPayloadMigrator {
-    static let currentDomainSchemaVersion = 3
+    static let currentDomainSchemaVersion = Trip.currentSchemaVersion
 
     static func migrateV1Payload(_ data: Data) throws -> Data {
+        try migrate(data) { json, timestamp in
+            migrateReservations(in: &json, timestamp: timestamp)
+            migrateSeatPreferences(in: &json, timestamp: timestamp)
+            migrateStays(in: &json)
+        }
+    }
+
+    static func migrateV2Payload(_ data: Data) throws -> Data {
+        try migrate(data) { json, timestamp in
+            migrateSeatPreferences(in: &json, timestamp: timestamp)
+            migrateStays(in: &json)
+        }
+    }
+
+    static func migrateV3Payload(_ data: Data) throws -> Data {
+        try migrate(data) { json, _ in
+            migrateStays(in: &json)
+        }
+    }
+
+    private static func migrate(
+        _ data: Data,
+        mutate: (inout [String: Any], Double) -> Void
+    ) throws -> Data {
         guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw PersistenceError.decodingFailed
         }
         let timestamp = json["updatedAt"] as? Double ?? json["createdAt"] as? Double ?? 0
-        migrateReservations(in: &json, timestamp: timestamp)
-        migrateSeatPreferences(in: &json, timestamp: timestamp)
+        mutate(&json, timestamp)
         json["schemaVersion"] = currentDomainSchemaVersion
         return try JSONSerialization.data(withJSONObject: json)
     }
 
-    static func migrateV2Payload(_ data: Data) throws -> Data {
-        guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw PersistenceError.decodingFailed
+    private static func migrateStays(in trip: inout [String: Any]) {
+        if trip["stays"] == nil {
+            trip["stays"] = [Any]()
         }
-        let timestamp = json["updatedAt"] as? Double ?? json["createdAt"] as? Double ?? 0
-        migrateSeatPreferences(in: &json, timestamp: timestamp)
-        json["schemaVersion"] = currentDomainSchemaVersion
-        return try JSONSerialization.data(withJSONObject: json)
     }
 
     private static func migrateReservations(in trip: inout [String: Any], timestamp: Double) {

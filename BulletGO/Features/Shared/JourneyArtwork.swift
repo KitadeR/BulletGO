@@ -22,6 +22,9 @@ struct JourneyArtwork: View {
             case .generic:
                 drawHills(context: &context, size: size)
                 drawPath(context: &context, size: size)
+            case .japanMap:
+                drawHills(context: &context, size: size)
+                drawJapan(context: &context, size: size)
             }
         }
         .accessibilityHidden(true)
@@ -132,6 +135,44 @@ struct JourneyArtwork: View {
             control: CGPoint(x: size.width * 0.48, y: size.height * 0.58)
         )
         context.stroke(path, with: .color(.white.opacity(0.7)), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+    }
+
+    private func drawJapan(context: inout GraphicsContext, size: CGSize) {
+        var honshu = Path()
+        honshu.move(to: CGPoint(x: size.width * 0.22, y: size.height * 0.28))
+        honshu.addQuadCurve(
+            to: CGPoint(x: size.width * 0.62, y: size.height * 0.42),
+            control: CGPoint(x: size.width * 0.40, y: size.height * 0.18)
+        )
+        honshu.addQuadCurve(
+            to: CGPoint(x: size.width * 0.78, y: size.height * 0.70),
+            control: CGPoint(x: size.width * 0.74, y: size.height * 0.52)
+        )
+        honshu.addQuadCurve(
+            to: CGPoint(x: size.width * 0.30, y: size.height * 0.62),
+            control: CGPoint(x: size.width * 0.52, y: size.height * 0.80)
+        )
+        honshu.closeSubpath()
+        context.fill(honshu, with: .color(.white.opacity(0.86)))
+
+        context.fill(
+            Path(ellipseIn: CGRect(
+                x: size.width * 0.18,
+                y: size.height * 0.58,
+                width: size.width * 0.12,
+                height: size.height * 0.16
+            )),
+            with: .color(.white.opacity(0.8))
+        )
+        context.fill(
+            Path(ellipseIn: CGRect(
+                x: size.width * 0.70,
+                y: size.height * 0.72,
+                width: size.width * 0.16,
+                height: size.height * 0.12
+            )),
+            with: .color(.white.opacity(0.8))
+        )
     }
 }
 

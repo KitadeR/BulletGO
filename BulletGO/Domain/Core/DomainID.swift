@@ -26,6 +26,7 @@ nonisolated struct DomainID<Tag>: RawRepresentable, Hashable, Codable, Sendable,
 
 nonisolated enum TripIDTag {}
 nonisolated enum LegIDTag {}
+nonisolated enum StayIDTag {}
 nonisolated enum ActivityIDTag {}
 nonisolated enum BagIDTag {}
 nonisolated enum TaskIDTag {}
@@ -37,6 +38,7 @@ nonisolated enum ReservationIDTag {}
 
 typealias TripID = DomainID<TripIDTag>
 typealias LegID = DomainID<LegIDTag>
+typealias StayID = DomainID<StayIDTag>
 typealias ActivityID = DomainID<ActivityIDTag>
 typealias BagID = DomainID<BagIDTag>
 typealias TaskID = DomainID<TaskIDTag>

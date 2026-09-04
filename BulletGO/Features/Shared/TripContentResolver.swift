@@ -143,7 +143,14 @@ nonisolated enum TripContentResolver {
         guard let start = trip.startDate.value, let end = trip.endDate.value else {
             return nil
         }
-        return "\(start.year)/\(start.month)/\(start.day) – \(end.year)/\(end.month)/\(end.day)"
+        return "\(start.displayString) – \(end.displayString)"
+    }
+
+    static func staySubtitle(_ stay: Stay) -> String {
+        if let checkIn = stay.checkIn.value?.date {
+            return checkIn.displayString
+        }
+        return ""
     }
 
     static func legTitle(trip: Trip, legID: LegID) -> String {
@@ -195,6 +202,132 @@ nonisolated enum TripContentResolver {
                 comment: "Summary value when a fact is still missing."
             ))
         }
+    }
+
+    static func setupStepTitle(_ question: QuestionSpec) -> LocalizedStringResource {
+        switch question.id {
+        case .legDate:
+            LocalizedStringResource("Travel date", comment: "Summary heading for the journey date.")
+        case .transport:
+            LocalizedStringResource("Transport", comment: "Leg detail label for the transport mode.")
+        case .ticketStatus:
+            LocalizedStringResource("Booking", comment: "Leg cockpit label for reservation status.")
+        case .luggagePresence:
+            LocalizedStringResource("Luggage", comment: "Summary heading for luggage presence.")
+        default:
+            questionPrompt(question)
+        }
+    }
+
+    static func setupQuestionPrompt(_ question: QuestionSpec, leg: Leg) -> LocalizedStringResource {
+        if question.id == .ticketStatus {
+            return bookingQuestionPrompt(for: leg)
+        }
+        return questionPrompt(question)
+    }
+
+    static func bookingQuestionPrompt(for leg: Leg) -> LocalizedStringResource {
+        guard leg.transportMode.status == .confirmed, let mode = leg.transportMode.value else {
+            return LocalizedStringResource(
+                "Have you booked this journey yet?",
+                comment: "Setup question prompt for reservation status."
+            )
+        }
+        switch mode {
+        case .shinkansen:
+            return LocalizedStringResource(
+                "Have you already booked the Shinkansen?",
+                comment: "Booking setup prompt after Shinkansen is confirmed."
+            )
+        case .airplane:
+            return LocalizedStringResource(
+                "Have you already booked the flight?",
+                comment: "Booking setup prompt after airplane is confirmed."
+            )
+        case .localTrain:
+            return LocalizedStringResource(
+                "Have you already booked the local train?",
+                comment: "Booking setup prompt after local train is confirmed."
+            )
+        case .other:
+            return LocalizedStringResource(
+                "Have you already booked this transport?",
+                comment: "Booking setup prompt after other transport is confirmed."
+            )
+        }
+    }
+
+    static func setupStepSystemImage(_ question: QuestionSpec, leg: Leg) -> String {
+        switch question.id {
+        case .legDate:
+            "calendar"
+        case .transport:
+            if leg.transportMode.status == .confirmed, leg.transportMode.value == .airplane {
+                "airplane"
+            } else {
+                "tram.fill"
+            }
+        case .ticketStatus:
+            "calendar.badge.clock"
+        case .luggagePresence:
+            "suitcase"
+        default:
+            "questionmark.circle"
+        }
+    }
+
+    static func setupStepValue(question: QuestionSpec, trip: Trip, leg: Leg) -> DisplayText {
+        switch question.target {
+        case .legScheduledAt:
+            if let date = leg.scheduledAt.value?.date {
+                return .verbatim(date.displayString)
+            }
+        case .legTransportMode:
+            return .localized(transportSummary(for: leg))
+        case .legReservationStatus:
+            if let status = leg.reservation.status.value {
+                return summaryValue(
+                    UnderstandingSummaryItem(
+                        contentKey: "leg.reservationStatus",
+                        scope: .leg(leg.id),
+                        path: .leg(leg.id, .reservation),
+                        value: .reservationStatus(status),
+                        relatedQuestionID: .ticketStatus,
+                        relatedDecisionPointID: nil
+                    )
+                )
+            }
+        case .legBaggagePresence:
+            if let presence = leg.baggagePresence.value {
+                return summaryValue(
+                    UnderstandingSummaryItem(
+                        contentKey: "leg.baggagePresence",
+                        scope: .leg(leg.id),
+                        path: .leg(leg.id, .baggagePresence),
+                        value: .baggagePresence(presence),
+                        relatedQuestionID: .luggagePresence,
+                        relatedDecisionPointID: nil
+                    )
+                )
+            }
+        default:
+            break
+        }
+        return .localized(
+            LocalizedStringResource(
+                "Saved",
+                comment: "Collapsed answer fallback when a value is deferred."
+            )
+        )
+    }
+
+    static func deferredSetupValue() -> DisplayText {
+        .localized(
+            LocalizedStringResource(
+                "Not sure — confirm later",
+                comment: "Deferred setup step value when the traveler skipped a question."
+            )
+        )
     }
 
     static func questionPrompt(_ question: QuestionSpec) -> LocalizedStringResource {
@@ -374,6 +507,26 @@ nonisolated enum TripContentResolver {
             LocalizedStringResource("Local train", comment: "Confirmed local-train transport label on a leg row.")
         case .other:
             LocalizedStringResource("Other transport", comment: "Confirmed other-transport label on a leg row.")
+        }
+    }
+
+    static func reservationStatusText(_ reservation: Reservation) -> LocalizedStringResource {
+        reservationLabel(reservation.status.status == .confirmed ? (reservation.status.value ?? .unknown) : .unknown)
+    }
+
+    static func bookingServiceText(_ reservation: Reservation) -> LocalizedStringResource? {
+        guard reservation.service.status == .confirmed, let service = reservation.service.value else {
+            return nil
+        }
+        return switch service {
+        case .smartEX:
+            LocalizedStringResource("Smart EX", comment: "Confirmed Smart EX booking service.")
+        case .klook:
+            LocalizedStringResource("Klook", comment: "Confirmed Klook booking service.")
+        case .ticketMachine:
+            LocalizedStringResource("Ticket machine", comment: "Confirmed ticket-machine booking service.")
+        case .other:
+            LocalizedStringResource("Other booking service", comment: "Confirmed other booking service.")
         }
     }
 

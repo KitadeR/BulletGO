@@ -17,6 +17,7 @@ final class GuidanceFlowModel {
     let tripID: TripID
     let legID: LegID
     let entry: GuidanceEntry
+    let completion: GuidanceCompletion
 
     var stage: Stage
     var draftText: String = ""
@@ -25,6 +26,7 @@ final class GuidanceFlowModel {
     var selectedChoice: String?
     var selectedDate: Date
     var didCompleteReady = false
+    var shouldDismissToSource = false
 
     private let session: TripSessionModel
     private let timeZone: TimeZone
@@ -33,11 +35,13 @@ final class GuidanceFlowModel {
         tripID: TripID,
         legID: LegID,
         entry: GuidanceEntry,
+        completion: GuidanceCompletion,
         session: TripSessionModel
     ) {
         self.tripID = tripID
         self.legID = legID
         self.entry = entry
+        self.completion = completion
         self.session = session
         self.timeZone = TimeZone(identifier: "Asia/Tokyo") ?? .gmt
         self.stage = entry == .compose ? .compose : .interpreting
@@ -82,10 +86,18 @@ final class GuidanceFlowModel {
     }
 
     func continueFromSummary() {
+        if completion == .stayInPlace {
+            shouldDismissToSource = true
+            return
+        }
         advanceFromTrip()
     }
 
     func beginStructuredQuestions() {
+        if completion == .stayInPlace {
+            shouldDismissToSource = true
+            return
+        }
         guard let trip = session.trip, let catalog = session.catalog else {
             stage = .failed
             return
@@ -231,6 +243,9 @@ final class GuidanceFlowModel {
             currentQuestion = nil
             stage = .ready
             didCompleteReady = true
+            if completion == .stayInPlace {
+                shouldDismissToSource = true
+            }
         case .notStarted:
             stage = .compose
         }

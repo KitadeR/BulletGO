@@ -18,11 +18,14 @@ nonisolated enum EngineError: Error, Equatable, Sendable {
     case unknownQuestion(String)
     case invalidAnswer(String)
     case unknownLeg
+    case unknownStay
+    case unknownActivity
     case unknownBag
     case tripNotFound
     case noFocusLeg
     case invalidPhaseTransition
     case unknownDecisionPoint(String)
+    case invalidTimelineIndex
 }
 
 nonisolated struct EngineClock: Sendable {

@@ -189,6 +189,45 @@ extension FeatureRegistry {
                         systemImage: "square.and.arrow.up",
                         availability: .hidden
                     ),
+                    try FeatureRegistration(
+                        feature: .travelerLanguage,
+                        title: LocalizedStringResource(
+                            "Language",
+                            comment: "You-tab title for preferred language."
+                        ),
+                        summary: LocalizedStringResource(
+                            "Language settings will be available here.",
+                            comment: "Coming Soon summary for traveler language."
+                        ),
+                        systemImage: "globe",
+                        availability: .stub
+                    ),
+                    try FeatureRegistration(
+                        feature: .savedDocuments,
+                        title: LocalizedStringResource(
+                            "Documents",
+                            comment: "You-tab title for saved travel documents."
+                        ),
+                        summary: LocalizedStringResource(
+                            "Tickets and travel documents will appear here.",
+                            comment: "Coming Soon summary for saved documents."
+                        ),
+                        systemImage: "doc",
+                        availability: .stub
+                    ),
+                    try FeatureRegistration(
+                        feature: .appSettings,
+                        title: LocalizedStringResource(
+                            "Settings",
+                            comment: "You-tab title for app settings."
+                        ),
+                        summary: LocalizedStringResource(
+                            "App settings will be available here.",
+                            comment: "Coming Soon summary for settings."
+                        ),
+                        systemImage: "gearshape",
+                        availability: .stub
+                    ),
                 ]
             )
         } catch {

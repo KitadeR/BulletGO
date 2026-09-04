@@ -77,7 +77,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
 
         let trip = Trip(
             id: ReferenceTripIdentity.trip,
-            schemaVersion: 3,
+            schemaVersion: Trip.currentSchemaVersion,
             name: try Slot.inferred(value: "Japan trip", updatedAt: timestamp),
             startDate: try Slot.confirmed(
                 value: LocalDate(year: 2026, month: 10, day: 1),
@@ -102,6 +102,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
                 )
             ),
             legs: [tokyoKyoto, kyotoOsaka, osakaHakata],
+            stays: [],
             activities: [kinkakuji, dotonbori, hakataSightseeing],
             timeline: [
                 .leg(tokyoKyoto.id),

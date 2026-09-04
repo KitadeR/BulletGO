@@ -187,7 +187,7 @@ struct TimelinePresentationTests {
         #expect(rows[0].isCurrent)
         #expect(rows[0].isLeg)
         #expect(rows[0].destination == .legDetail(trip.id, ReferenceTripIdentity.tokyoKyoto))
-        #expect(rows[1].destination == nil)
+        #expect(rows[1].destination == .activityDetail(trip.id, ReferenceTripIdentity.kinkakuji))
         #expect(rows[1].isLeg == false)
         if case .localized(let resource) = rows[0].subtitle {
             #expect(resource.key == "Not decided yet")

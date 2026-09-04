@@ -5,6 +5,7 @@ nonisolated enum ChangeEventKind: String, Hashable, Codable, Sendable {
     case transportChanged
     case dateChanged
     case reservationUpdated
+    case itineraryChanged
     case other
 }
 

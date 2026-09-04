@@ -1,0 +1,34 @@
+{
+  "id": "shinkansen_baggage_measurement_v1",
+  "version": 1,
+  "taskContentKey": "capture_dimensions",
+  "title": "Measure your bag",
+  "sourceURL": "https://global.jr-central.co.jp/en/info/oversized-baggage/index.html",
+  "illustrationKind": "includeWheelsAndHandles",
+  "steps": [
+    {
+      "id": "range",
+      "kind": "illustration",
+      "title": "Include wheels and handles",
+      "body": "Measure the whole bag: the longest side, the width, and the height, including wheels and handles."
+    },
+    {
+      "id": "measure",
+      "kind": "instruction",
+      "title": "Measure three sides",
+      "body": "Use centimetres. Write down length, width, and height before you add them."
+    },
+    {
+      "id": "input",
+      "kind": "dimensionInput",
+      "title": "Enter the three numbers",
+      "body": "Add the three sides. 160 cm is the usual limit; 161 cm needs a reserved space."
+    },
+    {
+      "id": "result",
+      "kind": "policyResult",
+      "title": "JR Central rule",
+      "body": "The result uses JR Central oversized-baggage rules, not a guess."
+    }
+  ]
+}

@@ -72,4 +72,23 @@ struct TripBrainTests {
         #expect(phase.understandingSummary == nil)
         #expect(phase.updatedTrip.legs[0].seatPreference.presentationTiming == .deferred(until: .seatSelection))
     }
+
+    @Test func reevaluateSyncsTripPhaseFromDatesWithoutChangingLegPhase() throws {
+        let today = try LocalDate(year: 2026, month: 10, day: 4)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TripPhaseResolver.calendarTimeZone
+        let now = try #require(
+            calendar.date(from: DateComponents(year: today.year, month: today.month, day: today.day, hour: 12))
+        )
+        let brain = TripBrain(
+            catalog: try EngineTestSupport.catalog(),
+            pack: try EngineTestSupport.pack(),
+            clock: .fixed(now)
+        )
+        let trip = try DomainTestSupport.sampleTrip()
+        #expect(trip.currentContext.tripPhase == .planning)
+        let result = try brain.process(trip: trip, command: .reevaluate)
+        #expect(result.updatedTrip.currentContext.tripPhase == .inTrip)
+        #expect(result.updatedTrip.legs.map(\.phase) == trip.legs.map(\.phase))
+    }
 }

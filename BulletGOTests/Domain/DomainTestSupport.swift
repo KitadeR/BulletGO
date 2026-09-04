@@ -58,12 +58,13 @@ enum DomainTestSupport {
 
         let trip = Trip(
             id: tripID,
-            schemaVersion: 3,
+            schemaVersion: Trip.currentSchemaVersion,
             name: try Slot.inferred(value: "Japan trip", updatedAt: timestamp),
             startDate: try Slot.confirmed(value: start, source: .userStated, updatedAt: timestamp),
             endDate: try Slot.confirmed(value: end, source: .userStated, updatedAt: timestamp),
             traveler: try unknownTraveler(),
             legs: [tokyoKyoto, kyotoOsaka, osakaHakata],
+            stays: [],
             activities: [kyotoSightseeing, osakaSightseeing, hakataSightseeing],
             timeline: [
                 .leg(tokyoKyoto.id),

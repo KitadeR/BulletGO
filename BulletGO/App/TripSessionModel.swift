@@ -25,10 +25,21 @@ final class TripSessionModel {
     private(set) var pack: BaggagePolicyPack?
     private let store: TripStore?
     private let interpreter: any TripInputInterpreting
+    private let draftExtractor: any ItineraryDraftExtracting
+    private let clock: EngineClock
 
-    init(store: TripStore, interpreter: any TripInputInterpreting = LocalDeterministicTripInputInterpreter()) {
+    var now: Date { clock.now() }
+
+    init(
+        store: TripStore,
+        interpreter: any TripInputInterpreting = LocalDeterministicTripInputInterpreter(),
+        draftExtractor: any ItineraryDraftExtracting = LocalDeterministicItineraryDraftExtractor(),
+        clock: EngineClock = .system
+    ) {
         self.store = store
         self.interpreter = interpreter
+        self.draftExtractor = draftExtractor
+        self.clock = clock
         self.loadState = .loading
         self.processState = .idle
         self.trip = nil
@@ -40,16 +51,19 @@ final class TripSessionModel {
     init(
         previewState: LoadState,
         trip: Trip? = nil,
-        lastBrainResult: BrainResult? = nil
+        lastBrainResult: BrainResult? = nil,
+        clock: EngineClock = .system
     ) {
         self.store = nil
         self.interpreter = LocalDeterministicTripInputInterpreter()
+        self.draftExtractor = LocalDeterministicItineraryDraftExtractor()
         self.loadState = previewState
         self.processState = .idle
         self.trip = trip
         self.lastBrainResult = lastBrainResult
         self.catalog = try? QuestionCatalogLoader.loadProduction(from: .main)
         self.pack = try? PackLoader.loadProduction(from: .main)
+        self.clock = clock
     }
 
     func interpret(_ text: String, legID: LegID) -> TripInputInterpretation {
@@ -59,11 +73,17 @@ final class TripSessionModel {
         return interpreter.interpret(text, trip: trip, legID: legID)
     }
 
-    func load() async {
+    func extractItineraryDraft(_ text: String, scope: ItineraryInputScope, trip: Trip) async throws -> ProposedItineraryDraft {
+        try await draftExtractor.extract(text, scope: scope, trip: trip)
+    }
+
+    func load(showLoading: Bool = true) async {
         guard let store else {
             return
         }
-        loadState = .loading
+        if showLoading {
+            loadState = .loading
+        }
         do {
             let trips = try await store.fetchAll().sorted { lhs, rhs in
                 if lhs.updatedAt != rhs.updatedAt {
@@ -88,6 +108,9 @@ final class TripSessionModel {
             lastBrainResult = nil
             loadState = .failed
         }
+        if loadState == .loaded, trip != nil {
+            _ = await process(.reevaluate)
+        }
     }
 
     func retry() async {
@@ -99,6 +122,30 @@ final class TripSessionModel {
         lastBrainResult = result
         loadState = .loaded
         processState = .idle
+    }
+
+    func createTrip(name: String, startDate: LocalDate, endDate: LocalDate) async throws -> Bool {
+        guard let store else {
+            return false
+        }
+        processState = .processing
+        do {
+            let created = try EmptyTripFactory.make(
+                name: name,
+                startDate: startDate,
+                endDate: endDate
+            )
+            try await store.create(created)
+            trip = created
+            lastBrainResult = nil
+            loadState = .loaded
+            processState = .idle
+            _ = await process(.reevaluate)
+            return true
+        } catch {
+            processState = .failed
+            return false
+        }
     }
 
     @discardableResult

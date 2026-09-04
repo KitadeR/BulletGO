@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "description": "Anonymous bilingual itinerary extraction cases. Do not include names, booking numbers, or contact information.",
+  "cases": [
+    {
+      "id": "en-tokyo-osaka-morning",
+      "language": "en",
+      "text": "October 2 morning, Tokyo to Osaka by Shinkansen. Large suitcase.",
+      "expect": {
+        "legs": [{ "origin": "Tokyo", "destination": "Osaka", "date": "2026-10-02" }],
+        "baggageHint": true,
+        "mustNotInvent": ["reservation status", "baggage dimensions"]
+      }
+    },
+    {
+      "id": "ja-tokyo-osaka-asahi",
+      "language": "ja",
+      "text": "10月2日の朝、東京から大阪へ新幹線。大きい荷物がある。",
+      "expect": {
+        "legs": [{ "origin": "Tokyo", "destination": "Osaka", "date": "2026-10-02" }],
+        "baggageHint": true,
+        "mustNotInvent": ["reservation status", "baggage dimensions"]
+      }
+    },
+    {
+      "id": "en-new-leg-vs-existing",
+      "language": "en",
+      "text": "I want to go from Tokyo to Osaka on Oct 2.",
+      "knownLegs": ["Tokyo→Kyoto"],
+      "expect": {
+        "legs": [{ "origin": "Tokyo", "destination": "Osaka", "date": "2026-10-02" }],
+        "createsNewLeg": true
+      }
+    },
+    {
+      "id": "en-hotel-kyoto",
+      "language": "en",
+      "text": "Stay at a hotel in Kyoto on October 1.",
+      "expect": {
+        "stays": [{ "place": "Kyoto", "checkIn": "2026-10-01" }]
+      }
+    },
+    {
+      "id": "en-usj",
+      "language": "en",
+      "text": "I want to visit USJ in Osaka.",
+      "expect": {
+        "activities": [{ "title": "USJ", "place": "Osaka" }]
+      }
+    }
+  ]
+}

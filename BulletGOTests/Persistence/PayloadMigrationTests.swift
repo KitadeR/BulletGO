@@ -9,9 +9,9 @@ struct PayloadMigrationTests {
         let encoded = try v1Record(from: trip, statuses: ["unknown", "unknown", "unknown"])
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
         #expect(decoded.trip.id == trip.id)
-        #expect(decoded.trip.schemaVersion == 3)
-        #expect(decoded.rewritten?.payloadVersion == 3)
-        #expect(decoded.rewritten?.domainSchemaVersion == 3)
+        #expect(decoded.trip.schemaVersion == 4)
+        #expect(decoded.rewritten?.payloadVersion == 4)
+        #expect(decoded.rewritten?.domainSchemaVersion == 4)
         for leg in decoded.trip.legs {
             #expect(leg.reservation.status.status == .unknown)
             #expect(leg.reservation.status.value == nil)
@@ -52,12 +52,12 @@ struct PayloadMigrationTests {
         )
 
         let loaded = try await repository.fetch(id: trip.id)
-        #expect(loaded?.schemaVersion == 3)
+        #expect(loaded?.schemaVersion == 4)
         #expect(loaded?.legs[0].reservation.status.value == .notBooked)
 
         let reloaded = try await repository.fetch(id: trip.id)
         #expect(reloaded == loaded)
-        #expect(reloaded?.schemaVersion == 3)
+        #expect(reloaded?.schemaVersion == 4)
         #expect(reloaded?.legs[0].seatPreference.status == .unknown)
     }
 
@@ -75,11 +75,28 @@ struct PayloadMigrationTests {
             json["legs"] = legs
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 3)
-        #expect(decoded.rewritten?.payloadVersion == 3)
+        #expect(decoded.trip.schemaVersion == 4)
+        #expect(decoded.rewritten?.payloadVersion == 4)
         #expect(decoded.trip.legs.allSatisfy { $0.seatPreference.status == .unknown })
         #expect(decoded.trip.id == trip.id)
         #expect(decoded.trip.name.revisions == trip.name.revisions)
+        #expect(decoded.trip.stays.isEmpty)
+    }
+
+    @Test func v3PayloadGainsEmptyStays() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        var encoded = try TripRecordMapper.encode(trip)
+        encoded.payloadVersion = 3
+        encoded.domainSchemaVersion = 3
+        encoded.payload = try mutatedPayload(encoded.payload) { json in
+            json["schemaVersion"] = 3
+            json.removeValue(forKey: "stays")
+        }
+        let decoded = try TripRecordMapper.decodeWithMigration(encoded)
+        #expect(decoded.trip.schemaVersion == 4)
+        #expect(decoded.rewritten?.payloadVersion == 4)
+        #expect(decoded.trip.stays.isEmpty)
+        #expect(decoded.trip.id == trip.id)
     }
 
     private func v1Record(from trip: Trip, statuses: [String]) throws -> EncodedTripRecord {

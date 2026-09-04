@@ -24,7 +24,9 @@ nonisolated enum TripTaskGenerator {
                 scope: .leg(leg.id),
                 relatedActionID: action.id,
                 relatedPolicyID: pack.id,
-                relatedGuideID: nil,
+                relatedGuideID: template.contentKey == ActionPurpose.captureDimensions
+                    ? .shinkansenBaggageMeasurement
+                    : nil,
                 completionCondition: template.completionCondition
             )
         }

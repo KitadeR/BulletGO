@@ -13,6 +13,199 @@ nonisolated enum TripMutationApplier {
         var updated = trip
         let impact = ImpactAnalyzer.analyze(mutation)
         switch mutation {
+        case .setTripName(let name):
+            updated.name = try updated.name.updating(
+                value: name,
+                status: .confirmed,
+                source: .userStated,
+                confidence: .high,
+                at: now
+            )
+        case .setTripStartDate(let date):
+            updated.startDate = try updated.startDate.updating(
+                value: date,
+                status: .confirmed,
+                source: .userStated,
+                confidence: .high,
+                at: now
+            )
+        case .setTripEndDate(let date):
+            updated.endDate = try updated.endDate.updating(
+                value: date,
+                status: .confirmed,
+                source: .userStated,
+                confidence: .high,
+                at: now
+            )
+        case .addLeg(let leg, let index):
+            guard !updated.legs.contains(where: { $0.id == leg.id }) else {
+                throw TripValidationError.duplicateLegIDs
+            }
+            updated.legs.append(leg)
+            try updated.insertTimelineItem(.leg(leg.id), at: index)
+            updated.focusNewLegIfNeeded(leg.id)
+        case .updateLegOrigin(let legID, let origin):
+            try updated.updateLeg(id: legID) { leg in
+                leg.origin = try leg.origin.updating(
+                    value: origin,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .updateLegDestination(let legID, let destination):
+            try updated.updateLeg(id: legID) { leg in
+                leg.destination = try leg.destination.updating(
+                    value: destination,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .unscheduleLeg(let legID):
+            try updated.updateLeg(id: legID) { leg in
+                leg.scheduledAt = try leg.scheduledAt.updating(
+                    value: nil,
+                    status: .unknown,
+                    source: .userStated,
+                    confidence: nil,
+                    at: now
+                )
+            }
+        case .removeLeg(let legID):
+            _ = try updated.leg(id: legID)
+            updated.legs.removeAll { $0.id == legID }
+            updated.removeTimelineItem(matching: .leg(legID))
+            updated.tasks.removeAll { task in
+                if case .leg(let id) = task.scope { return id == legID }
+                return false
+            }
+            updated.retargetFocusAfterRemovingLeg(legID)
+        case .addStay(let stay, let index):
+            guard !updated.stays.contains(where: { $0.id == stay.id }) else {
+                throw TripValidationError.duplicateStayIDs
+            }
+            updated.stays.append(stay)
+            try updated.insertTimelineItem(.stay(stay.id), at: index)
+        case .updateStayPlace(let stayID, let place):
+            try updated.updateStay(id: stayID) { stay in
+                stay.place = try stay.place.updating(
+                    value: place,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .updateStayCheckIn(let stayID, let moment):
+            try updated.updateStay(id: stayID) { stay in
+                stay.checkIn = try stay.checkIn.updating(
+                    value: moment,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .updateStayCheckOut(let stayID, let moment):
+            try updated.updateStay(id: stayID) { stay in
+                stay.checkOut = try stay.checkOut.updating(
+                    value: moment,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .unscheduleStay(let stayID):
+            try updated.updateStay(id: stayID) { stay in
+                stay.checkIn = try stay.checkIn.updating(
+                    value: nil,
+                    status: .unknown,
+                    source: .userStated,
+                    confidence: nil,
+                    at: now
+                )
+                stay.checkOut = try stay.checkOut.updating(
+                    value: nil,
+                    status: .unknown,
+                    source: .userStated,
+                    confidence: nil,
+                    at: now
+                )
+            }
+        case .removeStay(let stayID):
+            _ = try updated.stay(id: stayID)
+            updated.stays.removeAll { $0.id == stayID }
+            updated.removeTimelineItem(matching: .stay(stayID))
+            if case .stay(let id) = updated.currentContext.focus, id == stayID {
+                updated.currentContext.focus = .none
+            }
+        case .addActivity(let activity, let index):
+            guard !updated.activities.contains(where: { $0.id == activity.id }) else {
+                throw TripValidationError.duplicateActivityIDs
+            }
+            updated.activities.append(activity)
+            try updated.insertTimelineItem(.activity(activity.id), at: index)
+        case .updateActivityTitle(let activityID, let title):
+            try updated.updateActivity(id: activityID) { activity in
+                activity.title = try activity.title.updating(
+                    value: title,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .updateActivityPlace(let activityID, let place):
+            try updated.updateActivity(id: activityID) { activity in
+                activity.place = try activity.place.updating(
+                    value: place,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .updateActivityScheduledAt(let activityID, let moment):
+            try updated.updateActivity(id: activityID) { activity in
+                activity.scheduledAt = try activity.scheduledAt.updating(
+                    value: moment,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .unscheduleActivity(let activityID):
+            try updated.updateActivity(id: activityID) { activity in
+                activity.scheduledAt = try activity.scheduledAt.updating(
+                    value: nil,
+                    status: .unknown,
+                    source: .userStated,
+                    confidence: nil,
+                    at: now
+                )
+            }
+        case .removeActivity(let activityID):
+            _ = try updated.activity(id: activityID)
+            updated.activities.removeAll { $0.id == activityID }
+            updated.removeTimelineItem(matching: .activity(activityID))
+            if case .activity(let id) = updated.currentContext.focus, id == activityID {
+                updated.currentContext.focus = .none
+            }
+        case .moveTimelineItem(let from, let to):
+            guard updated.timeline.indices.contains(from), (0...updated.timeline.count).contains(to) else {
+                throw EngineError.invalidTimelineIndex
+            }
+            let item = updated.timeline.remove(at: from)
+            let destination = to > from ? to - 1 : to
+            guard (0...updated.timeline.count).contains(destination) else {
+                throw EngineError.invalidTimelineIndex
+            }
+            updated.timeline.insert(item, at: destination)
         case .setLegScheduledAt(let legID, let moment):
             try updated.updateLeg(id: legID) { leg in
                 leg.scheduledAt = try leg.scheduledAt.updating(
@@ -164,7 +357,15 @@ nonisolated enum TripMutationApplier {
 
     private static func mutationTarget(_ mutation: TripMutation) -> DomainScope {
         switch mutation {
-        case .setLegScheduledAt(let legID, _),
+        case .setTripName, .setTripStartDate, .setTripEndDate, .moveTimelineItem:
+            .trip
+        case .addLeg(let leg, _):
+            .leg(leg.id)
+        case .updateLegOrigin(let legID, _),
+             .updateLegDestination(let legID, _),
+             .unscheduleLeg(let legID),
+             .removeLeg(let legID),
+             .setLegScheduledAt(let legID, _),
              .setTransportMode(let legID, _),
              .setReservationStatus(let legID, _, _),
              .setBookingService(let legID, _),
@@ -172,6 +373,22 @@ nonisolated enum TripMutationApplier {
              .addBag(let legID, _),
              .setSeatPreference(let legID, _):
             .leg(legID)
+        case .addStay(let stay, _):
+            .stay(stay.id)
+        case .updateStayPlace(let stayID, _),
+             .updateStayCheckIn(let stayID, _),
+             .updateStayCheckOut(let stayID, _),
+             .unscheduleStay(let stayID),
+             .removeStay(let stayID):
+            .stay(stayID)
+        case .addActivity(let activity, _):
+            .activity(activity.id)
+        case .updateActivityTitle(let activityID, _),
+             .updateActivityPlace(let activityID, _),
+             .updateActivityScheduledAt(let activityID, _),
+             .unscheduleActivity(let activityID),
+             .removeActivity(let activityID):
+            .activity(activityID)
         case .setBagDimensions:
             .trip
         }

@@ -3,6 +3,7 @@ import Foundation
 nonisolated enum CurrentFocus: Hashable, Codable, Sendable {
     case none
     case leg(LegID)
+    case stay(StayID)
     case activity(ActivityID)
 }
 

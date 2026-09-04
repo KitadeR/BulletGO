@@ -50,6 +50,10 @@ nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }
 
+    var displayString: String {
+        String(format: "%04d/%02d/%02d", year, month, day)
+    }
+
     init(date: Date, timeZone: TimeZone) throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone

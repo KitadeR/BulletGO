@@ -9,6 +9,7 @@ struct GuidanceFlowView: View {
     let tripID: TripID
     let legID: LegID
     let entry: GuidanceEntry
+    let completion: GuidanceCompletion
 
     @State private var model: GuidanceFlowModel?
 
@@ -27,18 +28,24 @@ struct GuidanceFlowView: View {
                 tripID: tripID,
                 legID: legID,
                 entry: entry,
+                completion: completion,
                 session: session
             )
             model = created
             await created.start()
         }
         .onChange(of: model?.stage) { _, stage in
-            if stage == .ready {
+            if stage == .ready, completion == .showHome {
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(900))
                     router.dismissPresentation()
-                    router.popToRoot()
+                    router.showHome(reset: true)
                 }
+            }
+        }
+        .onChange(of: model?.shouldDismissToSource) { _, shouldDismiss in
+            if shouldDismiss == true {
+                router.dismissPresentation()
             }
         }
     }
@@ -200,7 +207,16 @@ struct GuidanceFlowView: View {
                         Text(TripContentResolver.questionPrompt(question))
                             .font(DesignTokens.Typography.title)
                             .fixedSize(horizontal: false, vertical: true)
-                        questionBody(model, question: question)
+                        QuestionAnswerView(
+                            question: question,
+                            selectedDate: Bindable(model).selectedDate,
+                            isBusy: model.isProcessing,
+                            onConfirmDate: { Task { await model.confirmDate() } },
+                            onChoice: { value in Task { await model.confirmChoice(value) } },
+                            onSkip: (question.id == .ticketStatus || question.id == .luggagePresence)
+                                ? { Task { await model.skipCurrent() } }
+                                : nil
+                        )
                     }
                     .padding(DesignTokens.Spacing.lg)
                     .opaqueSurface()
@@ -209,36 +225,6 @@ struct GuidanceFlowView: View {
                 }
             }
             .padding(DesignTokens.Spacing.lg)
-        }
-    }
-
-    @ViewBuilder
-    private func questionBody(_ model: GuidanceFlowModel, question: QuestionSpec) -> some View {
-        switch question.uiKind {
-        case .dateTime:
-            DatePicker(
-                selection: Bindable(model).selectedDate,
-                displayedComponents: .date
-            ) {
-                Text("Suggested date")
-            }
-            .datePickerStyle(.compact)
-        case .singleChoice:
-            VStack(spacing: DesignTokens.Spacing.sm) {
-                ForEach(question.choices, id: \.value) { choice in
-                    Button {
-                        Task { await model.confirmChoice(choice.value) }
-                    } label: {
-                        Text(TripContentResolver.questionChoiceTitle(choice))
-                            .font(DesignTokens.Typography.headline)
-                            .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier(AccessibilityID.questionChoice(choice.value))
-                }
-            }
-        case .dimensions:
-            EmptyView()
         }
     }
 
@@ -288,7 +274,7 @@ struct GuidanceFlowView: View {
 
     private func showsFooterCTA(_ model: GuidanceFlowModel) -> Bool {
         switch model.stage {
-        case .compose, .summary, .setupQuestion, .structuredFallback:
+        case .compose, .summary, .structuredFallback:
             true
         default:
             false
@@ -312,25 +298,6 @@ struct GuidanceFlowView: View {
                 accessibilityID: AccessibilityID.guidanceContinue,
                 action: { model.continueFromSummary() }
             )
-        case .setupQuestion:
-            if model.currentQuestion?.uiKind == .dateTime {
-                VStack(spacing: DesignTokens.Spacing.sm) {
-                    PrimaryCTA(
-                        title: LocalizedStringResource("Use this date", comment: "Primary action confirming the suggested travel date."),
-                        isBusy: model.isProcessing,
-                        accessibilityID: AccessibilityID.dateConfirm,
-                        action: { Task { await model.confirmDate() } }
-                    )
-                }
-            } else if let question = model.currentQuestion, question.id == .ticketStatus || question.id == .luggagePresence {
-                Button {
-                    Task { await model.skipCurrent() }
-                } label: {
-                    Text("I’ll answer later")
-                        .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum)
-                }
-                .accessibilityIdentifier(AccessibilityID.questionSkip(question.id))
-            }
         case .structuredFallback:
             PrimaryCTA(
                 title: LocalizedStringResource("Answer a few questions", comment: "Fallback action when free text cannot be interpreted."),

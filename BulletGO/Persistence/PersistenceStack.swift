@@ -35,8 +35,10 @@ nonisolated struct PersistenceStack: Sendable {
         )
     }
 
-    func bootstrap() async throws {
-        try await seeder.seedIfNeeded(using: repository)
+    func bootstrap(seedReferenceTrip: Bool = false) async throws {
+        if seedReferenceTrip {
+            try await seeder.seedIfNeeded(using: repository)
+        }
     }
 
     private static var schema: Schema {

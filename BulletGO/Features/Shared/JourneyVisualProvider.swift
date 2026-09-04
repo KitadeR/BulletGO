@@ -6,6 +6,7 @@ nonisolated enum JourneyVisualKind: Equatable, Sendable {
     case localTrain
     case cityStay
     case generic
+    case japanMap
 }
 
 nonisolated enum JourneyVisualProvider {
@@ -23,6 +24,11 @@ nonisolated enum JourneyVisualProvider {
         case .other:
             return .generic
         }
+    }
+
+    static func kind(for stay: Stay) -> JourneyVisualKind {
+        _ = stay
+        return .cityStay
     }
 
     static func kind(for activity: Activity) -> JourneyVisualKind {

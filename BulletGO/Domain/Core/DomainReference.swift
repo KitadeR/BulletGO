@@ -16,6 +16,8 @@ nonisolated struct ProcedureID: RawRepresentable, Hashable, Codable, Sendable {
     init(rawValue: String) {
         self.rawValue = rawValue
     }
+
+    static let shinkansenBaggageMeasurement = ProcedureID(rawValue: "shinkansen_baggage_measurement_v1")
 }
 
 nonisolated struct DecisionPointID: RawRepresentable, Hashable, Codable, Sendable {
@@ -32,6 +34,7 @@ nonisolated struct DecisionPointID: RawRepresentable, Hashable, Codable, Sendabl
 nonisolated enum DomainScope: Hashable, Codable, Sendable {
     case trip
     case leg(LegID)
+    case stay(StayID)
     case activity(ActivityID)
 }
 
@@ -39,6 +42,7 @@ nonisolated enum DomainPath: Hashable, Codable, Sendable {
     case trip(TripField)
     case traveler(TravelerField)
     case leg(LegID, LegField)
+    case stay(StayID, StayField)
     case activity(ActivityID, ActivityField)
     case bag(BagID, BagField)
     case task(TaskID)
@@ -70,6 +74,13 @@ nonisolated enum LegField: String, Hashable, Codable, Sendable {
     case bagIDs
     case reservation
     case phase
+}
+
+nonisolated enum StayField: String, Hashable, Codable, Sendable {
+    case place
+    case checkIn
+    case checkOut
+    case reservation
 }
 
 nonisolated enum ActivityField: String, Hashable, Codable, Sendable {

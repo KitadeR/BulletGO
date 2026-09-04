@@ -47,13 +47,19 @@ struct PersistenceContainerTests {
 
     @Test func bootstrapSeedsTheReferenceTrip() async throws {
         let stack = try PersistenceStack.inMemory()
-        try await stack.bootstrap()
-        try await stack.bootstrap()
+        try await stack.bootstrap(seedReferenceTrip: true)
+        try await stack.bootstrap(seedReferenceTrip: true)
 
         let trips = try await stack.repository.fetchAll()
         #expect(trips.count == 1)
         #expect(trips[0].id == ReferenceTripIdentity.trip)
         #expect(trips[0].legs.count == 3)
         #expect(trips[0].activities.count == 3)
+    }
+
+    @Test func bootstrapWithoutSeedLeavesStoreEmpty() async throws {
+        let stack = try PersistenceStack.inMemory()
+        try await stack.bootstrap()
+        #expect(try await stack.repository.fetchAll().isEmpty)
     }
 }

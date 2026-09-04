@@ -102,6 +102,73 @@ struct QuietComingUpRow: View {
     }
 }
 
+struct PreparationStatusBadge: View {
+    var status: PreparationStatusKind
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Spacing.xxs) {
+            Image(systemName: status.systemImage)
+                .font(DesignTokens.Typography.footnote.weight(.semibold))
+            Text(status.displayTitle)
+                .font(DesignTokens.Typography.footnote.weight(.semibold))
+        }
+        .foregroundStyle(status.accentColor)
+        .padding(.horizontal, DesignTokens.Spacing.sm)
+        .padding(.vertical, DesignTokens.Spacing.xxs)
+        .background(status.accentColor.opacity(0.12), in: Capsule())
+        .accessibilityHidden(true)
+    }
+}
+
+extension PreparationStatusKind {
+    var displayTitle: LocalizedStringResource {
+        switch self {
+        case .ready:
+            LocalizedStringResource("Ready", comment: "Readiness status when a real check is ready.")
+        case .actionRequired:
+            LocalizedStringResource("Action needed", comment: "Readiness status when a check needs action.")
+        case .needsDetail:
+            LocalizedStringResource("Detail needed", comment: "Readiness status when more information is required.")
+        case .booked:
+            LocalizedStringResource("Booked", comment: "Reservation booked status, not the same as ready.")
+        case .notBooked:
+            LocalizedStringResource("Not booked", comment: "Reservation not booked status.")
+        case .unverified:
+            LocalizedStringResource("Unverified", comment: "Readiness status when there is no proven check.")
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .ready:
+            "checkmark.circle.fill"
+        case .actionRequired:
+            "exclamationmark.circle.fill"
+        case .needsDetail:
+            "questionmark.circle.fill"
+        case .booked:
+            "ticket.fill"
+        case .notBooked:
+            "ticket"
+        case .unverified:
+            "minus.circle"
+        }
+    }
+
+    var accentColor: Color {
+        switch self {
+        case .ready, .booked:
+            DesignTokens.Color.success
+        case .actionRequired:
+            DesignTokens.Color.danger
+        case .needsDetail:
+            DesignTokens.Color.caution
+        case .notBooked, .unverified:
+            DesignTokens.Color.secondaryText
+        }
+    }
+}
+
 struct CollapsedAnswerRow: View {
     var title: LocalizedStringResource
     var value: DisplayText

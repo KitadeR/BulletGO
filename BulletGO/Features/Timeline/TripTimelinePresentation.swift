@@ -141,6 +141,7 @@ nonisolated enum TimelineNextComposer {
 
 nonisolated enum TimelineRowKind: Hashable, Sendable {
     case leg(LegID)
+    case stay(StayID)
     case activity(ActivityID)
 }
 
@@ -173,6 +174,19 @@ nonisolated enum TimelineRowComposer {
                     isCurrent: trip.focusLegID == id,
                     destination: .legDetail(trip.id, id)
                 )
+            case .stay(let id):
+                guard let stay = trip.stays.first(where: { $0.id == id }) else {
+                    return nil
+                }
+                return TimelineRow(
+                    id: .stay(id),
+                    title: stay.place.value ?? "",
+                    subtitle: .verbatim(TripContentResolver.staySubtitle(stay)),
+                    visualKind: JourneyVisualProvider.kind(for: stay),
+                    isLeg: false,
+                    isCurrent: false,
+                    destination: .stayDetail(trip.id, id)
+                )
             case .activity(let id):
                 guard let activity = trip.activities.first(where: { $0.id == id }) else {
                     return nil
@@ -184,7 +198,7 @@ nonisolated enum TimelineRowComposer {
                     visualKind: JourneyVisualProvider.kind(for: activity),
                     isLeg: false,
                     isCurrent: false,
-                    destination: nil
+                    destination: .activityDetail(trip.id, id)
                 )
             }
         }
