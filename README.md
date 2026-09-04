@@ -2,7 +2,7 @@
 
 **BulletGO** is an iOS app that connects itinerary, reservations, luggage, and official rules — and shows **what the traveler needs to do next**, instead of dumping more information on them.
 
-**BulletGO** は、旅程・予約・荷物・公式ルールをつなぎ、情報を増やすのではなく **「次に何をすればいいか」** を旅行者に示す iOS アプリです。日本の新幹線旅を想定して設計し、現状はその縦スライスを中心に開発しています。
+**BulletGO** は、旅程・予約・荷物・公式ルールをつなぎ、情報を増やすのではなく **「次に何をすればいいか」** を旅行者に示す iOS アプリです。最初は日本の新幹線旅を想定して設計し、現状はその縦スライスを中心に開発しています。
 
 > **Status:** Work in progress  
 > **Latest code:** [`feature/working-trip`](https://github.com/KitadeR/BulletGO/tree/feature/working-trip)  
@@ -22,19 +22,27 @@
 
 ---
 
+
+
 ## Design Principles
 
-| 原則 | 内容 |
-|---|---|
-| **ルール判定は AI に任せない** | 旅程の自由入力抽出などに AI を使う一方、荷物可否などの判定は JSON Pack + Rule Engine で決定的に行う |
-| **Ask only when needed** | Leg Detail は Setup（必要な質問だけ）→ Cockpit（整理済み画面）。全 Leg で同じ質問をしない |
-| **Contextual Home** | 旅行フェーズ（出発前 / 旅中 / 終了後）に応じて Home の見せ方を変える |
+
+| 原則                       | 内容                                                               |
+| ------------------------ | ---------------------------------------------------------------- |
+| **ルール判定は AI に任せない**      | 旅程の自由入力抽出などに AI を使う一方、荷物可否などの判定は JSON Pack + Rule Engine で決定的に行う |
+| **Ask only when needed** | Leg Detail は Setup（必要な質問だけ）→ Cockpit（整理済み画面）。全 Leg で同じ質問をしない     |
+| **Contextual Home**      | 旅行フェーズ（出発前 / 旅中 / 終了後）に応じて Home の見せ方を変える                         |
+
 
 > Skipped（わからない）回答はセットアップを進めても **ready 扱いにしない** — 不確実さを完了したふりをしない。
 
 ---
 
+
+
 ## Current Status
+
+
 
 ### ✅ Implemented (`feature/working-trip`)
 
@@ -48,6 +56,8 @@
 - 英日 2 言語 UI（String Catalog）
 - Unit tests / UI tests
 
+
+
 ### 🚧 In progress / planned
 
 - Home / Trips / Cockpit の UI 磨き
@@ -58,6 +68,8 @@
 - 旅程抽出 Worker の本番接続（API key はリポジトリ外）
 
 ---
+
+
 
 ## Example Flow（新幹線 Leg）
 
@@ -72,6 +84,8 @@ Simulator では Reference trip（東京→京都…）から試せます。
 
 ---
 
+
+
 ## Tech Stack
 
 - Swift / SwiftUI / SwiftData
@@ -83,6 +97,8 @@ Simulator では Reference trip（東京→京都…）から試せます。
 
 ---
 
+
+
 ## Getting Started
 
 1. `git checkout feature/working-trip`
@@ -93,11 +109,15 @@ Simulator では Reference trip（東京→京都…）から試せます。
 
 ---
 
+
+
 ## Roadmap
 
 - **Phase 1** — 新幹線縦スライス（旅程 + Home + Leg + Guide）← **いまここ**
 - **Phase 2** — 予約証跡・追加 Policy・You タブ
 - **Phase 3** — 日本の交通・サービス利用を想定した拡張・本番 Worker 接続
+
+
 
 ## Screenshots
 
