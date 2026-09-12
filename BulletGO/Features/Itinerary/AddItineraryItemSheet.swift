@@ -5,6 +5,7 @@ struct AddItineraryItemSheet: View {
     @Environment(AppRouter.self) private var router
 
     let tripID: TripID
+    var initialDate: LocalDate? = nil
     @State private var kind: Kind = .transport
     @State private var origin = ""
     @State private var destination = ""
@@ -77,6 +78,17 @@ struct AddItineraryItemSheet: View {
             }
         }
         .accessibilityIdentifier(AccessibilityID.addItinerarySheet)
+        .onAppear {
+            applyInitialDate()
+        }
+    }
+
+    private func applyInitialDate() {
+        guard let initialDate else { return }
+        includeDate = true
+        if let value = initialDate.date(in: TimeZone.current) {
+            date = value
+        }
     }
 
     private var canSave: Bool {

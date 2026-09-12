@@ -153,6 +153,16 @@ nonisolated struct TimelineRow: Identifiable, Equatable, Sendable {
     var isLeg: Bool
     var isCurrent: Bool
     var destination: AppRoute?
+    var timeText: String? = nil
+}
+
+nonisolated struct TripsPreparationIndication: Equatable, Sendable {
+    var title: LocalizedStringResource
+    var destination: AppRoute?
+
+    static func == (lhs: TripsPreparationIndication, rhs: TripsPreparationIndication) -> Bool {
+        lhs.title.key == rhs.title.key && lhs.destination == rhs.destination
+    }
 }
 
 nonisolated enum TimelineRowComposer {
@@ -172,7 +182,8 @@ nonisolated enum TimelineRowComposer {
                     visualKind: JourneyVisualProvider.kind(for: leg),
                     isLeg: true,
                     isCurrent: trip.focusLegID == id,
-                    destination: .legDetail(trip.id, id)
+                    destination: .legDetail(trip.id, id),
+                    timeText: confirmedTimeText(leg.scheduledAt)
                 )
             case .stay(let id):
                 guard let stay = trip.stays.first(where: { $0.id == id }) else {
@@ -185,7 +196,8 @@ nonisolated enum TimelineRowComposer {
                     visualKind: JourneyVisualProvider.kind(for: stay),
                     isLeg: false,
                     isCurrent: false,
-                    destination: .stayDetail(trip.id, id)
+                    destination: .stayDetail(trip.id, id),
+                    timeText: confirmedTimeText(stay.checkIn)
                 )
             case .activity(let id):
                 guard let activity = trip.activities.first(where: { $0.id == id }) else {
@@ -198,9 +210,108 @@ nonisolated enum TimelineRowComposer {
                     visualKind: JourneyVisualProvider.kind(for: activity),
                     isLeg: false,
                     isCurrent: false,
-                    destination: .activityDetail(trip.id, id)
+                    destination: .activityDetail(trip.id, id),
+                    timeText: confirmedTimeText(activity.scheduledAt)
                 )
             }
+        }
+    }
+
+    private static func confirmedTimeText(_ slot: Slot<ScheduledMoment>?) -> String? {
+        guard slot?.status == .confirmed, let time = slot?.value?.time else {
+            return nil
+        }
+        return String(format: "%02d:%02d", time.hour, time.minute)
+    }
+}
+
+nonisolated enum TripsPreparationComposer {
+    static func indication(
+        for row: TimelineRow,
+        trip: Trip,
+        catalog: QuestionCatalog?
+    ) -> TripsPreparationIndication? {
+        guard case .leg(let legID) = row.id, let leg = trip.legs.first(where: { $0.id == legID }) else {
+            return nil
+        }
+        if let setup = setupIndication(leg: leg, trip: trip, catalog: catalog) {
+            return setup
+        }
+        if let task = taskIndication(legID: legID, trip: trip) {
+            return task
+        }
+        return readinessIndication(legID: legID, trip: trip)
+    }
+
+    private static func setupIndication(
+        leg: Leg,
+        trip: Trip,
+        catalog: QuestionCatalog?
+    ) -> TripsPreparationIndication? {
+        guard let catalog else {
+            return nil
+        }
+        var focused = trip
+        focused.currentContext.focus = .leg(leg.id)
+        switch GuidanceProgressEvaluator.evaluate(trip: focused, catalog: catalog) {
+        case .ready:
+            return nil
+        case .notStarted, .needsSetup, .paused:
+            return TripsPreparationIndication(
+                title: LocalizedStringResource(
+                    "Journey details still needed",
+                    comment: "Compact Trips indication when a leg still has setup questions."
+                ),
+                destination: .legDetail(trip.id, leg.id)
+            )
+        }
+    }
+
+    private static func taskIndication(legID: LegID, trip: Trip) -> TripsPreparationIndication? {
+        let snapshot = TaskDisplayPipeline.snapshot(for: trip)
+        let visibleIDs = snapshot.now + snapshot.next
+        guard let task = visibleIDs.compactMap({ id in trip.tasks.first { $0.id == id } }).first(where: { task in
+            if case .leg(let id) = task.scope {
+                return id == legID
+            }
+            return false
+        }) else {
+            return nil
+        }
+        let item = HomePrimaryActionComposer.routed(
+            TimelineNowItem(
+                id: .task(task.id),
+                kind: .task(task.id),
+                contentKey: task.contentKey,
+                content: TripContentResolver.task(contentKey: task.contentKey),
+                destination: .taskDetail(trip.id, task.id)
+            ),
+            trip: trip
+        )
+        return TripsPreparationIndication(title: item.content.title, destination: item.destination)
+    }
+
+    private static func readinessIndication(legID: LegID, trip: Trip) -> TripsPreparationIndication? {
+        let status = PreparationOverviewComposer.readinessStatus(for: .leg(legID), in: trip)
+        switch status {
+        case .actionRequired:
+            return TripsPreparationIndication(
+                title: LocalizedStringResource(
+                    "Action needed",
+                    comment: "Readiness status when a check needs action."
+                ),
+                destination: .legDetail(trip.id, legID)
+            )
+        case .needsDetail:
+            return TripsPreparationIndication(
+                title: LocalizedStringResource(
+                    "Detail needed",
+                    comment: "Readiness status when more information is required."
+                ),
+                destination: .legDetail(trip.id, legID)
+            )
+        case .booked, .notBooked, .unverified, .ready:
+            return nil
         }
     }
 }

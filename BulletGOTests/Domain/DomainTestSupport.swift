@@ -90,6 +90,57 @@ enum DomainTestSupport {
         return trip
     }
 
+    static func multiDayTrip() throws -> Trip {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: try LocalDate(year: 2026, month: 10, day: 1),
+            endDate: try LocalDate(year: 2026, month: 10, day: 8),
+            now: timestamp
+        )
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let morning = try ScheduledMoment(
+            date: oct1,
+            time: try LocalTime(hour: 10, minute: 3),
+            timeZoneIdentifier: timeZone
+        )
+        let checkIn = try ScheduledMoment(
+            date: oct2,
+            time: try LocalTime(hour: 16, minute: 0),
+            timeZoneIdentifier: timeZone
+        )
+        let leg = try ItineraryItemFactory.makeLeg(
+            origin: "Tokyo",
+            destination: "Kyoto",
+            scheduledAt: morning,
+            at: timestamp
+        )
+        var datedLeg = leg
+        datedLeg.transportMode = try Slot.confirmed(value: .shinkansen, source: .userStated, updatedAt: timestamp)
+        let temple = try ItineraryItemFactory.makeActivity(
+            title: "Kinkaku-ji",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(date: oct1, timeZoneIdentifier: timeZone),
+            at: timestamp
+        )
+        let stay = try ItineraryItemFactory.makeStay(place: "Kyoto Hotel", checkIn: checkIn, at: timestamp)
+        let sightseeing = try ItineraryItemFactory.makeActivity(
+            title: "Kyoto sightseeing",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(date: oct2, timeZoneIdentifier: timeZone),
+            at: timestamp
+        )
+        let unscheduled = try ItineraryItemFactory.makeActivity(title: "Souvenir shopping", place: "Osaka", at: timestamp)
+        trip = try TripMutationApplier.apply(.addLeg(datedLeg, atTimelineIndex: nil), to: trip, at: timestamp)
+        trip = try TripMutationApplier.apply(.addActivity(temple, atTimelineIndex: nil), to: trip, at: timestamp)
+        trip = try TripMutationApplier.apply(.addStay(stay, atTimelineIndex: nil), to: trip, at: timestamp)
+        trip = try TripMutationApplier.apply(.addActivity(sightseeing, atTimelineIndex: nil), to: trip, at: timestamp)
+        trip = try TripMutationApplier.apply(.addActivity(unscheduled, atTimelineIndex: nil), to: trip, at: timestamp)
+        trip.currentContext.focus = .leg(datedLeg.id)
+        try trip.validate()
+        return trip
+    }
+
     private static func leg(origin: String, destination: String, phase: LegPhase) throws -> Leg {
         Leg(
             id: LegID(),

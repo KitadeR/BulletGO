@@ -29,7 +29,7 @@ nonisolated enum ItineraryInputScope: Hashable, Sendable {
 nonisolated enum AppPresentation: Hashable, Identifiable, Sendable {
     case guidance(TripID, LegID, GuidanceEntry, GuidanceCompletion)
     case createTrip
-    case addItineraryItem(TripID)
+    case addItineraryItem(TripID, initialDate: LocalDate?)
     case itineraryTalk(TripID, ItineraryInputScope)
 
     var id: String {
@@ -38,8 +38,12 @@ nonisolated enum AppPresentation: Hashable, Identifiable, Sendable {
             "guidance-\(tripID.rawValue.uuidString)-\(legID.rawValue.uuidString)-\(entry)-\(completion)"
         case .createTrip:
             "create-trip"
-        case .addItineraryItem(let tripID):
-            "add-itinerary-\(tripID.rawValue.uuidString)"
+        case .addItineraryItem(let tripID, let initialDate):
+            if let initialDate {
+                "add-itinerary-\(tripID.rawValue.uuidString)-\(initialDate.displayString)"
+            } else {
+                "add-itinerary-\(tripID.rawValue.uuidString)"
+            }
         case .itineraryTalk(let tripID, let scope):
             "itinerary-talk-\(tripID.rawValue.uuidString)-\(scope)"
         }

@@ -189,6 +189,102 @@ enum PreviewTrips {
         }
     }()
 
+    static let multiDayNow: Date = {
+        do {
+            guard let value = try LocalDate(year: 2026, month: 10, day: 2)
+                .date(in: TripPhaseResolver.calendarTimeZone)
+            else {
+                preconditionFailure("Failed to make multi-day now")
+            }
+            return value
+        } catch {
+            preconditionFailure("Failed to make multi-day now: \(error)")
+        }
+    }()
+
+    static let multiDayEmptyDayNow: Date = {
+        do {
+            guard let value = try LocalDate(year: 2026, month: 10, day: 3)
+                .date(in: TripPhaseResolver.calendarTimeZone)
+            else {
+                preconditionFailure("Failed to make empty-day now")
+            }
+            return value
+        } catch {
+            preconditionFailure("Failed to make empty-day now: \(error)")
+        }
+    }()
+
+    static let multiDay: Trip = {
+        do {
+            return try makeMultiDayTrip()
+        } catch {
+            preconditionFailure("Failed to make multi-day preview trip: \(error)")
+        }
+    }()
+
+    static let multiDayInTrip: Trip = {
+        do {
+            var trip = try makeMultiDayTrip()
+            trip.currentContext.tripPhase = .inTrip
+            return trip
+        } catch {
+            preconditionFailure("Failed to make in-trip multi-day preview: \(error)")
+        }
+    }()
+
+    private static func makeMultiDayTrip() throws -> Trip {
+        let now = phaseClockNow
+        let timeZone = "Asia/Tokyo"
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: try LocalDate(year: 2026, month: 10, day: 1),
+            endDate: try LocalDate(year: 2026, month: 10, day: 8),
+            now: now
+        )
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let morning = try ScheduledMoment(
+            date: oct1,
+            time: try LocalTime(hour: 10, minute: 3),
+            timeZoneIdentifier: timeZone
+        )
+        let checkIn = try ScheduledMoment(
+            date: oct2,
+            time: try LocalTime(hour: 16, minute: 0),
+            timeZoneIdentifier: timeZone
+        )
+        var datedLeg = try ItineraryItemFactory.makeLeg(
+            origin: "Tokyo",
+            destination: "Kyoto",
+            scheduledAt: morning,
+            at: now
+        )
+        datedLeg.transportMode = try Slot.confirmed(value: .shinkansen, source: .userStated, updatedAt: now)
+        let temple = try ItineraryItemFactory.makeActivity(
+            title: "Kinkaku-ji",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(date: oct1, timeZoneIdentifier: timeZone),
+            at: now
+        )
+        let stay = try ItineraryItemFactory.makeStay(place: "Kyoto Hotel", checkIn: checkIn, at: now)
+        let sightseeing = try ItineraryItemFactory.makeActivity(
+            title: "Kyoto sightseeing",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(date: oct2, timeZoneIdentifier: timeZone),
+            at: now
+        )
+        let unscheduled = try ItineraryItemFactory.makeActivity(title: "Souvenir shopping", place: "Osaka", at: now)
+        trip = try TripMutationApplier.apply(.addLeg(datedLeg, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(.addActivity(temple, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(.addStay(stay, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(.addActivity(sightseeing, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(.addActivity(unscheduled, atTimelineIndex: nil), to: trip, at: now)
+        trip.currentContext.focus = .leg(datedLeg.id)
+        try trip.validate()
+        return trip
+    }
+
     private static func dated(_ base: Trip, startOffset: Int, endOffset: Int, phase: TripPhase) -> Trip {
         do {
             var trip = base

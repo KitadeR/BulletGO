@@ -48,8 +48,8 @@ struct AppRootView: View {
                 CreateTripSheet()
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
-            case .addItineraryItem(let tripID):
-                AddItineraryItemSheet(tripID: tripID)
+            case .addItineraryItem(let tripID, let initialDate):
+                AddItineraryItemSheet(tripID: tripID, initialDate: initialDate)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             case .itineraryTalk(let tripID, let scope):

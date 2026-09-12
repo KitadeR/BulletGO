@@ -59,6 +59,9 @@ enum AccessibilityID {
     static let stayDetail = "stay-detail"
     static let activityDetail = "activity-detail"
     static let talkAboutTrip = "talk-about-trip"
+    static let tripsDateSelector = "trips-date-selector"
+    static let tripsEmptyDay = "trips-empty-day"
+    static let tripsPreparation = "trips-leg-preparation"
     static let homeTab = "tab-home"
     static let tripsTab = "tab-trips"
     static let youTab = "tab-you"
@@ -92,6 +95,18 @@ enum AccessibilityID {
 
     static func timelineActivity(_ id: ActivityID) -> String {
         "timeline-activity-\(id.rawValue.uuidString)"
+    }
+
+    static func tripsDateOption(_ date: LocalDate) -> String {
+        "trips-date-\(date.year)-\(date.month)-\(date.day)"
+    }
+
+    static func tripsDaySection(_ date: LocalDate) -> String {
+        "itinerary-day-\(date.year)-\(date.month)-\(date.day)"
+    }
+
+    static func tripsDayAdd(_ date: LocalDate) -> String {
+        "trips-day-add-\(date.year)-\(date.month)-\(date.day)"
     }
 
     static func nowTask(contentKey: String) -> String {

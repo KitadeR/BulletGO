@@ -4,15 +4,16 @@ import Testing
 
 @MainActor
 struct ItineraryPresentationTests {
-    @Test func undatedTripKeepsASingleJourneySection() throws {
+    @Test func undatedTripKeepsASingleUnscheduledSection() throws {
         let trip = try DomainTestSupport.sampleTrip()
         let sections = ItineraryDayComposer.sections(for: trip)
         #expect(sections.count == 1)
+        #expect(sections[0].id == .unscheduled)
         #expect(sections[0].rows.count == 6)
         #expect(sections[0].rows[0].title == "Tokyo → Kyoto")
     }
 
-    @Test func datedItemsSplitUnscheduledAndDays() throws {
+    @Test func datedItemsKeepUnscheduledLast() throws {
         var trip = try EmptyTripFactory.make(
             name: "Japan trip",
             startDate: LocalDate(year: 2026, month: 10, day: 1),
@@ -27,9 +28,224 @@ struct ItineraryPresentationTests {
         trip = try TripMutationApplier.apply(.addActivity(activity, atTimelineIndex: nil), to: trip, at: now)
         let sections = ItineraryDayComposer.sections(for: trip)
         let october2 = try LocalDate(year: 2026, month: 10, day: 2)
-        #expect(sections[0].id == .unscheduled)
-        #expect(sections[0].rows.contains { $0.title == "USJ" })
+        #expect(sections.last?.id == .unscheduled)
+        #expect(sections.last?.rows.contains { $0.title == "USJ" } == true)
+        #expect(sections.first?.id == .day(october2))
         #expect(sections.contains { $0.id == .day(october2) })
+    }
+
+    @Test func dateOptionsUseFullRangeWhenStartAndEndExist() throws {
+        let trip = try DomainTestSupport.multiDayTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let oct8 = try LocalDate(year: 2026, month: 10, day: 8)
+        let options = ItineraryDayComposer.dateOptions(for: trip)
+        #expect(options.first == oct1)
+        #expect(options.last == oct8)
+        #expect(options.count == 8)
+        let snapshot = ItineraryDayComposer.snapshot(for: trip, now: EngineTestSupport.now)
+        #expect(snapshot.dateOptions.count == 8)
+        #expect(snapshot.dateOptions.filter(\.hasItems).map(\.date) == [oct1, oct2])
+    }
+
+    @Test func dateOptionsFallBackToDatedItemsWhenRangeIsMissing() throws {
+        var trip = try DomainTestSupport.multiDayTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        trip.startDate = try Slot.unknown(updatedAt: EngineTestSupport.now)
+        trip.endDate = try Slot.unknown(updatedAt: EngineTestSupport.now)
+        #expect(ItineraryDayComposer.dateOptions(for: trip) == [oct1, oct2])
+    }
+
+    @Test func dateOptionsAreEmptyWhenNoRangeAndNoDatedItemsExist() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        trip.startDate = try Slot.unknown(updatedAt: EngineTestSupport.now)
+        trip.endDate = try Slot.unknown(updatedAt: EngineTestSupport.now)
+        let activity = try ItineraryItemFactory.makeActivity(title: "USJ", place: "Osaka", at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.addActivity(activity, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        #expect(ItineraryDayComposer.dateOptions(for: trip).isEmpty)
+        #expect(ItineraryDayComposer.initialDate(for: trip, now: EngineTestSupport.now) == nil)
+        let sections = ItineraryDayComposer.sections(for: trip)
+        #expect(sections.map(\.id) == [.unscheduled])
+    }
+
+    @Test func initialDateUsesPhaseAndAllowsEmptyToday() throws {
+        let trip = try DomainTestSupport.multiDayTrip()
+        let timeZone = TripPhaseResolver.calendarTimeZone
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let oct9 = try LocalDate(year: 2026, month: 10, day: 9)
+        #expect(ItineraryDayComposer.initialDate(for: trip, now: EngineTestSupport.now) == oct1)
+
+        let inTripNow = try #require(oct2.date(in: timeZone))
+        #expect(ItineraryDayComposer.initialDate(for: trip, now: inTripNow) == oct2)
+
+        let emptyTodayNow = try #require(oct3.date(in: timeZone))
+        #expect(ItineraryDayComposer.initialDate(for: trip, now: emptyTodayNow) == oct3)
+
+        let finishedNow = try #require(oct9.date(in: timeZone))
+        #expect(ItineraryDayComposer.initialDate(for: trip, now: finishedNow) == oct2)
+    }
+
+    @Test func assignmentUsesScheduledAtAndCheckInWithoutReplicatingStay() throws {
+        let trip = try DomainTestSupport.multiDayTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let sections = ItineraryDayComposer.sections(for: trip)
+        let first = try #require(sections.first { $0.id == .day(oct1) })
+        let second = try #require(sections.first { $0.id == .day(oct2) })
+        #expect(first.rows.map(\.title) == ["Tokyo → Kyoto", "Kinkaku-ji"])
+        #expect(second.rows.map(\.title) == ["Kyoto Hotel", "Kyoto sightseeing"])
+        #expect(first.rows.contains { if case .stay = $0.id { return true }; return false } == false)
+        #expect(ItineraryDayComposer.date(for: trip.timeline[0], in: trip) == oct1)
+        #expect(ItineraryDayComposer.date(for: trip.timeline[2], in: trip) == oct2)
+    }
+
+    @Test func sameDayKeepsTimelineOrderInsteadOfClockOrder() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let untimed = try EngineTestSupport.moment(oct1)
+        let timed = try ScheduledMoment(
+            date: oct1,
+            time: try LocalTime(hour: 10, minute: 3),
+            timeZoneIdentifier: DomainTestSupport.timeZone
+        )
+        let activity = try ItineraryItemFactory.makeActivity(
+            title: "Kinkaku-ji",
+            place: "Kyoto",
+            scheduledAt: untimed,
+            at: EngineTestSupport.now
+        )
+        let leg = try ItineraryItemFactory.makeLeg(
+            origin: "Tokyo",
+            destination: "Kyoto",
+            scheduledAt: timed,
+            at: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.addActivity(activity, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.addLeg(leg, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        let section = try #require(ItineraryDayComposer.sections(for: trip).first { $0.id == .day(oct1) })
+        #expect(section.rows.map(\.title) == ["Kinkaku-ji", "Tokyo → Kyoto"])
+        #expect(section.rows[0].timeText == nil)
+        #expect(section.rows[1].timeText == "10:03")
+    }
+
+    @Test func emptyDayAppearsOnlyWhenSelectedAndInRange() throws {
+        let trip = try DomainTestSupport.multiDayTrip()
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let oct9 = try LocalDate(year: 2026, month: 10, day: 9)
+        let populated = ItineraryDayComposer.sections(for: trip)
+        #expect(populated.contains { $0.id == .day(oct3) } == false)
+        let inserted = ItineraryDayComposer.sections(for: trip, insertingEmptyDay: oct3)
+        #expect(inserted.contains { $0.id == .day(oct3) && $0.rows.isEmpty })
+        #expect(inserted.last?.id == .unscheduled)
+        let ignored = ItineraryDayComposer.sections(for: trip, insertingEmptyDay: oct9)
+        #expect(ignored.contains { $0.id == .day(oct9) } == false)
+    }
+
+    @Test func preparationUsesRealStateAndIgnoresUnverifiedOnly() throws {
+        var trip = try DomainTestSupport.multiDayTrip()
+        let rows = TimelineRowComposer.rows(for: trip)
+        let legRow = try #require(rows.first { if case .leg = $0.id { return true }; return false })
+        let stayRow = try #require(rows.first { if case .stay = $0.id { return true }; return false })
+        let activityRow = try #require(rows.first { if case .activity = $0.id { return true }; return false })
+
+        #expect(TripsPreparationComposer.indication(for: legRow, trip: trip, catalog: nil) == nil)
+        trip.readinessChecks = [
+            ReadinessCheck(
+                id: ReadinessCheckID(),
+                checkType: .ticketIssuance,
+                scope: .leg(trip.legs[0].id),
+                relatedPolicyID: nil,
+                status: .unverified,
+                documentSignal: .unverified,
+                detailKey: nil,
+                evidenceSources: [],
+                evaluatedAt: EngineTestSupport.now,
+                stale: false
+            ),
+        ]
+        #expect(TripsPreparationComposer.indication(for: legRow, trip: trip, catalog: nil) == nil)
+
+        trip.readinessChecks[0].status = .actionRequired
+        #expect(TripsPreparationComposer.indication(for: legRow, trip: trip, catalog: nil)?.title.key == "Action needed")
+
+        trip.readinessChecks = [
+            ReadinessCheck(
+                id: ReadinessCheckID(),
+                checkType: .entryTicket,
+                scope: .stay(trip.stays[0].id),
+                relatedPolicyID: nil,
+                status: .actionRequired,
+                documentSignal: .unverified,
+                detailKey: nil,
+                evidenceSources: [],
+                evaluatedAt: EngineTestSupport.now,
+                stale: false
+            ),
+        ]
+        #expect(TripsPreparationComposer.indication(for: stayRow, trip: trip, catalog: nil) == nil)
+        #expect(TripsPreparationComposer.indication(for: activityRow, trip: trip, catalog: nil) == nil)
+
+        trip.tasks = [
+            TripTask(
+                id: TaskID(),
+                contentKey: "one",
+                type: .check,
+                state: .notStarted,
+                importance: .required,
+                relevantPhases: [.planning],
+                deadline: nil,
+                dependencies: [],
+                evidence: .none,
+                scope: .leg(trip.legs[0].id),
+                relatedActionID: nil,
+                relatedPolicyID: nil,
+                relatedGuideID: nil,
+                completionCondition: .userConfirmsDone
+            ),
+        ]
+        trip.readinessChecks = []
+        #expect(TripsPreparationComposer.indication(for: legRow, trip: trip, catalog: nil) != nil)
+
+        let catalog = try EngineTestSupport.catalog()
+        #expect(
+            TripsPreparationComposer.indication(for: legRow, trip: trip, catalog: catalog)?.title.key
+                == "Journey details still needed"
+        )
+    }
+
+    @Test func dayLocalMoveMapsOntoTimelineWithoutChangingDates() throws {
+        let trip = try DomainTestSupport.multiDayTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let section = try #require(ItineraryDayComposer.sections(for: trip).first { $0.id == .day(oct1) })
+        let activity = section.rows[1]
+        let destination = try #require(ItineraryDayComposer.moveDestination(of: activity.id, offset: -1, in: trip))
+        let originalStayDate = trip.stays[0].checkIn
+        let originalLegDate = trip.legs[0].scheduledAt
+        let updated = try TripMutationApplier.apply(
+            .moveTimelineItem(from: destination.from, to: destination.to),
+            to: trip,
+            at: EngineTestSupport.now
+        )
+        #expect(updated.stays[0].checkIn == originalStayDate)
+        #expect(updated.legs[0].scheduledAt == originalLegDate)
+        let moved = try #require(ItineraryDayComposer.sections(for: updated).first { $0.id == .day(oct1) })
+        #expect(moved.rows.first?.id == activity.id)
+        #expect(ItineraryDayComposer.moveDestination(of: section.rows[0].id, offset: 1, in: trip) != nil)
+        #expect(ItineraryDayComposer.moveDestination(of: section.rows[1].id, offset: 1, in: trip) == nil)
+        #expect(ItineraryDayComposer.moveDestination(of: section.rows[0].id, offset: -1, in: trip) == nil)
     }
 }
 

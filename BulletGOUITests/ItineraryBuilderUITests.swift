@@ -63,13 +63,70 @@ final class ItineraryBuilderUITests: XCTestCase {
     }
 
     @MainActor
+    func testDateSelectorJumpShowsEmptyDayAndAddsWithDateContext() throws {
+        let app = XCUIApplication()
+        if app.state != .notRunning {
+            app.terminate()
+        }
+        app.launchArguments = ["-ui-testing"]
+        app.launch()
+
+        XCTAssertTrue(
+            app.tabBars.firstMatch.waitForExistence(timeout: 15)
+                || element(app, "contextual-home").waitForExistence(timeout: 8)
+                || element(app, "tab-home").waitForExistence(timeout: 5),
+            "App did not show the main tabs"
+        )
+        openTripsTab(in: app)
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "trips-date-selector").waitForExistence(timeout: 8))
+        XCTAssertTrue(element(app, "timeline-leg-A1E0B001-0000-4000-8000-000000000011").waitForExistence(timeout: 8))
+
+        let oct3 = element(app, "trips-date-2026-10-3")
+        if !oct3.waitForExistence(timeout: 2) || !oct3.isHittable {
+            element(app, "trips-date-selector").swipeLeft()
+        }
+        tapID(app, "trips-date-2026-10-3")
+        XCTAssertTrue(element(app, "trips-day-add-2026-10-3").waitForExistence(timeout: 8), "Empty Oct 3 add control missing")
+        XCTAssertTrue(
+            element(app, "trips-empty-day").waitForExistence(timeout: 4)
+                || app.staticTexts["Nothing planned yet"].exists
+                || app.staticTexts["まだ予定はありません"].exists
+                || element(app, "itinerary-day-2026-10-3").exists,
+            "Empty Oct 3 day did not appear"
+        )
+
+        tapID(app, "trips-day-add-2026-10-3")
+        XCTAssertTrue(element(app, "add-itinerary-sheet").waitForExistence(timeout: 5))
+        let origin = app.textFields["add-itinerary-origin"].firstMatch
+        let destination = app.textFields["add-itinerary-destination"].firstMatch
+        XCTAssertTrue(origin.waitForExistence(timeout: 5))
+        focusAndType(origin, "Nara")
+        focusAndType(destination, "Osaka")
+        dismissKeyboard(in: app)
+        tapID(app, "add-itinerary-save")
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
+        XCTAssertTrue(element(app, "itinerary-day-2026-10-3").waitForExistence(timeout: 8))
+        XCTAssertFalse(element(app, "trips-empty-day").waitForExistence(timeout: 2))
+        XCTAssertTrue(
+            app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Nara'")).firstMatch
+                .waitForExistence(timeout: 8)
+        )
+        XCTAssertTrue(element(app, "add-itinerary-button").exists)
+        XCTAssertTrue(element(app, "talk-about-trip").exists)
+    }
+
+    @MainActor
     private func openTripsTab(in app: XCUIApplication) {
-        let tab = app.tabBars.buttons["Trips"]
-        if tab.waitForExistence(timeout: 8) {
-            tab.tap()
+        if app.tabBars.buttons["Trips"].waitForExistence(timeout: 8) {
+            app.tabBars.buttons["Trips"].tap()
             return
         }
-        tapID(app, "tab-trips")
+        if app.tabBars.buttons["旅程"].waitForExistence(timeout: 2) {
+            app.tabBars.buttons["旅程"].tap()
+            return
+        }
+        tapID(app, "tab-trips", timeout: 15)
     }
 
     @MainActor
