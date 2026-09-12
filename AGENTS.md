@@ -6,35 +6,23 @@
 
 ## Product Context
 
-- BulletGOは ToDo /「今すぐやること」アプリではない。旅行全体を理解し、ユーザーが「今は何を気にすればいいか」を整理する（詳細: Knowledge `開発方針_本番基盤優先_2026-09-02`）。
-- デモ用プロトタイプ・ハードコード専用データ・捨てるスローワウェイは作らない。未実装機能は導線 + Coming Soon（本番ルーティングは本物）。
-- BulletGOの仕様・プロダクト判断の正は Obsidian `Projects/BulletGO/`（Knowledge）側にある。
-- BulletGOの機能実装や仕様に関わる変更をする前に、まず `Projects/BulletGO/Hub.md` を読む。
-- Hubが示す最新の `現在地_*.md` を現在の正として読む。
-- 実装の何を本物/骨格/準備中にするかは `実装振り分け_2026-09-02.md` を参照。
-- その後、今回のタスクに直接関係する詳細設計だけ追加で読む（例: `参照シナリオ_縦スライス1本_2026-09-02.md`）。
-- Obsidian側の全資料を毎回無条件に読まない。
-- Knowledge が利用できない場合は、仕様を推測して実装を進めず、ユーザーに確認する。
-- 作業再開時のテンプレは Knowledge `開発運用_GitHub_2026-09-02.md` を参照。
-- 実装の前に Plan でブロック設計を固め、Plan 成果物（引き継ぎ文）を Agent に渡してから実装する（詳細: 同ノート「Cursor — モデルとモード」）。
+- BulletGOは訪日旅行者のための Inbound Navigation OS。旅行全体を理解し、ユーザーが「今は何を気にすればいいか」を整理するプロダクトである。
+- BulletGOは ToDo /「今すぐやること」アプリではない。必要な手順だけを、必要なタイミングで示す。
+- ハブ型のプロダクトとして、予約・決済を代行せず、適切なサービスや公式手順へ案内する。
+- 既存Architectureを守る。旅程（`Trip` / `Leg` / `Stay` / `Activity`）から Trip State、Policy、Action、Task、文脈に応じた表示へ至る流れを維持する。ルールの判定はコード、AIは解釈・抽出に限定する。
+- デモ用プロトタイプ・ハードコード専用データ・捨てるスローワウェイは作らない。未実装機能は、仕様に沿った本物の導線 + 文脈付き Coming Soon とする。
 
-## Cursor Mode and Model
+## Knowledge Is the Source of Truth
 
-モデル選定の正は Knowledge `開発運用_GitHub_2026-09-02.md`（「Cursor — モデルとモード」）。要約:
-
-- **Plan** — GPT-5.6 Sol High（重要: Sol Max）— ブロック設計・Agent 引き継ぎ文
-- **Agent** — Grok 4.6 High（重要: XHigh; UI は Composer 2.5 も試す）— Swift 実装
-- **Ask** — Grok 4.6 Medium/High（重要: Sol High）— 相談・理解
-- **Debug** — Grok High → XHigh / Fable（Ask→Agent の後）
-- **小修正** — Composer 2.5
-
-## Next Step Recommendation
-
-るわさんが「続きしたい」「〇〇やりたい」「次何する？」等、**次の作業を示す・相談する**返答のときは、**最後に1行**でおすすめの Cursor **モード + モデル**を案内する。
-
-形式例: `次のおすすめ: 🧠 Plan モード · GPT-5.6 Sol High（ブロック2のドメイン設計）`
-
-Knowledge のブロック別おすすめと整合させる。Plan 未了で実装に入る場合は Plan を先に勧める。
+- Knowledge `Projects/BulletGO/`（Obsidian Vault 内。Vault の物理パスは開発者環境ごとに異なる）は、BulletGOの仕様・プロダクト判断の正である。Obsidian MCPの利用を前提にせず、直接ファイルから読む。
+- 機能実装や仕様に関わる変更の前に、原則として次の順で確認する。
+  1. `Projects/BulletGO/Hub.md`
+  2. Hubが現在の正として指定する最新の `現在地_*.md`
+  3. `Projects/BulletGO/実装振り分け_2026-09-02.md`
+  4. タスクに直接関係する `UIUX方針_*.md` や設計資料
+- 日付付きファイル名をこの指示に固定しない。常にHubが指定する現在の正を優先する。
+- Knowledge側の全資料を毎回無条件に読まない。必須の入口資料の後は、タスクに関係する詳細設計だけを読む。
+- Knowledgeが利用できない、または必要な仕様判断を解決できない場合は、仕様を推測して実装せずユーザーに確認する。
 
 ## Source of Truth
 
@@ -53,6 +41,8 @@ Knowledge のブロック別おすすめと整合させる。Plan 未了で実�
 - 影響するモデル・状態
 - 変更予定ファイル
 
+- 既存のArchitecture、命名、データフローを尊重する。実装の都合だけでアーキテクチャや確定仕様を変えない。
+
 ## Knowledge Updates
 
 - Knowledge（`Projects/BulletGO/`）はプロダクト仕様・判断履歴の長期記憶として扱う。
@@ -61,18 +51,24 @@ Knowledge のブロック別おすすめと整合させる。Plan 未了で実�
 - ユーザーが承認した場合のみ、Knowledge側の該当ファイルを更新する。
 - 実装上の都合だけを理由に、確定済みの仕様を黙って変更しない。
 
+## Git Safety
+
+- 作業前に現在のbranchとworking treeを確認する。`main` が最新実装とは限らない。
+- 既存の未コミット変更を保持し、無関係なファイルを上書き・破棄・整形しない。
+- ユーザーの明示的な指示なしにbranch作成、merge、pushを行わない。
+
 ## Xcode Tooling
 
-- Apple Xcode MCP は、Apple Documentation の確認、SwiftUI Preview、Xcode Issues / IDE context の確認に使用する。
-- XcodeBuildMCP は、Build & Run、Simulator、Screenshot、UI Automation、Debugging に使用する。
-- XcodeBuildMCPを使う場合は、既存の XcodeBuildMCP Skill の指示を先に確認する。
-- 同じ目的で複数のツールを無駄に重複実行しない。
+- `.xcodebuildmcp/config.yaml` の既存設定を優先する。想定する既定値は Project `BulletGO.xcodeproj`、Scheme `BulletGO`、Simulator `iPhone 17 Pro Max`。
+- XcodeBuildMCPは Build / Run / Test / Simulator / Screenshot / UI Automation / Debugging に使用可能。利用環境に対応するスキルや手順がある場合は、ツール呼び出し前に従う。
+- 必要に応じて通常の `xcodebuild` も使用できる。
 - Apple APIやSDKの仕様確認が必要な場合は、推測よりApple公式情報を優先する。
 
 ## Verification
 
 - Apple APIについて不確かな場合は推測せずApple Documentationを確認する。
-- 実装後はXcode/XcodeBuildMCPを使ってBuildを確認する。
+- 実装後はXcodeBuildMCPまたは `xcodebuild` を使ってBuildを確認する。
 - Build errorがある状態を完了としない。
 - UI変更ではSwiftUI PreviewまたはSimulatorで確認する。
-- 必要に応じてUI AutomationやTestを使用する。
+- 変更に関係するTest・検証を行ってから完了とする。最小限でも意味のある検証範囲を選び、実行しなかった検証は明記する。
+- 検証でエラーが出た場合、依頼されていない修正を行う前に、エラー内容・推定原因・影響するファイルを報告する。
