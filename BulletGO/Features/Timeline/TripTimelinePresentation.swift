@@ -145,6 +145,13 @@ nonisolated enum TimelineRowKind: Hashable, Sendable {
     case activity(ActivityID)
 }
 
+/// Timing Gutter 用の表示情報。Card（What）ではなく Gutter（When）の正。
+/// V1 は exact / untimed のみ。daypart / window は Domain 未整備のため導出しない。
+nonisolated enum TripsTimingGutterDisplay: Equatable, Sendable {
+    case none
+    case exact(String)
+}
+
 nonisolated struct TimelineRow: Identifiable, Equatable, Sendable {
     var id: TimelineRowKind
     var title: String
@@ -153,7 +160,15 @@ nonisolated struct TimelineRow: Identifiable, Equatable, Sendable {
     var isLeg: Bool
     var isCurrent: Bool
     var destination: AppRoute?
-    var timeText: String? = nil
+    var gutterDisplay: TripsTimingGutterDisplay = .none
+
+    /// Temporary card compatibility. Step 3 removes this after the gutter owns When.
+    var timeText: String? {
+        guard case .exact(let text) = gutterDisplay else {
+            return nil
+        }
+        return text
+    }
 }
 
 nonisolated struct TripsPreparationIndication: Equatable, Sendable {
@@ -183,7 +198,7 @@ nonisolated enum TimelineRowComposer {
                     isLeg: true,
                     isCurrent: trip.focusLegID == id,
                     destination: .legDetail(trip.id, id),
-                    timeText: confirmedTimeText(leg.scheduledAt)
+                    gutterDisplay: timingGutterDisplay(leg.scheduledAt)
                 )
             case .stay(let id):
                 guard let stay = trip.stays.first(where: { $0.id == id }) else {
@@ -197,7 +212,7 @@ nonisolated enum TimelineRowComposer {
                     isLeg: false,
                     isCurrent: false,
                     destination: .stayDetail(trip.id, id),
-                    timeText: confirmedTimeText(stay.checkIn)
+                    gutterDisplay: timingGutterDisplay(stay.checkIn)
                 )
             case .activity(let id):
                 guard let activity = trip.activities.first(where: { $0.id == id }) else {
@@ -211,17 +226,24 @@ nonisolated enum TimelineRowComposer {
                     isLeg: false,
                     isCurrent: false,
                     destination: .activityDetail(trip.id, id),
-                    timeText: confirmedTimeText(activity.scheduledAt)
+                    gutterDisplay: timingGutterDisplay(activity.scheduledAt)
                 )
             }
         }
     }
 
-    private static func confirmedTimeText(_ slot: Slot<ScheduledMoment>?) -> String? {
+    /// V1: confirmed clock time only. Date-only, unknown, inferred, skipped, and
+    /// unconfirmed slots stay `.none`. Daypart / window strings are not inferred.
+    /// Current Stay rows are check-in day only (`ItineraryDayComposer.date`);
+    /// middle-day Stay presentations do not exist yet, so this does not inspect
+    /// a presentation role. Adding that role is a later Presentation change.
+    private static func timingGutterDisplay(
+        _ slot: Slot<ScheduledMoment>?
+    ) -> TripsTimingGutterDisplay {
         guard slot?.status == .confirmed, let time = slot?.value?.time else {
-            return nil
+            return .none
         }
-        return String(format: "%02d:%02d", time.hour, time.minute)
+        return .exact(String(format: "%02d:%02d", time.hour, time.minute))
     }
 }
 

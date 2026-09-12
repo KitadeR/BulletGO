@@ -137,8 +137,101 @@ struct ItineraryPresentationTests {
         trip = try TripMutationApplier.apply(.addLeg(leg, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
         let section = try #require(ItineraryDayComposer.sections(for: trip).first { $0.id == .day(oct1) })
         #expect(section.rows.map(\.title) == ["Kinkaku-ji", "Tokyo → Kyoto"])
+        #expect(section.rows[0].gutterDisplay == .none)
         #expect(section.rows[0].timeText == nil)
+        #expect(section.rows[1].gutterDisplay == .exact("10:03"))
         #expect(section.rows[1].timeText == "10:03")
+    }
+
+    @Test func timingGutterUsesExactClockTimeAndLeavesUntimedBlank() throws {
+        let trip = try DomainTestSupport.multiDayTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let rows = TimelineRowComposer.rows(for: trip)
+        let sections = ItineraryDayComposer.sections(for: trip)
+
+        let leg = try #require(rows.first { $0.title == "Tokyo → Kyoto" })
+        #expect(leg.gutterDisplay == .exact("10:03"))
+        #expect(leg.timeText == "10:03")
+
+        let dateOnlyActivity = try #require(rows.first { $0.title == "Kinkaku-ji" })
+        #expect(dateOnlyActivity.gutterDisplay == .none)
+        #expect(dateOnlyActivity.timeText == nil)
+
+        let checkInStay = try #require(rows.first { $0.title == "Kyoto Hotel" })
+        #expect(checkInStay.gutterDisplay == .exact("16:00"))
+        #expect(checkInStay.timeText == "16:00")
+
+        let checkInDay = try #require(sections.first { $0.id == .day(oct2) })
+        #expect(checkInDay.rows.contains { $0.id == checkInStay.id })
+        #expect(sections.contains { $0.id == .day(oct1) && $0.rows.contains { $0.id == checkInStay.id } } == false)
+        #expect(sections.contains { $0.id == .day(oct3) } == false)
+    }
+
+    @Test func timingGutterMapsConfirmedActivityTimeAndLeavesUnknownBlank() throws {
+        var trip = try DomainTestSupport.multiDayTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let tea = try ItineraryItemFactory.makeActivity(
+            title: "Tea ceremony",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(
+                date: oct1,
+                time: try LocalTime(hour: 14, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            at: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.addActivity(tea, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+
+        let rows = TimelineRowComposer.rows(for: trip)
+        let teaRow = try #require(rows.first { $0.title == "Tea ceremony" })
+        #expect(teaRow.gutterDisplay == .exact("14:00"))
+        #expect(teaRow.timeText == "14:00")
+
+        let unknownTrip = try DomainTestSupport.sampleTrip()
+        let unknownRows = TimelineRowComposer.rows(for: unknownTrip)
+        #expect(unknownRows.allSatisfy { $0.gutterDisplay == .none })
+        #expect(unknownRows.allSatisfy { $0.timeText == nil })
+    }
+
+    @Test func timingGutterLeavesDateOnlyStayAndUnconfirmedClockTimeBlank() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let dateOnlyStay = try ItineraryItemFactory.makeStay(
+            place: "Nara Inn",
+            checkIn: try EngineTestSupport.moment(oct2),
+            at: EngineTestSupport.now
+        )
+        var inferredLeg = try ItineraryItemFactory.makeLeg(
+            origin: "Kyoto",
+            destination: "Nara",
+            at: EngineTestSupport.now
+        )
+        inferredLeg.scheduledAt = try Slot.inferred(
+            value: try ScheduledMoment(
+                date: oct2,
+                time: try LocalTime(hour: 9, minute: 30),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            updatedAt: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.addStay(dateOnlyStay, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.addLeg(inferredLeg, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+
+        let rows = TimelineRowComposer.rows(for: trip)
+        let stayRow = try #require(rows.first { $0.title == "Nara Inn" })
+        #expect(stayRow.gutterDisplay == .none)
+        #expect(stayRow.timeText == nil)
+
+        let inferredRow = try #require(rows.first { $0.title == "Kyoto → Nara" })
+        #expect(inferredRow.gutterDisplay == .none)
+        #expect(inferredRow.timeText == nil)
     }
 
     @Test func emptyDayAppearsOnlyWhenSelectedAndInRange() throws {
