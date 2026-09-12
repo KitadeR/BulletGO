@@ -76,7 +76,12 @@ struct TripsScreen: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
                         ForEach(snapshot.sections) { section in
-                            TripsDaySection(section: section, locale: locale)
+                            TripsDaySection(
+                                section: section,
+                                trip: trip,
+                                catalog: session.catalog,
+                                locale: locale
+                            )
                                 .id(ItineraryDayComposer.scrollAnchor(for: section))
                         }
                     }
@@ -167,6 +172,10 @@ enum TripsV2PreviewData {
                 time: try LocalTime(hour: 16, minute: 0),
                 timeZoneIdentifier: "Asia/Tokyo"
             ),
+            checkOut: try ScheduledMoment(
+                date: try LocalDate(year: 2026, month: 10, day: 5),
+                timeZoneIdentifier: "Asia/Tokyo"
+            ),
             at: now
         )
         let fushimi = try ItineraryItemFactory.makeActivity(
@@ -181,7 +190,7 @@ enum TripsV2PreviewData {
             scheduledAt: try ScheduledMoment(date: oct3, timeZoneIdentifier: "Asia/Tokyo"),
             at: now
         )
-        let tea = try ItineraryItemFactory.makeActivity(
+        var tea = try ItineraryItemFactory.makeActivity(
             title: "茶道体験",
             place: "京都",
             scheduledAt: try ScheduledMoment(
@@ -191,7 +200,13 @@ enum TripsV2PreviewData {
             ),
             at: now
         )
+        tea.reservation.status = try Slot.confirmed(value: .booked, source: .userStated, updatedAt: now)
         trip = try TripMutationApplier.apply(.addLeg(leg, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(
+            .setTransportMode(leg.id, .shinkansen),
+            to: trip,
+            at: now
+        )
         trip = try TripMutationApplier.apply(.addActivity(market, atTimelineIndex: nil), to: trip, at: now)
         trip = try TripMutationApplier.apply(.addStay(stay, atTimelineIndex: nil), to: trip, at: now)
         trip = try TripMutationApplier.apply(.addActivity(fushimi, atTimelineIndex: nil), to: trip, at: now)

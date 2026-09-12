@@ -30,40 +30,10 @@ struct TripsTimelineGuide: View {
     }
 }
 
-struct TripsPlaceholderRow: View {
-    var row: TimelineRow
-
-    var body: some View {
-        HStack(alignment: .top, spacing: TripsV2Style.cardGap) {
-            TripsTimingGutter(display: row.gutterDisplay)
-            Text(verbatim: row.title)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(DesignTokens.Color.primaryText)
-                .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
-                .padding(14)
-                .background(
-                    DesignTokens.Color.elevated,
-                    in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-                )
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(rowIdentifier)
-    }
-
-    private var rowIdentifier: String {
-        switch row.id {
-        case .leg(let id):
-            AccessibilityID.timelineLeg(id)
-        case .stay(let id):
-            AccessibilityID.timelineStay(id)
-        case .activity(let id):
-            AccessibilityID.timelineActivity(id)
-        }
-    }
-}
-
 struct TripsDaySection: View {
     var section: ItinerarySection
+    var trip: Trip
+    var catalog: QuestionCatalog?
     var locale: Locale
 
     var body: some View {
@@ -87,9 +57,14 @@ struct TripsDaySection: View {
                     .padding(.horizontal, TripsV2Style.screenPadding)
                     .accessibilityIdentifier(AccessibilityID.tripsEmptyDay)
             } else {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: TripsV2Style.rowSpacing) {
                     ForEach(section.rows) { row in
-                        TripsPlaceholderRow(row: row)
+                        TripsTimelineItemRow(
+                            row: row,
+                            trip: trip,
+                            catalog: catalog,
+                            locale: locale
+                        )
                     }
                 }
                 .padding(.horizontal, TripsV2Style.screenPadding)

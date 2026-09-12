@@ -234,6 +234,134 @@ struct ItineraryPresentationTests {
         #expect(inferredRow.timeText == nil)
     }
 
+    @Test func tripsV2LegCardShowsConfirmedTransportAndOmitsInventedTrainMeta() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 2),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        var leg = try ItineraryItemFactory.makeLeg(
+            origin: "Tokyo",
+            destination: "Kyoto",
+            scheduledAt: try ScheduledMoment(
+                date: oct2,
+                time: try LocalTime(hour: 10, minute: 3),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            at: EngineTestSupport.now
+        )
+        leg.reservation.details.trainName = "のぞみ215号"
+        leg.reservation.details.arrivalTime = try LocalTime(hour: 12, minute: 11)
+        trip = try TripMutationApplier.apply(.addLeg(leg, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(
+            .setTransportMode(leg.id, .shinkansen),
+            to: trip,
+            at: EngineTestSupport.now
+        )
+
+        let row = try #require(TimelineRowComposer.rows(for: trip).first { $0.title == "Tokyo → Kyoto" })
+        #expect(row.gutterDisplay == .exact("10:03"))
+
+        let unbooked = try #require(TripsLegCardComposer.presentation(row: row, trip: trip, catalog: nil))
+        #expect(unbooked.transport == .localized(TripContentResolver.transportSummary(for: trip.legs[0])))
+        #expect(unbooked.route == "Tokyo → Kyoto")
+        #expect(unbooked.arrivalTimeText == nil)
+        #expect(unbooked.trainName == nil)
+        #expect(unbooked.hasReservationMeta == false)
+
+        trip.legs[0].reservation.status = try Slot.confirmed(
+            value: .booked,
+            source: .userStated,
+            updatedAt: EngineTestSupport.now
+        )
+        let booked = try #require(TripsLegCardComposer.presentation(
+            row: TimelineRowComposer.rows(for: trip)[0],
+            trip: trip,
+            catalog: nil
+        ))
+        #expect(booked.arrivalTimeText == "12:11")
+        #expect(booked.trainName == "のぞみ215号")
+    }
+
+    @Test func tripsV2ActivityCardKeepsTimingOutOfTheCard() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 2),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let untimed = try ItineraryItemFactory.makeActivity(
+            title: "Fushimi Inari",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(date: oct3, timeZoneIdentifier: DomainTestSupport.timeZone),
+            at: EngineTestSupport.now
+        )
+        var tea = try ItineraryItemFactory.makeActivity(
+            title: "Tea ceremony",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(
+                date: oct3,
+                time: try LocalTime(hour: 14, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            at: EngineTestSupport.now
+        )
+        tea.reservation.status = try Slot.confirmed(value: .booked, source: .userStated, updatedAt: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.addActivity(untimed, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.addActivity(tea, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+
+        let rows = TimelineRowComposer.rows(for: trip)
+        let untimedRow = try #require(rows.first { $0.title == "Fushimi Inari" })
+        let teaRow = try #require(rows.first { $0.title == "Tea ceremony" })
+        #expect(untimedRow.gutterDisplay == .none)
+        #expect(teaRow.gutterDisplay == .exact("14:00"))
+
+        let untimedCard = try #require(TripsActivityCardComposer.presentation(row: untimedRow, trip: trip))
+        #expect(untimedCard.title == "Fushimi Inari")
+        #expect(untimedCard.place == "Kyoto")
+        #expect(untimedCard.isBooked == false)
+
+        let teaCard = try #require(TripsActivityCardComposer.presentation(row: teaRow, trip: trip))
+        #expect(teaCard.title == "Tea ceremony")
+        #expect(teaCard.isBooked == true)
+    }
+
+    @Test func tripsV2StayCardUsesConfirmedStayFactsWithoutCheckInClock() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 2),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let oct5 = try LocalDate(year: 2026, month: 10, day: 5)
+        let stay = try ItineraryItemFactory.makeStay(
+            place: "Kyoto Granbell Hotel",
+            checkIn: try ScheduledMoment(
+                date: oct2,
+                time: try LocalTime(hour: 16, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            checkOut: try ScheduledMoment(date: oct5, timeZoneIdentifier: DomainTestSupport.timeZone),
+            at: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.addStay(stay, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+
+        let row = try #require(TimelineRowComposer.rows(for: trip).first { $0.title == "Kyoto Granbell Hotel" })
+        #expect(row.gutterDisplay == .exact("16:00"))
+
+        let card = try #require(
+            TripsStayCardComposer.presentation(row: row, trip: trip, locale: Locale(identifier: "ja"))
+        )
+        #expect(card.name == "Kyoto Granbell Hotel")
+        #expect(card.nights == 3)
+        #expect(card.dateRange == "10月2日 → 10月5日")
+        #expect(card.dateRange?.contains("16:00") == false)
+    }
+
     @Test func emptyDayAppearsOnlyWhenSelectedAndInRange() throws {
         let trip = try DomainTestSupport.multiDayTrip()
         let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
