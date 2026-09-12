@@ -40,22 +40,41 @@ struct BulletGOApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRootView()
-                .environment(router)
-                .environment(session)
-                .environment(\.featureRegistry, .production)
-                .task {
-                    if isUITesting {
-                        UIView.setAnimationsEnabled(false)
-                    }
-                    do {
-                        try await persistence.bootstrap(seedReferenceTrip: seedReferenceTrip)
-                    } catch {
-                        assertionFailure("Failed to seed reference trip: \(error)")
-                    }
-                    await session.load()
+            Group {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-trips-v2-preview") {
+                    TripsV2PreviewRoot()
+                } else {
+                    productionRoot
                 }
+                #else
+                productionRoot
+                #endif
+            }
+            .environment(\.featureRegistry, .production)
+            .task {
+                if isUITesting {
+                    UIView.setAnimationsEnabled(false)
+                }
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-trips-v2-preview") {
+                    return
+                }
+                #endif
+                do {
+                    try await persistence.bootstrap(seedReferenceTrip: seedReferenceTrip)
+                } catch {
+                    assertionFailure("Failed to seed reference trip: \(error)")
+                }
+                await session.load()
+            }
         }
         .modelContainer(persistence.container)
+    }
+
+    private var productionRoot: some View {
+        AppRootView()
+            .environment(router)
+            .environment(session)
     }
 }

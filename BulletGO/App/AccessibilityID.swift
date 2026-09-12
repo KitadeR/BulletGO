@@ -60,6 +60,8 @@ enum AccessibilityID {
     static let activityDetail = "activity-detail"
     static let talkAboutTrip = "talk-about-trip"
     static let tripsDateSelector = "trips-date-selector"
+    static let tripsV2Screen = "trips-v2-screen"
+    static let tripsV2DateStrip = "trips-v2-date-strip"
     static let tripsEmptyDay = "trips-empty-day"
     static let tripsPreparation = "trips-leg-preparation"
     static let homeTab = "tab-home"
