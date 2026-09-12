@@ -47,6 +47,10 @@ nonisolated enum TripsV2Formatting {
         formatted(date, locale: locale, format: "EEE")
     }
 
+    static func addMenuDayLabel(_ date: LocalDate, locale: Locale) -> String {
+        formatDay(date, locale: locale, weekday: false)
+    }
+
     static func stayDateRange(from start: LocalDate, to end: LocalDate, locale: Locale) -> String {
         "\(formatDay(start, locale: locale, weekday: false)) → \(formatDay(end, locale: locale, weekday: false))"
     }

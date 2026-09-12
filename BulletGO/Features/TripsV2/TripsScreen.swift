@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TripsScreen: View {
     @Environment(TripSessionModel.self) private var session
+    @Environment(AppRouter.self) private var router
     @Environment(\.locale) private var locale
 
     @State private var selectedDate: LocalDate?
@@ -86,7 +87,7 @@ struct TripsScreen: View {
                         }
                     }
                     .padding(.top, 8)
-                    .padding(.bottom, 48)
+                    .padding(.bottom, 88)
                 }
                 .scrollIndicators(.hidden)
                 .onAppear {
@@ -99,6 +100,25 @@ struct TripsScreen: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .overlay(alignment: .bottomTrailing) {
+            TripsFloatingAdd(
+                selectedDate: selectedDate,
+                locale: locale,
+                onSelect: { action in
+                    presentAdd(tripID: trip.id, action: action)
+                }
+            )
+            .padding(.trailing, 20)
+            .padding(.bottom, 12)
+            .ignoresSafeArea(.keyboard)
+        }
+    }
+
+    private func presentAdd(tripID: TripID, action: TripsFloatingAddAction) {
+        // Kind cannot be passed without changing AppPresentation / AddItineraryItemSheet.
+        // Guided Add Flow is a later plan; keep the generic sheet for now.
+        _ = action
+        router.present(.addItineraryItem(tripID, initialDate: selectedDate))
     }
 
     private func applyInitialDayIfNeeded(_ snapshot: TripsTimelineSnapshot, proxy: ScrollViewProxy) {
@@ -120,12 +140,19 @@ struct TripsV2PreviewRoot: View {
     )
 
     var body: some View {
+        @Bindable var router = router
         NavigationStack {
             TripsScreen()
         }
         .environment(router)
         .environment(session)
         .environment(\.locale, Locale(identifier: "ja"))
+        .sheet(item: $router.presentation) { presentation in
+            tripsV2PreviewSheet(presentation)
+                .environment(router)
+                .environment(session)
+                .environment(\.locale, Locale(identifier: "ja"))
+        }
     }
 }
 
@@ -213,6 +240,18 @@ enum TripsV2PreviewData {
         trip = try TripMutationApplier.apply(.addActivity(ramen, atTimelineIndex: nil), to: trip, at: now)
         trip = try TripMutationApplier.apply(.addActivity(tea, atTimelineIndex: nil), to: trip, at: now)
         return trip
+    }
+}
+
+@ViewBuilder
+private func tripsV2PreviewSheet(_ presentation: AppPresentation) -> some View {
+    switch presentation {
+    case .addItineraryItem(let tripID, let initialDate):
+        AddItineraryItemSheet(tripID: tripID, initialDate: initialDate)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+    default:
+        EmptyView()
     }
 }
 

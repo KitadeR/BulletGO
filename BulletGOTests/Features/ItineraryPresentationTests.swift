@@ -362,6 +362,13 @@ struct ItineraryPresentationTests {
         #expect(card.dateRange?.contains("16:00") == false)
     }
 
+    @Test func tripsV2FloatingAddUsesSelectedDayWithoutWeekday() throws {
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let label = TripsFloatingAddComposer.dayLabel(date: oct3, locale: Locale(identifier: "ja"))
+        #expect(label == "10月3日")
+        #expect(label.contains("土") == false)
+    }
+
     @Test func emptyDayAppearsOnlyWhenSelectedAndInRange() throws {
         let trip = try DomainTestSupport.multiDayTrip()
         let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
