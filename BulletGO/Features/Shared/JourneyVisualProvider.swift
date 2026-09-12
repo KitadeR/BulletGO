@@ -21,7 +21,7 @@ nonisolated enum JourneyVisualProvider {
             return .airplane
         case .localTrain:
             return .localTrain
-        case .other:
+        case .bus, .taxi, .walking, .car, .ferry, .other:
             return .generic
         }
     }

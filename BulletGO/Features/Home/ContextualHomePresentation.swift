@@ -294,7 +294,7 @@ nonisolated enum PreparationOverviewComposer {
                     return nil
                 }
                 return PreparationOverviewItem(
-                    id: .stay(id),
+                    id: .stay(id, .checkIn),
                     title: stay.place.value ?? "",
                     bookingStatus: bookingStatus(stay.reservation),
                     readinessStatus: readinessStatus(for: .stay(id), in: trip),
@@ -419,7 +419,7 @@ nonisolated enum TodayScheduleComposer {
         case .leg(let id):
             let slot = trip.legs.first(where: { $0.id == id })?.scheduledAt
             return slot?.status == .confirmed ? slot?.value : nil
-        case .stay(let id):
+        case .stay(let id, _):
             let slot = trip.stays.first(where: { $0.id == id })?.checkIn
             return slot?.status == .confirmed ? slot?.value : nil
         case .activity(let id):

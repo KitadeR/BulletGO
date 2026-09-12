@@ -69,4 +69,31 @@ nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable {
         calendar.timeZone = timeZone
         return calendar.date(from: DateComponents(year: year, month: month, day: day))
     }
+
+    func addingDays(_ days: Int) throws -> LocalDate {
+        let utc = TimeZone(secondsFromGMT: 0)!
+        guard let value = date(in: utc),
+              let moved = Calendar(identifier: .gregorian).date(byAdding: .day, value: days, to: value)
+        else {
+            throw DomainError.invalidDate(year: year, month: month, day: day)
+        }
+        return try LocalDate(date: moved, timeZone: utc)
+    }
+
+    static func dates(from start: LocalDate, through end: LocalDate) -> [LocalDate] {
+        guard start <= end else { return [] }
+        var result: [LocalDate] = []
+        var current = start
+        while current <= end {
+            result.append(current)
+            guard let next = try? current.addingDays(1) else {
+                break
+            }
+            current = next
+            if result.count > 366 {
+                break
+            }
+        }
+        return result
+    }
 }

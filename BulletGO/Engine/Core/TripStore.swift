@@ -30,4 +30,8 @@ actor TripStore {
         try trip.validate()
         try await repository.save(trip)
     }
+
+    func delete(id: TripID) async throws {
+        try await repository.delete(id: id)
+    }
 }

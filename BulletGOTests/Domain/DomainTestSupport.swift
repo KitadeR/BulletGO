@@ -147,6 +147,7 @@ enum DomainTestSupport {
             origin: try Slot.confirmed(value: origin, source: .userStated, updatedAt: timestamp),
             destination: try Slot.confirmed(value: destination, source: .userStated, updatedAt: timestamp),
             scheduledAt: try unknownMoment(),
+            arrivesAt: try unknownMoment(),
             transportMode: try Slot.unknown(updatedAt: timestamp),
             partyCount: try Slot.unknown(updatedAt: timestamp),
             baggagePresence: try Slot.unknown(updatedAt: timestamp),
@@ -165,6 +166,7 @@ enum DomainTestSupport {
             title: try Slot.confirmed(value: title, source: .userStated, updatedAt: timestamp),
             type: try Slot.confirmed(value: .sightseeing, source: .userStated, updatedAt: timestamp),
             scheduledAt: try unknownMoment(),
+            endsAt: try unknownMoment(),
             place: try Slot.confirmed(value: place, source: .userStated, updatedAt: timestamp),
             reservation: try emptyReservation()
         )

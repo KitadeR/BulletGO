@@ -360,6 +360,37 @@ struct ItineraryPresentationTests {
         #expect(card.nights == 3)
         #expect(card.dateRange == "10月2日 → 10月5日")
         #expect(card.dateRange?.contains("16:00") == false)
+        #expect(card.role == .checkIn)
+    }
+
+    @Test func stayOccupancyProjectsCheckInStayingAndCheckOutWithoutDuplicatingEntity() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 2),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let oct4 = try LocalDate(year: 2026, month: 10, day: 4)
+        let oct5 = try LocalDate(year: 2026, month: 10, day: 5)
+        let stay = try ItineraryItemFactory.makeStay(
+            place: "Kyoto Hotel",
+            checkIn: try ScheduledMoment(date: oct2, timeZoneIdentifier: DomainTestSupport.timeZone),
+            checkOut: try ScheduledMoment(date: oct5, timeZoneIdentifier: DomainTestSupport.timeZone),
+            at: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.addStay(stay, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        let sections = ItineraryDayComposer.sections(for: trip)
+        let checkIn = try #require(sections.first { $0.id == .day(oct2) }?.rows.first)
+        let staying = try #require(sections.first { $0.id == .day(oct3) }?.rows.first)
+        let lastNight = try #require(sections.first { $0.id == .day(oct4) }?.rows.first)
+        let checkOut = try #require(sections.first { $0.id == .day(oct5) }?.rows.first)
+        #expect(checkIn.id == .stay(stay.id, .checkIn))
+        #expect(staying.id == .stay(stay.id, .staying(night: 1, of: 3)))
+        #expect(lastNight.id == .stay(stay.id, .staying(night: 2, of: 3)))
+        #expect(checkOut.id == .stay(stay.id, .checkOut))
+        #expect(trip.stays.count == 1)
     }
 
     @Test func tripsV2FloatingAddUsesSelectedDayWithoutWeekday() throws {

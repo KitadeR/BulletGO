@@ -116,6 +116,12 @@ struct LegDetailView: View {
                         }
 
                         editSection(leg: leg)
+
+                        Form {
+                            ItemRecordsView(tripID: trip.id, scope: .leg(leg.id))
+                        }
+                        .scrollDisabled(true)
+                        .frame(minHeight: 420)
                     }
                     .padding(DesignTokens.Spacing.lg)
                     .padding(.bottom, DesignTokens.Spacing.xl)

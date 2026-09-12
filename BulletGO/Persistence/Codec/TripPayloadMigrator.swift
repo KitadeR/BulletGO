@@ -8,6 +8,7 @@ nonisolated enum TripPayloadMigrator {
             migrateReservations(in: &json, timestamp: timestamp)
             migrateSeatPreferences(in: &json, timestamp: timestamp)
             migrateStays(in: &json)
+            migrateFoundationV1(in: &json, timestamp: timestamp)
         }
     }
 
@@ -15,12 +16,20 @@ nonisolated enum TripPayloadMigrator {
         try migrate(data) { json, timestamp in
             migrateSeatPreferences(in: &json, timestamp: timestamp)
             migrateStays(in: &json)
+            migrateFoundationV1(in: &json, timestamp: timestamp)
         }
     }
 
     static func migrateV3Payload(_ data: Data) throws -> Data {
-        try migrate(data) { json, _ in
+        try migrate(data) { json, timestamp in
             migrateStays(in: &json)
+            migrateFoundationV1(in: &json, timestamp: timestamp)
+        }
+    }
+
+    static func migrateV4Payload(_ data: Data) throws -> Data {
+        try migrate(data) { json, timestamp in
+            migrateFoundationV1(in: &json, timestamp: timestamp)
         }
     }
 
@@ -40,6 +49,25 @@ nonisolated enum TripPayloadMigrator {
     private static func migrateStays(in trip: inout [String: Any]) {
         if trip["stays"] == nil {
             trip["stays"] = [Any]()
+        }
+    }
+
+    private static func migrateFoundationV1(in trip: inout [String: Any], timestamp: Double) {
+        if trip["savedPlaces"] == nil { trip["savedPlaces"] = [Any]() }
+        if trip["notes"] == nil { trip["notes"] = [Any]() }
+        if trip["attachments"] == nil { trip["attachments"] = [Any]() }
+        if trip["connectorEstimates"] == nil { trip["connectorEstimates"] = [Any]() }
+        if var legs = trip["legs"] as? [[String: Any]] {
+            for index in legs.indices where legs[index]["arrivesAt"] == nil {
+                legs[index]["arrivesAt"] = slotJSON(for: "unknown", timestamp: timestamp)
+            }
+            trip["legs"] = legs
+        }
+        if var activities = trip["activities"] as? [[String: Any]] {
+            for index in activities.indices where activities[index]["endsAt"] == nil {
+                activities[index]["endsAt"] = slotJSON(for: "unknown", timestamp: timestamp)
+            }
+            trip["activities"] = activities
         }
     }
 

@@ -3,6 +3,7 @@ import SwiftUI
 struct ActivityDetailView: View {
     @Environment(TripSessionModel.self) private var session
     @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
 
     let tripID: TripID
     let activityID: ActivityID
@@ -10,12 +11,23 @@ struct ActivityDetailView: View {
     @State private var place = ""
     @State private var hasDate = false
     @State private var date = Date()
-    @State private var confirmDateChange = false
-    @State private var pendingDate: Date?
+    @State private var timing: ActivityTimingChoice = .none
+    @State private var startTime = Date()
+    @State private var endTime = Date().addingTimeInterval(3600)
     @State private var didLoad = false
+    @State private var isSaving = false
+    @State private var saveFailed = false
+    @State private var showDiscard = false
 
     private var activity: Activity? {
         session.trip.flatMap { trip in trip.activities.first { $0.id == activityID } }
+    }
+
+    private var isDirty: Bool {
+        guard let activity else { return false }
+        return title != (activity.title.value ?? "")
+            || place != (activity.place.value ?? "")
+            || hasDate != (activity.scheduledAt.status == .confirmed)
     }
 
     var body: some View {
@@ -23,11 +35,23 @@ struct ActivityDetailView: View {
             Section {
                 TextField("Title", text: $title)
                 TextField("Place", text: $place)
-                Toggle("Has a date", isOn: $hasDate)
+                Toggle("Add to a day", isOn: $hasDate)
                 if hasDate {
                     DatePicker("Date", selection: $date, displayedComponents: .date)
+                    Picker("Time", selection: $timing) {
+                        ForEach(ActivityTimingChoice.allCases) { choice in
+                            Text(choice.title).tag(choice)
+                        }
+                    }
+                    if timing == .start || timing == .range {
+                        DatePicker("Starts", selection: $startTime, displayedComponents: .hourAndMinute)
+                    }
+                    if timing == .range {
+                        DatePicker("Ends", selection: $endTime, displayedComponents: .hourAndMinute)
+                    }
                 }
             }
+            ItemRecordsView(tripID: tripID, scope: .activity(activityID))
             Section {
                 Button("Move to Unscheduled") {
                     Task { _ = await session.process(.applyMutation(.unscheduleActivity(activityID))) }
@@ -43,76 +67,146 @@ struct ActivityDetailView: View {
         }
         .navigationTitle("Activity")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            load()
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(100))
-                didLoad = true
-            }
-        }
-        .onChange(of: title) { _, newValue in
-            guard didLoad else { return }
-            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, trimmed != activity?.title.value else { return }
-            Task { _ = await session.process(.applyMutation(.updateActivityTitle(activityID, trimmed))) }
-        }
-        .onChange(of: place) { _, newValue in
-            guard didLoad else { return }
-            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed != activity?.place.value else { return }
-            Task { _ = await session.process(.applyMutation(.updateActivityPlace(activityID, trimmed))) }
-        }
-        .onChange(of: hasDate) { _, newValue in
-            guard didLoad else { return }
-            if !newValue {
-                Task { _ = await session.process(.applyMutation(.unscheduleActivity(activityID))) }
-            }
-        }
-        .onChange(of: date) { _, newValue in
-            guard didLoad, hasDate else { return }
-            if activity?.scheduledAt.status == .confirmed {
-                pendingDate = newValue
-                confirmDateChange = true
-            } else {
-                Task { await saveDate(newValue) }
-            }
-        }
-        .alert("Change this activity’s date?", isPresented: $confirmDateChange) {
-            Button("Change") {
-                if let pendingDate {
-                    Task { await saveDate(pendingDate) }
+        .navigationBarBackButtonHidden(isDirty)
+        .onAppear(perform: load)
+        .toolbar {
+            if isDirty {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { attemptCancel() }
                 }
             }
-            Button("Cancel", role: .cancel) { pendingDate = nil }
-        } message: {
-            Text("Dragging does not change dates. This updates the scheduled day.")
-        }
-        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") { Task { await save() } }
+                    .disabled(!isDirty || isSaving)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("Talk") {
                     router.present(.itineraryTalk(tripID, .activity(activityID)))
                 }
             }
         }
+        .confirmationDialog("Discard changes?", isPresented: $showDiscard, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) { dismiss() }
+            Button("Keep editing", role: .cancel) {}
+        }
+        .alert("Couldn’t save", isPresented: $saveFailed) {
+            Button("OK", role: .cancel) {}
+        }
         .accessibilityIdentifier(AccessibilityID.activityDetail)
     }
 
     private func load() {
+        guard !didLoad else { return }
+        didLoad = true
         title = activity?.title.value ?? ""
         place = activity?.place.value ?? ""
         if let scheduled = activity?.scheduledAt.value,
            let dateValue = scheduled.date.date(in: TimeZone(identifier: scheduled.timeZoneIdentifier) ?? .current) {
-            hasDate = true
+            hasDate = activity?.scheduledAt.status == .confirmed
             date = dateValue
+            if scheduled.isAllDay {
+                timing = .allDay
+            } else if scheduled.time != nil, scheduled.endTime != nil {
+                timing = .range
+            } else if scheduled.time != nil {
+                timing = .start
+            } else {
+                timing = .none
+            }
+            if let time = scheduled.time {
+                startTime = combine(dateValue, time)
+            }
+            if let end = activity?.endsAt.value?.time ?? scheduled.endTime {
+                endTime = combine(dateValue, end)
+            }
         }
     }
 
-    private func saveDate(_ value: Date) async {
-        let timeZone = TimeZone.current
-        guard let local = try? LocalDate(date: value, timeZone: timeZone),
-              let moment = try? ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier) else {
+    private func combine(_ date: Date, _ time: LocalTime) -> Date {
+        var components = Calendar.current.dateComponents(in: .current, from: date)
+        components.hour = time.hour
+        components.minute = time.minute
+        return Calendar.current.date(from: components) ?? date
+    }
+
+    private func attemptCancel() {
+        if isDirty {
+            showDiscard = true
+        } else {
+            dismiss()
+        }
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPlace = place.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty || !trimmedPlace.isEmpty else {
+            saveFailed = true
             return
         }
-        _ = await session.process(.applyMutation(.updateActivityScheduledAt(activityID, moment)))
+        var mutations: [TripMutation] = [
+            .updateActivityTitle(activityID, trimmedTitle.isEmpty ? trimmedPlace : trimmedTitle),
+            .updateActivityPlace(activityID, trimmedPlace.isEmpty ? trimmedTitle : trimmedPlace),
+        ]
+        if hasDate {
+            do {
+                let moment = try makeMoment()
+                mutations.append(.updateActivityScheduledAt(activityID, moment))
+                if timing == .range {
+                    let end = try ScheduledMoment(
+                        date: moment.date,
+                        time: try LocalTime(
+                            hour: Calendar.current.component(.hour, from: endTime),
+                            minute: Calendar.current.component(.minute, from: endTime)
+                        ),
+                        timeZoneIdentifier: moment.timeZoneIdentifier
+                    )
+                    mutations.append(.updateActivityEndsAt(activityID, end))
+                } else {
+                    mutations.append(.updateActivityEndsAt(activityID, nil))
+                }
+            } catch {
+                saveFailed = true
+                return
+            }
+        } else {
+            mutations.append(.unscheduleActivity(activityID))
+        }
+        if await session.process(.applyMutations(mutations)) == nil {
+            saveFailed = true
+        }
+    }
+
+    private func makeMoment() throws -> ScheduledMoment {
+        let timeZone = TimeZone.current
+        let local = try LocalDate(date: date, timeZone: timeZone)
+        switch timing {
+        case .none:
+            return try ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier)
+        case .allDay:
+            return try ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier, isAllDay: true)
+        case .start, .range:
+            let time = try LocalTime(
+                hour: Calendar.current.component(.hour, from: startTime),
+                minute: Calendar.current.component(.minute, from: startTime)
+            )
+            let endTimeValue: LocalTime?
+            if timing == .range {
+                endTimeValue = try LocalTime(
+                    hour: Calendar.current.component(.hour, from: endTime),
+                    minute: Calendar.current.component(.minute, from: endTime)
+                )
+            } else {
+                endTimeValue = nil
+            }
+            return try ScheduledMoment(
+                date: local,
+                time: time,
+                timeZoneIdentifier: timeZone.identifier,
+                endTime: endTimeValue
+            )
+        }
     }
 }

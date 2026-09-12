@@ -100,28 +100,7 @@ nonisolated enum TripContentResolver {
                 comment: "Leg row subtitle when transport mode is not confirmed."
             )
         }
-        switch mode {
-        case .shinkansen:
-            return LocalizedStringResource(
-                "Shinkansen",
-                comment: "Confirmed Shinkansen transport label on a leg row."
-            )
-        case .airplane:
-            return LocalizedStringResource(
-                "Flight",
-                comment: "Confirmed airplane transport label on a leg row."
-            )
-        case .localTrain:
-            return LocalizedStringResource(
-                "Local train",
-                comment: "Confirmed local-train transport label on a leg row."
-            )
-        case .other:
-            return LocalizedStringResource(
-                "Other transport",
-                comment: "Confirmed other-transport label on a leg row."
-            )
-        }
+        return transportLabel(mode)
     }
 
     static func resumeGuidance(trip: Trip, legID: LegID) -> ResolvedContent {
@@ -249,7 +228,7 @@ nonisolated enum TripContentResolver {
                 "Have you already booked the local train?",
                 comment: "Booking setup prompt after local train is confirmed."
             )
-        case .other:
+        case .bus, .taxi, .walking, .car, .ferry, .other:
             return LocalizedStringResource(
                 "Have you already booked this transport?",
                 comment: "Booking setup prompt after other transport is confirmed."
@@ -505,6 +484,16 @@ nonisolated enum TripContentResolver {
             LocalizedStringResource("Flight", comment: "Confirmed airplane transport label on a leg row.")
         case .localTrain:
             LocalizedStringResource("Local train", comment: "Confirmed local-train transport label on a leg row.")
+        case .bus:
+            LocalizedStringResource("Bus", comment: "Confirmed bus transport label on a leg row.")
+        case .taxi:
+            LocalizedStringResource("Taxi", comment: "Confirmed taxi transport label on a leg row.")
+        case .walking:
+            LocalizedStringResource("Walk", comment: "Confirmed walking transport label on a leg row.")
+        case .car:
+            LocalizedStringResource("Car", comment: "Confirmed car transport label on a leg row.")
+        case .ferry:
+            LocalizedStringResource("Ferry", comment: "Confirmed ferry transport label on a leg row.")
         case .other:
             LocalizedStringResource("Other transport", comment: "Confirmed other-transport label on a leg row.")
         }

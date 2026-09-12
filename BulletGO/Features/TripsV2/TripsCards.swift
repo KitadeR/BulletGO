@@ -37,8 +37,8 @@ struct TripsTimelineItemRow: View {
         switch row.id {
         case .leg(let id):
             AccessibilityID.timelineLeg(id)
-        case .stay(let id):
-            AccessibilityID.timelineStay(id)
+        case .stay(let id, let role):
+            AccessibilityID.timelineStay(id, role: role)
         case .activity(let id):
             AccessibilityID.timelineActivity(id)
         }
@@ -231,17 +231,24 @@ struct TripsStayCard: View {
 
     @ViewBuilder
     private var roleLine: some View {
-        HStack(spacing: 0) {
-            Text("Check-in")
-            if let nights = presentation.nights {
-                Text(verbatim: " · ")
-                Text(
-                    LocalizedStringResource(
-                        "\(nights) nights",
-                        comment: "Confirmed stay length in nights on a check-in card."
+        switch presentation.role {
+        case .checkIn:
+            HStack(spacing: 0) {
+                Text("Check-in")
+                if let nights = presentation.nights {
+                    Text(verbatim: " · ")
+                    Text(
+                        LocalizedStringResource(
+                            "\(nights) nights",
+                            comment: "Confirmed stay length in nights on a check-in card."
+                        )
                     )
-                )
+                }
             }
+        case .staying(let night, let of):
+            Text("Night \(night) of \(of)")
+        case .checkOut:
+            Text("Check-out")
         }
     }
 }

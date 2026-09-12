@@ -12,7 +12,7 @@ struct ItineraryMutationTests {
             now: EngineTestSupport.now
         )
         try trip.validate()
-        #expect(trip.schemaVersion == 4)
+        #expect(trip.schemaVersion == 5)
         #expect(trip.legs.isEmpty)
         #expect(trip.stays.isEmpty)
         #expect(trip.timeline.isEmpty)
@@ -175,5 +175,54 @@ struct ItineraryMutationTests {
         #expect(throws: TripValidationError.orphanItineraryItem) {
             try trip.validate()
         }
+    }
+
+    @Test func moveItemToDateUpdatesActivityAndKeepsHardClockTime() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let activity = try ItineraryItemFactory.makeActivity(
+            title: "Tea",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(
+                date: oct1,
+                time: try LocalTime(hour: 14, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            at: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.addActivity(activity, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.moveItemToDate(.activity(activity.id), oct3), to: trip, at: EngineTestSupport.now)
+        #expect(trip.activities[0].scheduledAt.value?.date == oct3)
+        #expect(trip.activities[0].scheduledAt.value?.time?.hour == 14)
+    }
+
+    @Test func notesAndSavedPlacesRoundTripThroughMutations() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let note = ScopedNote(id: NoteID(), scope: .trip, body: "Bring cash", updatedAt: EngineTestSupport.now)
+        let saved = SavedPlace(
+            id: SavedPlaceID(),
+            place: .manual(name: "Fushimi Inari"),
+            note: nil,
+            createdAt: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.upsertNote(note), to: trip, at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.addSavedPlace(saved), to: trip, at: EngineTestSupport.now)
+        #expect(trip.notes.map(\.body) == ["Bring cash"])
+        #expect(trip.savedPlaces.map(\.place.name) == ["Fushimi Inari"])
+        trip = try TripMutationApplier.apply(.removeNote(note.id), to: trip, at: EngineTestSupport.now)
+        trip = try TripMutationApplier.apply(.removeSavedPlace(saved.id), to: trip, at: EngineTestSupport.now)
+        #expect(trip.notes.isEmpty)
+        #expect(trip.savedPlaces.isEmpty)
     }
 }

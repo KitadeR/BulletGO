@@ -22,6 +22,7 @@ nonisolated struct TripsActivityCardPresentation: Equatable, Sendable {
 
 nonisolated struct TripsStayCardPresentation: Equatable, Sendable {
     var name: String
+    var role: StayPresentationRole
     var nights: Int?
     var dateRange: String?
     var destination: AppRoute?
@@ -89,7 +90,7 @@ nonisolated enum TripsStayCardComposer {
         trip: Trip,
         locale: Locale
     ) -> TripsStayCardPresentation? {
-        guard case .stay(let id) = row.id,
+        guard case .stay(let id, let role) = row.id,
               let stay = trip.stays.first(where: { $0.id == id })
         else {
             return nil
@@ -107,6 +108,7 @@ nonisolated enum TripsStayCardComposer {
         }
         return TripsStayCardPresentation(
             name: stay.place.value ?? row.title,
+            role: role,
             nights: nights,
             dateRange: dateRange,
             destination: row.destination

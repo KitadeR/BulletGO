@@ -65,6 +65,7 @@ nonisolated enum ItineraryItemFactory {
             origin: try Slot.confirmed(value: origin, source: .userStated, updatedAt: now),
             destination: try Slot.confirmed(value: destination, source: .userStated, updatedAt: now),
             scheduledAt: try scheduledSlot(scheduledAt, at: now),
+            arrivesAt: try Slot.unknown(updatedAt: now),
             transportMode: try Slot.unknown(updatedAt: now),
             partyCount: try Slot.unknown(updatedAt: now),
             baggagePresence: try Slot.unknown(updatedAt: now),
@@ -103,6 +104,7 @@ nonisolated enum ItineraryItemFactory {
             title: try Slot.confirmed(value: title, source: .userStated, updatedAt: now),
             type: try Slot.confirmed(value: .other, source: .userStated, updatedAt: now),
             scheduledAt: try scheduledSlot(scheduledAt, at: now),
+            endsAt: try Slot.unknown(updatedAt: now),
             place: try Slot.confirmed(value: place, source: .userStated, updatedAt: now),
             reservation: try emptyReservation(at: now)
         )

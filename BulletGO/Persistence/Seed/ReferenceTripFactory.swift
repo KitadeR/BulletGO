@@ -140,6 +140,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
             origin: try Slot.confirmed(value: origin, source: .userStated, updatedAt: updatedAt),
             destination: try Slot.confirmed(value: destination, source: .userStated, updatedAt: updatedAt),
             scheduledAt: try Slot.unknown(updatedAt: updatedAt),
+            arrivesAt: try Slot.unknown(updatedAt: updatedAt),
             transportMode: try Slot.unknown(updatedAt: updatedAt),
             partyCount: try Slot.unknown(updatedAt: updatedAt),
             baggagePresence: try Slot.unknown(updatedAt: updatedAt),
@@ -164,6 +165,7 @@ nonisolated struct ReferenceTripFactory: Sendable {
             title: try Slot.confirmed(value: title, source: .userStated, updatedAt: updatedAt),
             type: try Slot.confirmed(value: .sightseeing, source: .userStated, updatedAt: updatedAt),
             scheduledAt: try Slot.unknown(updatedAt: updatedAt),
+            endsAt: try Slot.unknown(updatedAt: updatedAt),
             place: try Slot.confirmed(value: place, source: .userStated, updatedAt: updatedAt),
             reservation: try emptyReservation(id: reservationID, updatedAt: updatedAt)
         )

@@ -18,6 +18,10 @@ struct AppRouteDestination: View {
             TaskDetailView(tripID: tripID, taskID: taskID)
         case .baggageCheck(let tripID, let legID, let taskID):
             BaggageCheckView(tripID: tripID, legID: legID, taskID: taskID)
+        case .tripMap(let tripID):
+            TripMapView(tripID: tripID)
+        case .savedPlaces(let tripID):
+            SavedPlacesView(tripID: tripID)
         }
     }
 }

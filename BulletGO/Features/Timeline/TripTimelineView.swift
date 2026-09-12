@@ -244,7 +244,7 @@ struct TripTimelineView: View {
                 Task { _ = await session.process(.applyMutation(.unscheduleActivity(id))) }
             }
         }
-        if case .stay(let id) = row.id {
+        if case .stay(let id, _) = row.id {
             Button("Move to Unscheduled") {
                 Task { _ = await session.process(.applyMutation(.unscheduleStay(id))) }
             }

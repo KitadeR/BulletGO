@@ -31,10 +31,16 @@ struct TripsTimelineGuide: View {
 }
 
 struct TripsDaySection: View {
+    @Environment(TripSessionModel.self) private var session
+
     var section: ItinerarySection
     var trip: Trip
     var catalog: QuestionCatalog?
     var locale: Locale
+    var onAdd: (LocalDate) -> Void
+    var onMove: (TimelineRow, Int) -> Void
+    var onMoveToDate: (TimelineRow, LocalDate?) -> Void
+    var onDelete: (TimelineRow) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -50,21 +56,37 @@ struct TripsDaySection: View {
                     .padding(.horizontal, TripsV2Style.screenPadding)
             }
 
-            if section.rows.isEmpty {
-                Text("Nothing planned yet")
-                    .font(DesignTokens.Typography.body)
-                    .foregroundStyle(DesignTokens.Color.secondaryText)
-                    .padding(.horizontal, TripsV2Style.screenPadding)
-                    .accessibilityIdentifier(AccessibilityID.tripsEmptyDay)
+            if section.rows.isEmpty, let date = section.date {
+                TripsEmptyDayState(
+                    date: date,
+                    addTitle: addTitle(for: date),
+                    onAdd: { onAdd(date) }
+                )
+                .padding(.horizontal, TripsV2Style.screenPadding)
             } else {
                 VStack(alignment: .leading, spacing: TripsV2Style.rowSpacing) {
-                    ForEach(section.rows) { row in
-                        TripsTimelineItemRow(
-                            row: row,
-                            trip: trip,
-                            catalog: catalog,
-                            locale: locale
-                        )
+                    ForEach(Array(section.rows.enumerated()), id: \.element.id) { index, row in
+                        VStack(alignment: .leading, spacing: 8) {
+                            if index > 0 {
+                                ConnectorEstimateRow(
+                                    from: section.rows[index - 1],
+                                    to: row,
+                                    trip: trip
+                                )
+                            }
+                            TripsTimelineItemRow(
+                                row: row,
+                                trip: trip,
+                                catalog: catalog,
+                                locale: locale
+                            )
+                            .contextMenu {
+                                menu(for: row)
+                            }
+                            .accessibilityAction(named: Text("Move up")) { onMove(row, -1) }
+                            .accessibilityAction(named: Text("Move down")) { onMove(row, 1) }
+                            .accessibilityAction(named: Text("Delete")) { onDelete(row) }
+                        }
                     }
                 }
                 .padding(.horizontal, TripsV2Style.screenPadding)
@@ -72,8 +94,103 @@ struct TripsDaySection: View {
                     TripsTimelineGuide()
                         .padding(.leading, TripsV2Style.screenPadding + TripsV2Style.gutterWidth)
                 }
+                if let date = section.date {
+                    TripsDayAddButton(
+                        date: date,
+                        title: addTitle(for: date),
+                        action: { onAdd(date) }
+                    )
+                    .padding(.horizontal, TripsV2Style.screenPadding)
+                }
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(sectionIdentifier)
+    }
+
+    @ViewBuilder
+    private func menu(for row: TimelineRow) -> some View {
+        if !row.id.isProjectedStay {
+            Button("Move up") { onMove(row, -1) }
+            Button("Move down") { onMove(row, 1) }
+            Menu("Move to day") {
+                ForEach(ItineraryDayComposer.dateOptions(for: trip), id: \.self) { date in
+                    Button(date.displayString) { onMoveToDate(row, date) }
+                }
+                Button("Unscheduled") { onMoveToDate(row, nil) }
+            }
+        }
+        Button("Delete", role: .destructive) { onDelete(row) }
+    }
+
+    private func addTitle(for date: LocalDate) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "Add to \(TripsDateFormatting.addDayLabel(date))",
+            comment: "Button that opens add-to-trip with this day prefilled."
+        )
+    }
+
+    private var sectionIdentifier: String {
+        if let date = section.date {
+            return AccessibilityID.tripsDaySection(date)
+        }
+        return AccessibilityID.itineraryUnscheduled
+    }
+}
+
+struct ConnectorEstimateRow: View {
+    @Environment(TripSessionModel.self) private var session
+    var from: TimelineRow
+    var to: TimelineRow
+    var trip: Trip
+    private let estimator: any RouteEstimating = MapKitRouteEstimator()
+
+    var body: some View {
+        let cached = ConnectorEstimateComposer.cached(from: from.id.item, to: to.id.item, in: trip)
+        return HStack {
+            Spacer()
+            if let cached {
+                Text(durationText(cached.estimate))
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundStyle(DesignTokens.Color.secondaryText)
+            } else {
+                Rectangle()
+                    .fill(TripsV2Style.guide)
+                    .frame(width: 2, height: 12)
+            }
+            Spacer()
+        }
+        .accessibilityHidden(cached == nil)
+        .task {
+            await refreshIfNeeded()
+        }
+    }
+
+    private func durationText(_ estimate: RouteEstimate) -> String {
+        let minutes = max(Int((estimate.durationSeconds / 60).rounded()), 1)
+        return String(localized: "\(minutes) min")
+    }
+
+    private func refreshIfNeeded() async {
+        guard ConnectorEstimateComposer.cached(from: from.id.item, to: to.id.item, in: trip) == nil else {
+            return
+        }
+        guard let origin = ConnectorEstimateComposer.coordinate(for: from.id.item, in: trip),
+              let destination = ConnectorEstimateComposer.coordinate(for: to.id.item, in: trip)
+        else {
+            return
+        }
+        do {
+            let estimate = try await estimator.estimate(from: origin, to: destination, mode: .walking)
+            let record = ConnectorEstimate(
+                fromItem: from.id.item,
+                toItem: to.id.item,
+                estimate: estimate,
+                updatedAt: session.now
+            )
+            _ = await session.process(.applyMutation(.cacheConnectorEstimate(record)))
+        } catch {
+            return
+        }
     }
 }

@@ -84,6 +84,22 @@ nonisolated enum ImpactAnalyzer {
                     changedPaths: [.leg(legID, .seatPreference)]
                 )
             )
+        case .updateLegArrivesAt, .updateActivityEndsAt, .moveItemToDate:
+            (
+                .itineraryChanged,
+                ImpactAssessment(level: .medium, targetLegs: [], changedPaths: [.trip(.timeline)])
+            )
+        case .updateReservationDetails, .updateScopedReservationStatus:
+            (
+                .reservationUpdated,
+                ImpactAssessment(level: .medium, targetLegs: [], changedPaths: [.trip(.timeline)])
+            )
+        case .upsertNote, .removeNote, .addAttachment, .renameAttachment, .removeAttachment,
+             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate:
+            (
+                .other,
+                ImpactAssessment(level: .low, targetLegs: [], changedPaths: [.trip(.timeline)])
+            )
         }
     }
 }

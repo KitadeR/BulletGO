@@ -35,6 +35,9 @@ nonisolated enum PolicyEvaluationIDTag {}
 nonisolated enum ReadinessCheckIDTag {}
 nonisolated enum ChangeEventIDTag {}
 nonisolated enum ReservationIDTag {}
+nonisolated enum NoteIDTag {}
+nonisolated enum AttachmentIDTag {}
+nonisolated enum SavedPlaceIDTag {}
 
 typealias TripID = DomainID<TripIDTag>
 typealias LegID = DomainID<LegIDTag>
@@ -47,3 +50,6 @@ typealias PolicyEvaluationID = DomainID<PolicyEvaluationIDTag>
 typealias ReadinessCheckID = DomainID<ReadinessCheckIDTag>
 typealias ChangeEventID = DomainID<ChangeEventIDTag>
 typealias ReservationID = DomainID<ReservationIDTag>
+typealias NoteID = DomainID<NoteIDTag>
+typealias AttachmentID = DomainID<AttachmentIDTag>
+typealias SavedPlaceID = DomainID<SavedPlaceIDTag>

@@ -58,7 +58,23 @@ nonisolated enum ItineraryDayComposer {
         var days: [LocalDate: [TimelineRow]] = [:]
         for (index, item) in trip.timeline.enumerated() {
             guard rows.indices.contains(index) else { continue }
-            if let date = date(for: item, in: trip) {
+            if case .stay(let id) = item, let stay = trip.stays.first(where: { $0.id == id }) {
+                let occupancy = stay.occupancyDates()
+                if occupancy.isEmpty {
+                    var row = rows[index]
+                    row.id = .stay(id, .checkIn)
+                    unscheduled.append(row)
+                    continue
+                }
+                for date in occupancy {
+                    guard let role = stay.presentationRole(on: date) else { continue }
+                    var row = rows[index]
+                    row.id = .stay(id, role)
+                    row.subtitle = .verbatim(stayPresentationSubtitle(role, stay: stay))
+                    row.gutterDisplay = stayGutter(role, stay: stay)
+                    days[date, default: []].append(row)
+                }
+            } else if let date = date(for: item, in: trip) {
                 days[date, default: []].append(rows[index])
             } else {
                 unscheduled.append(rows[index])
@@ -178,7 +194,7 @@ nonisolated enum ItineraryDayComposer {
         trip.timeline.firstIndex { item in
             switch (item, id) {
             case (.leg(let lhs), .leg(let rhs)): lhs == rhs
-            case (.stay(let lhs), .stay(let rhs)): lhs == rhs
+            case (.stay(let lhs), .stay(let rhs, _)): lhs == rhs
             case (.activity(let lhs), .activity(let rhs)): lhs == rhs
             default: false
             }
@@ -189,13 +205,42 @@ nonisolated enum ItineraryDayComposer {
         var seen: Set<LocalDate> = []
         var dates: [LocalDate] = []
         for item in trip.timeline {
-            guard let date = date(for: item, in: trip), !seen.contains(date) else {
-                continue
+            let occupancy: [LocalDate]
+            if case .stay(let id) = item, let stay = trip.stays.first(where: { $0.id == id }) {
+                occupancy = stay.occupancyDates()
+            } else if let date = date(for: item, in: trip) {
+                occupancy = [date]
+            } else {
+                occupancy = []
             }
-            seen.insert(date)
-            dates.append(date)
+            for date in occupancy where !seen.contains(date) {
+                seen.insert(date)
+                dates.append(date)
+            }
         }
         return dates.sorted()
+    }
+
+    private static func stayPresentationSubtitle(_ role: StayPresentationRole, stay: Stay) -> String {
+        switch role {
+        case .checkIn:
+            return TripContentResolver.staySubtitle(stay)
+        case .staying(let night, let of):
+            return String(localized: "Night \(night) of \(of)")
+        case .checkOut:
+            return String(localized: "Check-out")
+        }
+    }
+
+    private static func stayGutter(_ role: StayPresentationRole, stay: Stay) -> TripsTimingGutterDisplay {
+        switch role {
+        case .checkIn:
+            return TimelineRowComposer.gutter(for: stay.checkIn)
+        case .checkOut:
+            return TimelineRowComposer.gutter(for: stay.checkOut)
+        case .staying:
+            return .none
+        }
     }
 
     private static func dates(from start: LocalDate, through end: LocalDate) -> [LocalDate] {

@@ -141,8 +141,28 @@ nonisolated enum TimelineNextComposer {
 
 nonisolated enum TimelineRowKind: Hashable, Sendable {
     case leg(LegID)
-    case stay(StayID)
+    case stay(StayID, StayPresentationRole)
     case activity(ActivityID)
+
+    var stayID: StayID? {
+        if case .stay(let id, _) = self { return id }
+        return nil
+    }
+
+    var item: TripTimelineItem {
+        switch self {
+        case .leg(let id): .leg(id)
+        case .stay(let id, _): .stay(id)
+        case .activity(let id): .activity(id)
+        }
+    }
+
+    var isProjectedStay: Bool {
+        if case .stay(_, let role) = self {
+            return role != .checkIn
+        }
+        return false
+    }
 }
 
 /// Timing Gutter 用の表示情報。Card（What）ではなく Gutter（When）の正。
@@ -205,7 +225,7 @@ nonisolated enum TimelineRowComposer {
                     return nil
                 }
                 return TimelineRow(
-                    id: .stay(id),
+                    id: .stay(id, .checkIn),
                     title: stay.place.value ?? "",
                     subtitle: .verbatim(TripContentResolver.staySubtitle(stay)),
                     visualKind: JourneyVisualProvider.kind(for: stay),
@@ -232,15 +252,16 @@ nonisolated enum TimelineRowComposer {
         }
     }
 
-    /// V1: confirmed clock time only. Date-only, unknown, inferred, skipped, and
+    /// V1: confirmed clock time only. Date-only, all-day, unknown, inferred, skipped, and
     /// unconfirmed slots stay `.none`. Daypart / window strings are not inferred.
-    /// Current Stay rows are check-in day only (`ItineraryDayComposer.date`);
-    /// middle-day Stay presentations do not exist yet, so this does not inspect
-    /// a presentation role. Adding that role is a later Presentation change.
+    static func gutter(for slot: Slot<ScheduledMoment>?) -> TripsTimingGutterDisplay {
+        timingGutterDisplay(slot)
+    }
+
     private static func timingGutterDisplay(
         _ slot: Slot<ScheduledMoment>?
     ) -> TripsTimingGutterDisplay {
-        guard slot?.status == .confirmed, let time = slot?.value?.time else {
+        guard slot?.status == .confirmed, slot?.value?.isAllDay != true, let time = slot?.value?.time else {
             return .none
         }
         return .exact(String(format: "%02d:%02d", time.hour, time.minute))

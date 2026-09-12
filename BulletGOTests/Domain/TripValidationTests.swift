@@ -20,6 +20,7 @@ struct TripValidationTests {
             origin: trip.legs[1].origin,
             destination: trip.legs[1].destination,
             scheduledAt: trip.legs[1].scheduledAt,
+            arrivesAt: trip.legs[1].arrivesAt,
             transportMode: trip.legs[1].transportMode,
             partyCount: trip.legs[1].partyCount,
             baggagePresence: trip.legs[1].baggagePresence,

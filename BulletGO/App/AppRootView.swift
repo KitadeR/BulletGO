@@ -20,7 +20,7 @@ struct AppRootView: View {
 
             Tab(AppTab.trips.title, systemImage: AppTab.trips.systemImage, value: AppTab.trips) {
                 NavigationStack(path: $router.tripsPath) {
-                    TripTimelineView()
+                    TripsScreen()
                         .navigationDestination(for: AppRoute.self) { route in
                             AppRouteDestination(route: route)
                         }
@@ -39,24 +39,7 @@ struct AppRootView: View {
             .accessibilityIdentifier(AccessibilityID.youTab)
         }
         .sheet(item: $router.presentation) { presentation in
-            switch presentation {
-            case .guidance(let tripID, let legID, let entry, let completion):
-                GuidanceFlowView(tripID: tripID, legID: legID, entry: entry, completion: completion)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            case .createTrip:
-                CreateTripSheet()
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            case .addItineraryItem(let tripID, let initialDate):
-                AddItineraryItemSheet(tripID: tripID, initialDate: initialDate)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            case .itineraryTalk(let tripID, let scope):
-                ItineraryTalkSheet(tripID: tripID, scope: scope)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            }
+            AppPresentationSheet(presentation: presentation, now: session.now)
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }

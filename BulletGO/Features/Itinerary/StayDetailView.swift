@@ -3,31 +3,47 @@ import SwiftUI
 struct StayDetailView: View {
     @Environment(TripSessionModel.self) private var session
     @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
 
     let tripID: TripID
     let stayID: StayID
     @State private var place = ""
-    @State private var hasDate = false
-    @State private var date = Date()
-    @State private var confirmDateChange = false
-    @State private var pendingDate: Date?
+    @State private var hasCheckIn = false
+    @State private var checkIn = Date()
+    @State private var hasCheckOut = false
+    @State private var checkOut = Date().addingTimeInterval(86_400)
     @State private var didLoad = false
+    @State private var isSaving = false
+    @State private var saveFailed = false
+    @State private var showDiscard = false
 
     private var stay: Stay? {
         session.trip.flatMap { trip in trip.stays.first { $0.id == stayID } }
+    }
+
+    private var isDirty: Bool {
+        guard let stay else { return false }
+        return place != (stay.place.value ?? "")
+            || hasCheckIn != (stay.checkIn.status == .confirmed)
+            || hasCheckOut != (stay.checkOut.status == .confirmed)
     }
 
     var body: some View {
         Form {
             Section {
                 TextField("Place", text: $place)
-                Toggle("Has a check-in date", isOn: $hasDate)
-                if hasDate {
-                    DatePicker("Check-in", selection: $date, displayedComponents: .date)
+                Toggle("Check-in date known", isOn: $hasCheckIn)
+                if hasCheckIn {
+                    DatePicker("Check-in", selection: $checkIn, displayedComponents: .date)
+                }
+                Toggle("Check-out date known", isOn: $hasCheckOut)
+                if hasCheckOut {
+                    DatePicker("Check-out", selection: $checkOut, displayedComponents: .date)
                 }
             }
+            ItemRecordsView(tripID: tripID, scope: .stay(stayID))
             Section {
-                Button("Move to Unscheduled", role: .none) {
+                Button("Move to Unscheduled") {
                     Task { _ = await session.process(.applyMutation(.unscheduleStay(stayID))) }
                 }
                 .disabled(stay?.checkIn.status != .confirmed)
@@ -41,69 +57,90 @@ struct StayDetailView: View {
         }
         .navigationTitle("Stay")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            load()
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(100))
-                didLoad = true
-            }
-        }
-        .onChange(of: place) { _, newValue in
-            guard didLoad else { return }
-            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, trimmed != stay?.place.value else { return }
-            Task { _ = await session.process(.applyMutation(.updateStayPlace(stayID, trimmed))) }
-        }
-        .onChange(of: hasDate) { _, newValue in
-            guard didLoad else { return }
-            if !newValue {
-                Task { _ = await session.process(.applyMutation(.unscheduleStay(stayID))) }
-            }
-        }
-        .onChange(of: date) { _, newValue in
-            guard didLoad, hasDate else { return }
-            if stay?.checkIn.status == .confirmed {
-                pendingDate = newValue
-                confirmDateChange = true
-            } else {
-                Task { await saveDate(newValue) }
-            }
-        }
-        .alert("Change this stay’s date?", isPresented: $confirmDateChange) {
-            Button("Change") {
-                if let pendingDate {
-                    Task { await saveDate(pendingDate) }
+        .navigationBarBackButtonHidden(isDirty)
+        .onAppear(perform: load)
+        .toolbar {
+            if isDirty {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { attemptCancel() }
                 }
             }
-            Button("Cancel", role: .cancel) { pendingDate = nil }
-        } message: {
-            Text("Confirmed check-in times are not changed by dragging. This updates the stay date.")
-        }
-        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") { Task { await save() } }
+                    .disabled(!isDirty || isSaving || !canSave)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("Talk") {
                     router.present(.itineraryTalk(tripID, .stay(stayID)))
                 }
             }
         }
+        .confirmationDialog("Discard changes?", isPresented: $showDiscard, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) { dismiss() }
+            Button("Keep editing", role: .cancel) {}
+        }
+        .alert("Couldn’t save", isPresented: $saveFailed) {
+            Button("OK", role: .cancel) {}
+        }
         .accessibilityIdentifier(AccessibilityID.stayDetail)
     }
 
+    private var canSave: Bool {
+        !place.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (!hasCheckIn || !hasCheckOut || checkOut >= checkIn)
+    }
+
     private func load() {
+        guard !didLoad else { return }
+        didLoad = true
         place = stay?.place.value ?? ""
-        if let checkIn = stay?.checkIn.value,
-           let dateValue = checkIn.date.date(in: TimeZone(identifier: checkIn.timeZoneIdentifier) ?? .current) {
-            hasDate = true
-            date = dateValue
+        if let value = stay?.checkIn.value,
+           let dateValue = value.date.date(in: TimeZone(identifier: value.timeZoneIdentifier) ?? .current) {
+            hasCheckIn = stay?.checkIn.status == .confirmed
+            checkIn = dateValue
+        }
+        if let value = stay?.checkOut.value,
+           let dateValue = value.date.date(in: TimeZone(identifier: value.timeZoneIdentifier) ?? .current) {
+            hasCheckOut = stay?.checkOut.status == .confirmed
+            checkOut = dateValue
         }
     }
 
-    private func saveDate(_ value: Date) async {
-        let timeZone = TimeZone.current
-        guard let local = try? LocalDate(date: value, timeZone: timeZone),
-              let moment = try? ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier) else {
+    private func attemptCancel() {
+        if isDirty {
+            showDiscard = true
+        } else {
+            dismiss()
+        }
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        let trimmed = place.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            saveFailed = true
             return
         }
-        _ = await session.process(.applyMutation(.updateStayCheckIn(stayID, moment)))
+        var mutations: [TripMutation] = [.updateStayPlace(stayID, trimmed)]
+        let timeZone = TimeZone.current
+        do {
+            if hasCheckIn {
+                let local = try LocalDate(date: checkIn, timeZone: timeZone)
+                mutations.append(.updateStayCheckIn(stayID, try ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier)))
+            } else {
+                mutations.append(.unscheduleStay(stayID))
+            }
+            if hasCheckOut {
+                let local = try LocalDate(date: checkOut, timeZone: timeZone)
+                mutations.append(.updateStayCheckOut(stayID, try ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier)))
+            }
+        } catch {
+            saveFailed = true
+            return
+        }
+        if await session.process(.applyMutations(mutations)) == nil {
+            saveFailed = true
+        }
     }
 }

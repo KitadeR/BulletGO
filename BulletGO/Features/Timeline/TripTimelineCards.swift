@@ -249,8 +249,8 @@ struct TripStayCard: View {
     }
 
     private var stayID: String {
-        if case .stay(let id) = row.id {
-            return AccessibilityID.timelineStay(id)
+        if case .stay(let id, let role) = row.id {
+            return AccessibilityID.timelineStay(id, role: role)
         }
         return ""
     }

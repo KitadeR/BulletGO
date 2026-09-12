@@ -23,4 +23,7 @@ nonisolated enum TripValidationError: Error, Equatable, Sendable {
     case currentContextTripMismatch
     case unresolvedCurrentFocus
     case invertedTravelDates
+    case duplicateNoteIDs
+    case duplicateAttachmentIDs
+    case duplicateSavedPlaceIDs
 }

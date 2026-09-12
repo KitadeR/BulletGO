@@ -48,7 +48,7 @@ struct TripsDateStrip: View {
                 .padding(.horizontal, TripsV2Style.screenPadding)
             }
             .scrollIndicators(.hidden)
-            .accessibilityIdentifier(AccessibilityID.tripsV2DateStrip)
+            .accessibilityIdentifier(AccessibilityID.tripsDateSelector)
             .onChange(of: selectedDate) { _, date in
                 guard let date else { return }
                 proxy.scrollTo(ItineraryDayComposer.selectorAnchor(for: date), anchor: .center)

@@ -4,10 +4,13 @@ struct TripsScreen: View {
     @Environment(TripSessionModel.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.locale) private var locale
+    @Environment(\.undoManager) private var undoManager
 
     @State private var selectedDate: LocalDate?
     @State private var programmaticTarget: LocalDate?
     @State private var didApplyInitialDay = false
+    @State private var pendingDeleteTrip = false
+    @State private var showProcessFailure = false
 
     var body: some View {
         Group {
@@ -15,16 +18,9 @@ struct TripsScreen: View {
             case .loading:
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier(AccessibilityID.tripTimelineLoading)
             case .failed:
-                ContentUnavailableView {
-                    Label("Couldn’t load your trip", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text("Check your connection and try again.")
-                } actions: {
-                    Button("Retry") {
-                        Task { await session.retry() }
-                    }
-                }
+                failedState
             case .empty:
                 emptyState
             case .loaded:
@@ -37,31 +33,123 @@ struct TripsScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(TripsV2Style.canvas)
-        .toolbarVisibility(.hidden, for: .navigationBar)
-        .accessibilityIdentifier(AccessibilityID.tripsV2Screen)
+        .navigationTitle(session.trip?.name.value ?? "BulletGO")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent }
+        .alert("Couldn’t update this trip", isPresented: $showProcessFailure) {
+            Button("OK", role: .cancel) {}
+        }
+        .onChange(of: session.processState) { _, state in
+            showProcessFailure = state == .failed
+        }
+        .confirmationDialog(
+            "Delete this trip?",
+            isPresented: $pendingDeleteTrip,
+            titleVisibility: .visible
+        ) {
+            Button("Delete trip", role: .destructive) {
+                guard let id = session.trip?.id else { return }
+                Task { _ = try? await session.deleteTrip(id: id) }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(AccessibilityID.tripTimeline)
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        if session.loadState == .loaded, let trip = session.trip {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Add with AI") {
+                    router.present(.itineraryTalk(trip.id, .trip))
+                }
+                .accessibilityIdentifier(AccessibilityID.talkAboutTrip)
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Add") {
+                    router.present(.addItineraryItem(trip.id, initialDate: selectedDate))
+                }
+                .accessibilityIdentifier(AccessibilityID.addItineraryButton)
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Menu("Trip") {
+                    Button("Switch trip", systemImage: "arrow.left.arrow.right") {
+                        router.present(.switchTrip)
+                    }
+                    Button("Edit trip", systemImage: "pencil") {
+                        router.present(.editTrip(trip.id))
+                    }
+                    Button("Map", systemImage: "map") {
+                        router.push(.tripMap(trip.id))
+                    }
+                    Button("Saved places", systemImage: "star") {
+                        router.push(.savedPlaces(trip.id))
+                    }
+                    Button("Delete trip", systemImage: "trash", role: .destructive) {
+                        pendingDeleteTrip = true
+                    }
+                }
+            }
+        }
     }
 
     private var emptyState: some View {
         VStack(spacing: DesignTokens.Spacing.md) {
+            Image(systemName: "map")
+                .font(.largeTitle)
+                .foregroundStyle(DesignTokens.Color.secondaryText)
             Text("Your trip will appear here")
                 .font(DesignTokens.Typography.headline)
             Text("Create a trip to start arranging dates, places, and journeys.")
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
                 .multilineTextAlignment(.center)
+            Button("Create trip") {
+                router.present(.createTrip)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier(AccessibilityID.createTripButton)
         }
         .padding(DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.tripTimelineEmpty)
     }
 
+    private var failedState: some View {
+        ContentUnavailableView {
+            Label("Couldn’t load your trip", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text("Check your connection and try again.")
+        } actions: {
+            Button("Retry") {
+                Task { await session.retry() }
+            }
+            .accessibilityIdentifier(AccessibilityID.tripTimelineRetry)
+        }
+        .accessibilityIdentifier(AccessibilityID.tripTimelineFailed)
+    }
+
     private func loadedTimeline(_ trip: Trip) -> some View {
-        let snapshot = ItineraryDayComposer.snapshot(for: trip, now: session.now)
+        let snapshot = ItineraryDayComposer.snapshot(
+            for: trip,
+            now: session.now,
+            insertingEmptyDay: emptyDayToInsert(in: trip)
+        )
         return VStack(alignment: .leading, spacing: 16) {
-            TripsV2Header(
-                destinations: TripsV2Formatting.destinations(in: trip),
-                datesText: TripsV2Formatting.dateRange(for: trip, locale: locale)
-            )
+            Button {
+                router.present(.switchTrip)
+            } label: {
+                TripsV2Header(
+                    destinations: TripsV2Formatting.destinations(in: trip).isEmpty
+                        ? (trip.name.value ?? "")
+                        : TripsV2Formatting.destinations(in: trip),
+                    datesText: TripsV2Formatting.dateRange(for: trip, locale: locale)
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Switch trip"))
             if !snapshot.dateOptions.isEmpty {
                 TripsDateStrip(
                     options: snapshot.dateOptions,
@@ -81,15 +169,35 @@ struct TripsScreen: View {
                                 section: section,
                                 trip: trip,
                                 catalog: session.catalog,
-                                locale: locale
+                                locale: locale,
+                                onAdd: { date in
+                                    router.present(.addItineraryItem(trip.id, initialDate: date))
+                                },
+                                onMove: { row, offset in
+                                    move(row, in: trip, offset: offset)
+                                },
+                                onMoveToDate: { row, date in
+                                    move(row, in: trip, to: date)
+                                },
+                                onDelete: { row in
+                                    delete(row, in: trip)
+                                }
                             )
-                                .id(ItineraryDayComposer.scrollAnchor(for: section))
+                            .id(ItineraryDayComposer.scrollAnchor(for: section))
+                            .background {
+                                sectionAnchor(section)
+                            }
                         }
                     }
                     .padding(.top, 8)
                     .padding(.bottom, 88)
                 }
                 .scrollIndicators(.hidden)
+                .coordinateSpace(.named(tripsScrollSpace))
+                .onPreferenceChange(DayOffsetPreference.self) { offsets in
+                    syncSelectedDate(with: offsets)
+                }
+                .accessibilityIdentifier(AccessibilityID.tripTimeline)
                 .onAppear {
                     applyInitialDayIfNeeded(snapshot, proxy: proxy)
                 }
@@ -105,7 +213,7 @@ struct TripsScreen: View {
                 selectedDate: selectedDate,
                 locale: locale,
                 onSelect: { action in
-                    presentAdd(tripID: trip.id, action: action)
+                    presentGuidedAdd(tripID: trip.id, action: action)
                 }
             )
             .padding(.trailing, 20)
@@ -114,11 +222,32 @@ struct TripsScreen: View {
         }
     }
 
-    private func presentAdd(tripID: TripID, action: TripsFloatingAddAction) {
-        // Kind cannot be passed without changing AppPresentation / AddItineraryItemSheet.
-        // Guided Add Flow is a later plan; keep the generic sheet for now.
-        _ = action
-        router.present(.addItineraryItem(tripID, initialDate: selectedDate))
+    private func presentGuidedAdd(tripID: TripID, action: TripsFloatingAddAction) {
+        let kind: ItineraryAddKind
+        switch action {
+        case .activity: kind = .activity
+        case .leg: kind = .travel
+        case .stay: kind = .stay
+        }
+        router.present(.guidedAdd(tripID, kind, initialDate: selectedDate, seedPlace: nil))
+    }
+
+    private func emptyDayToInsert(in trip: Trip) -> LocalDate? {
+        let candidate: LocalDate?
+        if let selectedDate {
+            candidate = selectedDate
+        } else if !didApplyInitialDay {
+            candidate = ItineraryDayComposer.initialDate(for: trip, now: session.now)
+        } else {
+            candidate = nil
+        }
+        guard let candidate else { return nil }
+        let populated = Set(ItineraryDayComposer.sections(for: trip).compactMap(\.date))
+        let options = ItineraryDayComposer.dateOptions(for: trip)
+        guard options.contains(candidate), !populated.contains(candidate) else {
+            return nil
+        }
+        return candidate
     }
 
     private func applyInitialDayIfNeeded(_ snapshot: TripsTimelineSnapshot, proxy: ScrollViewProxy) {
@@ -128,6 +257,101 @@ struct TripsScreen: View {
         selectedDate = initial
         programmaticTarget = initial
         proxy.scrollTo(ItineraryDayComposer.scrollAnchor(for: initial), anchor: .top)
+    }
+
+    private func syncSelectedDate(with offsets: [LocalDate: CGFloat]) {
+        if let target = programmaticTarget {
+            if let offset = offsets[target], abs(offset - selectionAnchor) < 48 {
+                programmaticTarget = nil
+            }
+            return
+        }
+        let visible = offsets.filter { $0.value <= selectionAnchor }
+        guard let current = visible.max(by: { $0.value < $1.value })?.key else {
+            return
+        }
+        if selectedDate != current {
+            selectedDate = current
+        }
+    }
+
+    private func sectionAnchor(_ section: ItinerarySection) -> some View {
+        GeometryReader { geometry in
+            Color.clear.preference(
+                key: DayOffsetPreference.self,
+                value: section.date.map { [$0: geometry.frame(in: .named(tripsScrollSpace)).minY] } ?? [:]
+            )
+        }
+    }
+
+    private func move(_ row: TimelineRow, in trip: Trip, offset: Int) {
+        guard let destination = ItineraryDayComposer.moveDestination(
+            of: row.id,
+            offset: offset,
+            in: trip,
+            insertingEmptyDay: emptyDayToInsert(in: trip)
+        ) else {
+            return
+        }
+        Task {
+            let from = destination.from
+            let to = destination.to
+            if await session.process(.applyMutation(.moveTimelineItem(from: from, to: to))) != nil {
+                undoManager?.registerUndo(withTarget: session) { session in
+                    Task {
+                        _ = await session.process(.applyMutation(.moveTimelineItem(from: to, to: from)))
+                    }
+                }
+            }
+        }
+    }
+
+    private func move(_ row: TimelineRow, in trip: Trip, to date: LocalDate?) {
+        let item = row.id.item
+        let previous = trip.assignmentDate(for: item)
+        Task {
+            if await session.process(.applyMutation(.moveItemToDate(item, date))) != nil {
+                undoManager?.registerUndo(withTarget: session) { session in
+                    Task {
+                        _ = await session.process(.applyMutation(.moveItemToDate(item, previous)))
+                    }
+                }
+            }
+        }
+    }
+
+    private func delete(_ row: TimelineRow, in trip: Trip) {
+        let mutation: TripMutation
+        let restore: TripMutation?
+        switch row.id {
+        case .leg(let id):
+            mutation = .removeLeg(id)
+            restore = trip.legs.first { $0.id == id }.map { .addLeg($0, atTimelineIndex: nil) }
+        case .stay(let id, _):
+            mutation = .removeStay(id)
+            restore = trip.stays.first { $0.id == id }.map { .addStay($0, atTimelineIndex: nil) }
+        case .activity(let id):
+            mutation = .removeActivity(id)
+            restore = trip.activities.first { $0.id == id }.map { .addActivity($0, atTimelineIndex: nil) }
+        }
+        Task {
+            if await session.process(.applyMutation(mutation)) != nil, let restore {
+                undoManager?.registerUndo(withTarget: session) { session in
+                    Task { _ = await session.process(.applyMutation(restore)) }
+                }
+            }
+        }
+    }
+}
+
+private let tripsScrollSpace = "trips-v2-scroll"
+private let selectionAnchor: CGFloat = 140
+
+private struct DayOffsetPreference: PreferenceKey {
+    static var defaultValue: [LocalDate: CGFloat] = [:]
+
+    static func reduce(value: inout [LocalDate: CGFloat], nextValue: () -> [LocalDate: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
 }
 
@@ -143,12 +367,15 @@ struct TripsV2PreviewRoot: View {
         @Bindable var router = router
         NavigationStack {
             TripsScreen()
+                .navigationDestination(for: AppRoute.self) { route in
+                    AppRouteDestination(route: route)
+                }
         }
         .environment(router)
         .environment(session)
         .environment(\.locale, Locale(identifier: "ja"))
         .sheet(item: $router.presentation) { presentation in
-            tripsV2PreviewSheet(presentation)
+            AppPresentationSheet(presentation: presentation, now: session.now)
                 .environment(router)
                 .environment(session)
                 .environment(\.locale, Locale(identifier: "ja"))
@@ -161,7 +388,7 @@ enum TripsV2PreviewData {
         do {
             return try makePlanningTrip()
         } catch {
-            preconditionFailure("Failed to make TripsV2 preview trip: \(error)")
+            preconditionFailure("Failed to make Trips preview trip: \(error)")
         }
     }()
 
@@ -240,18 +467,6 @@ enum TripsV2PreviewData {
         trip = try TripMutationApplier.apply(.addActivity(ramen, atTimelineIndex: nil), to: trip, at: now)
         trip = try TripMutationApplier.apply(.addActivity(tea, atTimelineIndex: nil), to: trip, at: now)
         return trip
-    }
-}
-
-@ViewBuilder
-private func tripsV2PreviewSheet(_ presentation: AppPresentation) -> some View {
-    switch presentation {
-    case .addItineraryItem(let tripID, let initialDate):
-        AddItineraryItemSheet(tripID: tripID, initialDate: initialDate)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-    default:
-        EmptyView()
     }
 }
 

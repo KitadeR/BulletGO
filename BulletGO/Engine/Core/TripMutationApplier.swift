@@ -297,6 +297,71 @@ nonisolated enum TripMutationApplier {
                     at: now
                 )
             }
+        case .updateLegArrivesAt(let legID, let moment):
+            try updated.updateLeg(id: legID) { leg in
+                leg.arrivesAt = try leg.arrivesAt.updating(
+                    value: moment,
+                    status: .confirmed,
+                    source: .userStated,
+                    confidence: .high,
+                    at: now
+                )
+            }
+        case .updateActivityEndsAt(let activityID, let moment):
+            try updated.updateActivity(id: activityID) { activity in
+                if let moment {
+                    activity.endsAt = try activity.endsAt.updating(
+                        value: moment,
+                        status: .confirmed,
+                        source: .userStated,
+                        confidence: .high,
+                        at: now
+                    )
+                } else {
+                    activity.endsAt = try activity.endsAt.updating(
+                        value: nil,
+                        status: .unknown,
+                        source: .userStated,
+                        confidence: nil,
+                        at: now
+                    )
+                }
+            }
+        case .moveItemToDate(let item, let date):
+            try updated.moveItem(item, to: date, at: now)
+        case .updateReservationDetails(let scope, let details):
+            try updated.replaceReservation(in: scope, details: details, at: now)
+        case .updateScopedReservationStatus(let scope, let status, let slotStatus):
+            try updated.replaceReservation(in: scope, status: (status, slotStatus), at: now)
+        case .upsertNote(let note):
+            if let index = updated.notes.firstIndex(where: { $0.id == note.id }) {
+                updated.notes[index] = note
+            } else {
+                updated.notes.append(note)
+            }
+        case .removeNote(let id):
+            updated.notes.removeAll { $0.id == id }
+        case .addAttachment(let record):
+            if !updated.attachments.contains(where: { $0.id == record.id }) {
+                updated.attachments.append(record)
+            }
+        case .renameAttachment(let id, let name):
+            if let index = updated.attachments.firstIndex(where: { $0.id == id }) {
+                updated.attachments[index].fileName = name
+            }
+        case .removeAttachment(let id):
+            updated.attachments.removeAll { $0.id == id }
+        case .addSavedPlace(let place):
+            if !updated.savedPlaces.contains(where: { $0.id == place.id }) {
+                updated.savedPlaces.append(place)
+            }
+        case .removeSavedPlace(let id):
+            updated.savedPlaces.removeAll { $0.id == id }
+        case .cacheConnectorEstimate(let estimate):
+            updated.connectorEstimates.removeAll {
+                $0.fromItem == estimate.fromItem && $0.toItem == estimate.toItem
+            }
+            updated.connectorEstimates.append(estimate)
         }
 
         updated.changeEvents.append(
@@ -390,6 +455,21 @@ nonisolated enum TripMutationApplier {
              .removeActivity(let activityID):
             .activity(activityID)
         case .setBagDimensions:
+            .trip
+        case .updateLegArrivesAt(let legID, _):
+            .leg(legID)
+        case .updateActivityEndsAt(let activityID, _):
+            .activity(activityID)
+        case .moveItemToDate(let item, _):
+            switch item {
+            case .leg(let id): .leg(id)
+            case .stay(let id): .stay(id)
+            case .activity(let id): .activity(id)
+            }
+        case .updateReservationDetails(let scope, _), .updateScopedReservationStatus(let scope, _, _):
+            scope
+        case .upsertNote, .removeNote, .addAttachment, .renameAttachment, .removeAttachment,
+             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate:
             .trip
         }
     }

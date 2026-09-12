@@ -88,5 +88,60 @@ struct TripSessionModelTests {
         #expect(session.loadState == .loaded)
         #expect(session.trip?.name.value == "Japan trip")
         #expect(session.trip?.timeline.isEmpty == true)
+        #expect(session.trips.count == 1)
+    }
+
+    @Test func selectTripRestoresLastSelection() async throws {
+        let repository = InMemoryTripRepository()
+        let first = try EmptyTripFactory.make(
+            name: "First",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 3),
+            now: EngineTestSupport.now
+        )
+        let second = try EmptyTripFactory.make(
+            name: "Second",
+            startDate: LocalDate(year: 2026, month: 11, day: 1),
+            endDate: LocalDate(year: 2026, month: 11, day: 3),
+            now: EngineTestSupport.now
+        )
+        try await repository.save(first)
+        try await repository.save(second)
+        let selected = InMemorySelectedTripStore(second.id)
+        let session = TripSessionModel(
+            store: TripStore(repository: repository, brain: try EngineTestSupport.brain()),
+            selectedTripStore: selected
+        )
+        await session.load()
+        #expect(session.trip?.id == second.id)
+        await session.selectTrip(id: first.id)
+        #expect(session.trip?.id == first.id)
+        #expect(selected.load() == first.id)
+    }
+
+    @Test func deleteTripSelectsRemainingTrip() async throws {
+        let repository = InMemoryTripRepository()
+        let first = try EmptyTripFactory.make(
+            name: "First",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 3),
+            now: EngineTestSupport.now
+        )
+        let second = try EmptyTripFactory.make(
+            name: "Second",
+            startDate: LocalDate(year: 2026, month: 11, day: 1),
+            endDate: LocalDate(year: 2026, month: 11, day: 3),
+            now: EngineTestSupport.now
+        )
+        try await repository.save(first)
+        try await repository.save(second)
+        let session = TripSessionModel(
+            store: TripStore(repository: repository, brain: try EngineTestSupport.brain()),
+            selectedTripStore: InMemorySelectedTripStore(first.id)
+        )
+        await session.load()
+        #expect(try await session.deleteTrip(id: first.id))
+        #expect(session.trip?.id == second.id)
+        #expect(session.trips.count == 1)
     }
 }

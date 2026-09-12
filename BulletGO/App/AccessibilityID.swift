@@ -66,6 +66,22 @@ enum AccessibilityID {
     static let tripsV2AddActivity = "trips-v2-add-activity"
     static let tripsV2AddLeg = "trips-v2-add-leg"
     static let tripsV2AddStay = "trips-v2-add-stay"
+    static let guidedAddSheet = "guided-add-sheet"
+    static let guidedAddCancel = "guided-add-cancel"
+    static let guidedAddBack = "guided-add-back"
+    static let guidedAddContinue = "guided-add-continue"
+    static let guidedAddSkip = "guided-add-skip"
+    static let guidedAddSave = "guided-add-save"
+    static let guidedAddTitle = "guided-add-title"
+    static let guidedAddOrigin = "guided-add-origin"
+    static let guidedAddDestination = "guided-add-destination"
+    static let tripSwitcher = "trip-switcher"
+    static let tripSwitcherRow = "trip-switcher-row"
+    static let tripMap = "trip-map"
+    static let savedPlaces = "saved-places"
+    static let reservationEditor = "reservation-editor"
+    static let notesEditor = "notes-editor"
+    static let attachmentsEditor = "attachments-editor"
     static let tripsEmptyDay = "trips-empty-day"
     static let tripsPreparation = "trips-leg-preparation"
     static let homeTab = "tab-home"
@@ -95,8 +111,15 @@ enum AccessibilityID {
         "timeline-leg-\(id.rawValue.uuidString)"
     }
 
-    static func timelineStay(_ id: StayID) -> String {
-        "timeline-stay-\(id.rawValue.uuidString)"
+    static func timelineStay(_ id: StayID, role: StayPresentationRole = .checkIn) -> String {
+        switch role {
+        case .checkIn:
+            "timeline-stay-\(id.rawValue.uuidString)"
+        case .staying(let night, _):
+            "timeline-stay-\(id.rawValue.uuidString)-night-\(night)"
+        case .checkOut:
+            "timeline-stay-\(id.rawValue.uuidString)-checkout"
+        }
     }
 
     static func timelineActivity(_ id: ActivityID) -> String {

@@ -7,6 +7,8 @@ nonisolated enum AppRoute: Hashable, Sendable {
     case activityDetail(TripID, ActivityID)
     case taskDetail(TripID, TaskID)
     case baggageCheck(TripID, LegID, TaskID)
+    case tripMap(TripID)
+    case savedPlaces(TripID)
 }
 
 nonisolated enum GuidanceEntry: Hashable, Sendable {
@@ -26,26 +28,47 @@ nonisolated enum ItineraryInputScope: Hashable, Sendable {
     case activity(ActivityID)
 }
 
+nonisolated enum ItineraryAddKind: String, Hashable, Codable, Sendable {
+    case activity
+    case travel
+    case stay
+}
+
 nonisolated enum AppPresentation: Hashable, Identifiable, Sendable {
     case guidance(TripID, LegID, GuidanceEntry, GuidanceCompletion)
     case createTrip
+    case editTrip(TripID)
+    case switchTrip
     case addItineraryItem(TripID, initialDate: LocalDate?)
+    case guidedAdd(TripID, ItineraryAddKind, initialDate: LocalDate?, seedPlace: PlaceReference?)
     case itineraryTalk(TripID, ItineraryInputScope)
 
     var id: String {
         switch self {
         case .guidance(let tripID, let legID, let entry, let completion):
-            "guidance-\(tripID.rawValue.uuidString)-\(legID.rawValue.uuidString)-\(entry)-\(completion)"
+            return "guidance-\(tripID.rawValue.uuidString)-\(legID.rawValue.uuidString)-\(entry)-\(completion)"
         case .createTrip:
-            "create-trip"
+            return "create-trip"
+        case .editTrip(let tripID):
+            return "edit-trip-\(tripID.rawValue.uuidString)"
+        case .switchTrip:
+            return "switch-trip"
         case .addItineraryItem(let tripID, let initialDate):
             if let initialDate {
-                "add-itinerary-\(tripID.rawValue.uuidString)-\(initialDate.displayString)"
-            } else {
-                "add-itinerary-\(tripID.rawValue.uuidString)"
+                return "add-itinerary-\(tripID.rawValue.uuidString)-\(initialDate.displayString)"
             }
+            return "add-itinerary-\(tripID.rawValue.uuidString)"
+        case .guidedAdd(let tripID, let kind, let initialDate, let seedPlace):
+            var id = "guided-add-\(kind.rawValue)-\(tripID.rawValue.uuidString)"
+            if let initialDate {
+                id += "-\(initialDate.displayString)"
+            }
+            if let seedPlace {
+                id += "-\(seedPlace.name)"
+            }
+            return id
         case .itineraryTalk(let tripID, let scope):
-            "itinerary-talk-\(tripID.rawValue.uuidString)-\(scope)"
+            return "itinerary-talk-\(tripID.rawValue.uuidString)-\(scope)"
         }
     }
 }

@@ -30,6 +30,19 @@ nonisolated enum TripMutation: Hashable, Sendable {
     case addBag(LegID, BagID)
     case setBagDimensions(BagID, BaggageDimensions)
     case setSeatPreference(LegID, SeatPreference)
+    case updateLegArrivesAt(LegID, ScheduledMoment)
+    case updateActivityEndsAt(ActivityID, ScheduledMoment?)
+    case moveItemToDate(TripTimelineItem, LocalDate?)
+    case updateReservationDetails(DomainScope, ReservationDetails)
+    case updateScopedReservationStatus(DomainScope, ReservationStatus, SlotStatus)
+    case upsertNote(ScopedNote)
+    case removeNote(NoteID)
+    case addAttachment(AttachmentRecord)
+    case renameAttachment(AttachmentID, String)
+    case removeAttachment(AttachmentID)
+    case addSavedPlace(SavedPlace)
+    case removeSavedPlace(SavedPlaceID)
+    case cacheConnectorEstimate(ConnectorEstimate)
 
     var isStructural: Bool {
         switch self {
@@ -37,10 +50,13 @@ nonisolated enum TripMutation: Hashable, Sendable {
              .addLeg, .updateLegOrigin, .updateLegDestination, .unscheduleLeg, .removeLeg,
              .addStay, .updateStayPlace, .updateStayCheckIn, .updateStayCheckOut, .unscheduleStay, .removeStay,
              .addActivity, .updateActivityTitle, .updateActivityPlace, .updateActivityScheduledAt, .unscheduleActivity, .removeActivity,
-             .moveTimelineItem:
+             .moveTimelineItem, .updateLegArrivesAt, .updateActivityEndsAt, .moveItemToDate:
             true
         case .setLegScheduledAt, .setTransportMode, .setReservationStatus, .setBookingService,
-             .setBaggagePresence, .addBag, .setBagDimensions, .setSeatPreference:
+             .setBaggagePresence, .addBag, .setBagDimensions, .setSeatPreference,
+             .updateReservationDetails, .updateScopedReservationStatus,
+             .upsertNote, .removeNote, .addAttachment, .renameAttachment, .removeAttachment,
+             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate:
             false
         }
     }
