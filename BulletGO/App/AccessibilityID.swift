@@ -121,6 +121,24 @@ enum AccessibilityID {
         "timeline-activity-\(id.rawValue.uuidString)"
     }
 
+    static func homeScheduleRow(_ id: TimelineRowKind) -> String {
+        switch id {
+        case .leg(let id):
+            "home-schedule-leg-\(id.rawValue.uuidString)"
+        case .stay(let id, let role):
+            switch role {
+            case .checkIn:
+                "home-schedule-stay-\(id.rawValue.uuidString)"
+            case .staying(let night, _):
+                "home-schedule-stay-\(id.rawValue.uuidString)-night-\(night)"
+            case .checkOut:
+                "home-schedule-stay-\(id.rawValue.uuidString)-checkout"
+            }
+        case .activity(let id):
+            "home-schedule-activity-\(id.rawValue.uuidString)"
+        }
+    }
+
     static func tripsDateOption(_ date: LocalDate) -> String {
         "trips-date-\(date.year)-\(date.month)-\(date.day)"
     }

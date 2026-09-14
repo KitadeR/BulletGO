@@ -49,10 +49,6 @@ struct TaskDetailView: View {
         let content = TripContentResolver.task(contentKey: task.contentKey)
         return ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                JourneyArtwork(kind: JourneyVisualProvider.kind(for: leg), isCompact: true)
-                    .frame(height: 140)
-                    .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.lg, style: .continuous))
-
                 labeled(
                     title: LocalizedStringResource("Why this matters now", comment: "Task detail heading explaining timing."),
                     value: .localized(TripContentResolver.taskWhyNow(task.contentKey))

@@ -6,6 +6,41 @@ final class BulletGOUITests: XCTestCase {
     }
 
     @MainActor
+    func testHomeShowsPrimarySetupAndHasNoTaskCatalog() throws {
+        let app = launchApp()
+
+        XCTAssertTrue(element(app, "contextual-home").waitForExistence(timeout: 15))
+        XCTAssertTrue(
+            element(app, "primary-now").waitForExistence(timeout: 8)
+                || element(app, "start-guidance").waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(app.buttons["open-feature-hub"].exists)
+        XCTAssertFalse(app.buttons["Features"].exists)
+        XCTAssertFalse(element(app, "coming-up-section").exists)
+        XCTAssertFalse(app.staticTexts["Coming soon"].exists)
+        XCTAssertFalse(app.staticTexts["準備中"].exists)
+
+        tapID(app, "primary-now")
+        XCTAssertTrue(element(app, "guidance-sheet").waitForExistence(timeout: 8))
+        tapID(app, "guidance-close")
+        XCTAssertTrue(element(app, "contextual-home").waitForExistence(timeout: 8))
+    }
+
+    @MainActor
+    func testEmptyHomeCreatesTrip() throws {
+        let app = XCUIApplication()
+        if app.state != .notRunning {
+            app.terminate()
+        }
+        app.launchArguments = ["-ui-testing", "-ui-testing-empty"]
+        app.launch()
+
+        XCTAssertTrue(element(app, "contextual-home-empty").waitForExistence(timeout: 15))
+        tapID(app, "create-trip-button")
+        XCTAssertTrue(element(app, "create-trip-sheet").waitForExistence(timeout: 12))
+    }
+
+    @MainActor
     func testHomeHasNoFeatureCatalogAndOpensJourney() throws {
         let app = launchApp()
 

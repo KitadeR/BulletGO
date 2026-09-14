@@ -54,9 +54,7 @@ nonisolated struct ContextualHomeSnapshot: Equatable, Sendable {
     var place: ContextPlacePresentation
     var destinations: [String]
     var primaryNow: TimelineNowItem?
-    var preparationItems: [PreparationOverviewItem]
     var todayRows: [TodayScheduleRow]
-    var upcomingRows: [TimelineRow]
 }
 
 nonisolated enum ContextPlaceComposer {
@@ -142,24 +140,30 @@ nonisolated enum ContextPlaceComposer {
 
     private static func city(fromToday trip: Trip, today: LocalDate) -> String? {
         for item in trip.timeline {
-            guard ItineraryDayComposer.date(for: item, in: trip) == today else {
-                continue
-            }
             switch item {
             case .stay(let id):
-                if let city = cleaned(trip.stays.first(where: { $0.id == id })?.place.value) {
-                    return city
+                guard let stay = trip.stays.first(where: { $0.id == id }),
+                      stay.occupancyDates().contains(today),
+                      let city = cleaned(stay.place.value)
+                else {
+                    continue
                 }
+                return city
             case .activity(let id):
-                if let city = cleaned(trip.activities.first(where: { $0.id == id })?.place.value) {
-                    return city
+                guard ItineraryDayComposer.date(for: item, in: trip) == today,
+                      let city = cleaned(trip.activities.first(where: { $0.id == id })?.place.value)
+                else {
+                    continue
                 }
+                return city
             case .leg(let id):
-                if let leg = trip.legs.first(where: { $0.id == id }) {
-                    if let city = cleaned(leg.destination.value) ?? cleaned(leg.origin.value) {
-                        return city
-                    }
+                guard ItineraryDayComposer.date(for: item, in: trip) == today,
+                      let leg = trip.legs.first(where: { $0.id == id }),
+                      let city = cleaned(leg.destination.value) ?? cleaned(leg.origin.value)
+                else {
+                    continue
                 }
+                return city
             }
         }
         return nil
@@ -372,16 +376,6 @@ nonisolated enum TodayScheduleComposer {
         }
     }
 
-    static func upcomingRows(for trip: Trip, today: LocalDate, limit: Int = 3) -> [TimelineRow] {
-        let dated = ItineraryDayComposer.sections(for: trip).compactMap { section -> (LocalDate, [TimelineRow])? in
-            guard case .day(let date) = section.id, date >= today else {
-                return nil
-            }
-            return (date, section.rows)
-        }
-        return Array(dated.flatMap(\.1).prefix(limit))
-    }
-
     private static func visualState(
         for row: TimelineRow,
         in trip: Trip,
@@ -391,7 +385,11 @@ nonisolated enum TodayScheduleComposer {
         if case .leg(let id) = row.id, trip.legs.first(where: { $0.id == id })?.phase == .completed {
             return .completed
         }
-        if let moment = scheduledMoment(for: row, in: trip), let time = moment.time, let localDate = moment.date {
+        if let moment = scheduledMoment(for: row, in: trip),
+           let time = moment.time,
+           let localDate = moment.date,
+           !moment.isAllDay
+        {
             let zone = TimeZone(identifier: moment.timeZoneIdentifier) ?? timeZone
             if let momentDate = date(from: localDate, time: time, timeZone: zone), momentDate < now {
                 return .completed
@@ -408,7 +406,10 @@ nonisolated enum TodayScheduleComposer {
     }
 
     private static func timeLabel(for row: TimelineRow, in trip: Trip) -> String? {
-        guard let time = scheduledMoment(for: row, in: trip)?.time else {
+        guard let moment = scheduledMoment(for: row, in: trip),
+              !moment.isAllDay,
+              let time = moment.time
+        else {
             return nil
         }
         return String(format: "%02d:%02d", time.hour, time.minute)
@@ -417,15 +418,23 @@ nonisolated enum TodayScheduleComposer {
     private static func scheduledMoment(for row: TimelineRow, in trip: Trip) -> ScheduledMoment? {
         switch row.id {
         case .leg(let id):
-            let slot = trip.legs.first(where: { $0.id == id })?.scheduledAt
-            return slot?.status == .confirmed ? slot?.value : nil
-        case .stay(let id, _):
-            let slot = trip.stays.first(where: { $0.id == id })?.checkIn
-            return slot?.status == .confirmed ? slot?.value : nil
+            confirmedMoment(trip.legs.first(where: { $0.id == id })?.scheduledAt)
+        case .stay(let id, let role):
+            switch role {
+            case .checkIn:
+                confirmedMoment(trip.stays.first(where: { $0.id == id })?.checkIn)
+            case .checkOut:
+                confirmedMoment(trip.stays.first(where: { $0.id == id })?.checkOut)
+            case .staying:
+                nil
+            }
         case .activity(let id):
-            let slot = trip.activities.first(where: { $0.id == id })?.scheduledAt
-            return slot?.status == .confirmed ? slot?.value : nil
+            confirmedMoment(trip.activities.first(where: { $0.id == id })?.scheduledAt)
         }
+    }
+
+    private static func confirmedMoment(_ slot: Slot<ScheduledMoment>?) -> ScheduledMoment? {
+        slot?.status == .confirmed ? slot?.value : nil
     }
 
     private static func date(from date: LocalDate, time: LocalTime, timeZone: TimeZone) -> Date? {
@@ -469,14 +478,12 @@ nonisolated enum ContextualHomeComposer {
                 catalog: catalog,
                 tripPhase: tripPhase
             ),
-            preparationItems: PreparationOverviewComposer.items(for: trip),
             todayRows: TodayScheduleComposer.rows(
                 for: trip,
                 today: today,
                 now: now,
                 timeZone: timeZone
-            ),
-            upcomingRows: TodayScheduleComposer.upcomingRows(for: trip, today: today)
+            )
         )
     }
 

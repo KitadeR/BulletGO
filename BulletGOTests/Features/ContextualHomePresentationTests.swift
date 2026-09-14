@@ -169,6 +169,107 @@ struct ContextualHomePresentationTests {
         #expect(fromResolver == .inTrip)
         #expect(snapshot.tripPhase == fromResolver)
     }
+
+    @Test func startSetupIsPrimaryNowWhenGuidanceHasNotStarted() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        let catalog = try EngineTestSupport.catalog()
+        let primary = HomePrimaryActionComposer.primary(for: trip, catalog: catalog, tripPhase: .beforeTrip)
+        #expect(primary?.contentKey == HomePrimaryActionComposer.startSetupContentKey)
+        #expect(primary?.kind == .resume(trip.legs[0].id))
+    }
+
+    @Test func stayOccupancySuppliesCityAndCheckoutTimeOnTheRightDays() throws {
+        let now = DomainTestSupport.timestamp
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: try LocalDate(year: 2026, month: 10, day: 1),
+            endDate: try LocalDate(year: 2026, month: 10, day: 8),
+            now: now
+        )
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let stay = try ItineraryItemFactory.makeStay(
+            place: "Kyoto Hotel",
+            checkIn: try ScheduledMoment(
+                date: oct1,
+                time: try LocalTime(hour: 15, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            checkOut: try ScheduledMoment(
+                date: oct3,
+                time: try LocalTime(hour: 10, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            at: now
+        )
+        let allDay = try ItineraryItemFactory.makeActivity(
+            title: "Kyoto walk",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(
+                date: oct2,
+                timeZoneIdentifier: DomainTestSupport.timeZone,
+                isAllDay: true
+            ),
+            at: now
+        )
+        let unscheduled = try ItineraryItemFactory.makeActivity(
+            title: "Souvenir shopping",
+            place: "Osaka",
+            scheduledAt: try ScheduledMoment(
+                date: nil,
+                time: try LocalTime(hour: 10, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            at: now
+        )
+        trip = try TripMutationApplier.apply(.addStay(stay, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(.addActivity(allDay, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(.addActivity(unscheduled, atTimelineIndex: nil), to: trip, at: now)
+
+        let place = ContextPlaceComposer.place(for: trip, today: oct2)
+        #expect(place.city == "Kyoto Hotel")
+        #expect(place.source == "today_timeline")
+
+        let checkInRows = TodayScheduleComposer.rows(
+            for: trip,
+            today: oct1,
+            now: try tokyoDate(oct1, hour: 16),
+            timeZone: TripPhaseResolver.calendarTimeZone
+        )
+        #expect(checkInRows.map(\.id) == [.stay(stay.id, .checkIn)])
+        #expect(checkInRows[0].timeLabel == "15:00")
+        #expect(checkInRows[0].visualState == .completed)
+
+        let stayingRows = TodayScheduleComposer.rows(
+            for: trip,
+            today: oct2,
+            now: try tokyoDate(oct2, hour: 12),
+            timeZone: TripPhaseResolver.calendarTimeZone
+        )
+        #expect(stayingRows.contains { $0.id == .stay(stay.id, .staying(night: 1, of: 2)) })
+        #expect(stayingRows.contains { $0.id == .activity(allDay.id) && $0.timeLabel == nil && $0.visualState == .neutral })
+        #expect(!stayingRows.contains { $0.row.title == "Souvenir shopping" })
+
+        let checkoutRows = TodayScheduleComposer.rows(
+            for: trip,
+            today: oct3,
+            now: try tokyoDate(oct3, hour: 11),
+            timeZone: TripPhaseResolver.calendarTimeZone
+        )
+        #expect(checkoutRows.map(\.id) == [.stay(stay.id, .checkOut)])
+        #expect(checkoutRows[0].timeLabel == "10:00")
+        #expect(checkoutRows[0].visualState == .completed)
+
+        let snapshot = ContextualHomeComposer.snapshot(
+            for: trip,
+            catalog: try EngineTestSupport.catalog(),
+            now: try tokyoDate(oct2, hour: 12)
+        )
+        #expect(snapshot.tripPhase == .inTrip)
+        #expect(snapshot.primaryNow == nil)
+        #expect(!snapshot.todayRows.contains { $0.row.title == "Souvenir shopping" })
+    }
 }
 
 private func tokyoDate(_ date: LocalDate, hour: Int = 12) throws -> Date {

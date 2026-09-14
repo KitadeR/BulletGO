@@ -109,6 +109,18 @@ enum PreviewTrips {
         dated(readyForNow, startOffset: -20, endOffset: -12, phase: .finished)
     }()
 
+    static let planning: Trip = {
+        do {
+            var trip = readyForNow
+            trip.startDate = try Slot.unknown(updatedAt: phaseClockNow)
+            trip.endDate = try Slot.unknown(updatedAt: phaseClockNow)
+            trip.currentContext.tripPhase = .planning
+            return trip
+        } catch {
+            preconditionFailure("Failed to make planning preview trip: \(error)")
+        }
+    }()
+
     static let japaneseTraveler: Trip = {
         var trip = readyForNow
         do {

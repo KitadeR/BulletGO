@@ -29,20 +29,6 @@ enum DesignTokens {
         static let tintSoft = SwiftUI.Color(red: 0.86, green: 0.34, blue: 0.22).opacity(0.14)
         static let primaryText = SwiftUI.Color.primary
         static let secondaryText = SwiftUI.Color.secondary
-        static let heroSkyTop = SwiftUI.Color(uiColor: UIColor { traits in
-            if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.18, green: 0.22, blue: 0.32, alpha: 1)
-            } else {
-                UIColor(red: 0.62, green: 0.78, blue: 0.90, alpha: 1)
-            }
-        })
-        static let heroSkyBottom = SwiftUI.Color(uiColor: UIColor { traits in
-            if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.32, green: 0.24, blue: 0.20, alpha: 1)
-            } else {
-                UIColor(red: 0.98, green: 0.84, blue: 0.68, alpha: 1)
-            }
-        })
         static let success = SwiftUI.Color(red: 0.18, green: 0.56, blue: 0.38)
         static let caution = SwiftUI.Color(red: 0.78, green: 0.52, blue: 0.12)
         static let danger = SwiftUI.Color(red: 0.72, green: 0.28, blue: 0.24)

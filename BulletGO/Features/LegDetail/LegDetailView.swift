@@ -85,79 +85,57 @@ struct LegDetailView: View {
     private func detail(trip: Trip, leg: Leg) -> some View {
         let snapshot = LegDetailComposer.snapshot(trip: trip, leg: leg, catalog: session.catalog)
         let remembered = TimelineNextComposer.rememberedItems(for: trip, legID: leg.id)
-        return ZStack(alignment: .top) {
-            DesignTokens.Color.canvas
-                .ignoresSafeArea()
-            JourneyArtwork(kind: JourneyVisualProvider.kind(for: leg))
-                .frame(height: 220)
-                .frame(maxWidth: .infinity)
-                .ignoresSafeArea(edges: .top)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
+                Text(verbatim: snapshot.title)
+                    .font(DesignTokens.Typography.display)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            ScrollView {
-                VStack(spacing: 0) {
-                    Color.clear.frame(height: 112)
-                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-                        Text(verbatim: snapshot.title)
-                            .font(DesignTokens.Typography.display)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        switch snapshot.mode {
-                        case .setup:
-                            if let setup = snapshot.setup {
-                                setupSection(setup)
-                            }
-                        case .cockpit:
-                            if let cockpit = snapshot.cockpit {
-                                LegCockpitContentView(cockpit: cockpit) { item in
-                                    handleWhatsNext(item, trip: trip)
-                                }
-                            }
-                        }
-
-                        secondaryTalkButton(mode: snapshot.mode)
-
-                        if !remembered.isEmpty {
-                            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                                Text("Remembered")
-                                    .font(DesignTokens.Typography.headline)
-                                    .accessibilityIdentifier(AccessibilityID.rememberedSection)
-                                ForEach(remembered) { item in
-                                    QuietComingUpRow(
-                                        title: .localized(item.content.title),
-                                        subtitle: item.content.subtitle.map(DisplayText.localized),
-                                        systemImage: item.content.systemImage,
-                                        showsChevron: false,
-                                        accessibilityID: AccessibilityID.rememberedRow(rememberedContentKey(item))
-                                    )
-                                }
-                            }
-                        }
-
-                        editSection(leg: leg)
-
-                        Form {
-                            ItemRecordsView(tripID: trip.id, scope: .leg(leg.id))
-                        }
-                        .scrollDisabled(true)
-                        .frame(minHeight: 420)
+                switch snapshot.mode {
+                case .setup:
+                    if let setup = snapshot.setup {
+                        setupSection(setup)
                     }
-                    .padding(DesignTokens.Spacing.lg)
-                    .padding(.bottom, DesignTokens.Spacing.xl)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        DesignTokens.Color.canvas,
-                        in: UnevenRoundedRectangle(
-                            topLeadingRadius: DesignTokens.Radius.hero,
-                            bottomLeadingRadius: 0,
-                            bottomTrailingRadius: 0,
-                            topTrailingRadius: DesignTokens.Radius.hero,
-                            style: .continuous
-                        )
-                    )
+                case .cockpit:
+                    if let cockpit = snapshot.cockpit {
+                        LegCockpitContentView(cockpit: cockpit) { item in
+                            handleWhatsNext(item, trip: trip)
+                        }
+                    }
                 }
+
+                secondaryTalkButton(mode: snapshot.mode)
+
+                if !remembered.isEmpty {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+                        Text("Remembered")
+                            .font(DesignTokens.Typography.headline)
+                            .accessibilityIdentifier(AccessibilityID.rememberedSection)
+                        ForEach(remembered) { item in
+                            QuietComingUpRow(
+                                title: .localized(item.content.title),
+                                subtitle: item.content.subtitle.map(DisplayText.localized),
+                                systemImage: item.content.systemImage,
+                                showsChevron: false,
+                                accessibilityID: AccessibilityID.rememberedRow(rememberedContentKey(item))
+                            )
+                        }
+                    }
+                }
+
+                editSection(leg: leg)
+
+                Form {
+                    ItemRecordsView(tripID: trip.id, scope: .leg(leg.id))
+                }
+                .scrollDisabled(true)
+                .frame(minHeight: 420)
             }
-            .scrollIndicators(.hidden)
+            .padding(DesignTokens.Spacing.lg)
+            .padding(.bottom, DesignTokens.Spacing.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .scrollIndicators(.hidden)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }

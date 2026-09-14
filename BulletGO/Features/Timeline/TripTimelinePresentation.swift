@@ -176,7 +176,6 @@ nonisolated struct TimelineRow: Identifiable, Equatable, Sendable {
     var id: TimelineRowKind
     var title: String
     var subtitle: DisplayText
-    var visualKind: JourneyVisualKind
     var isLeg: Bool
     var isCurrent: Bool
     var destination: AppRoute?
@@ -214,7 +213,6 @@ nonisolated enum TimelineRowComposer {
                     id: .leg(id),
                     title: "\(origin) → \(destination)",
                     subtitle: .localized(TripContentResolver.transportSummary(for: leg)),
-                    visualKind: JourneyVisualProvider.kind(for: leg),
                     isLeg: true,
                     isCurrent: trip.focusLegID == id,
                     destination: .legDetail(trip.id, id),
@@ -228,7 +226,6 @@ nonisolated enum TimelineRowComposer {
                     id: .stay(id, .checkIn),
                     title: stay.place.value ?? "",
                     subtitle: .verbatim(TripContentResolver.staySubtitle(stay)),
-                    visualKind: JourneyVisualProvider.kind(for: stay),
                     isLeg: false,
                     isCurrent: false,
                     destination: .stayDetail(trip.id, id),
@@ -242,7 +239,6 @@ nonisolated enum TimelineRowComposer {
                     id: .activity(id),
                     title: activity.title.value ?? "",
                     subtitle: .verbatim(activity.place.value ?? ""),
-                    visualKind: JourneyVisualProvider.kind(for: activity),
                     isLeg: false,
                     isCurrent: false,
                     destination: .activityDetail(trip.id, id),
