@@ -9,6 +9,9 @@ nonisolated enum QuestionAnswerMapper {
         let leg = try trip.focusLeg()
         switch (question.target, answer) {
         case (.legScheduledAt, .scheduledMoment(let moment)):
+            if let current = leg.scheduledAt.value {
+                return [.setLegScheduledAt(leg.id, try current.replacingDate(moment.date))]
+            }
             return [.setLegScheduledAt(leg.id, moment)]
         case (.legTransportMode, .choice(let value)):
             guard let mode = TransportMode(rawValue: value) else {

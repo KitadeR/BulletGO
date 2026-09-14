@@ -1,55 +1,69 @@
 import Foundation
 
 nonisolated struct ScheduledMoment: Hashable, Codable, Sendable {
-    let date: LocalDate
+    let date: LocalDate?
     let time: LocalTime?
     let timeZoneIdentifier: String
-    let endTime: LocalTime?
     let isAllDay: Bool
 
+    var hasScheduleContent: Bool {
+        date != nil || time != nil || isAllDay
+    }
+
     init(
-        date: LocalDate,
+        date: LocalDate? = nil,
         time: LocalTime? = nil,
         timeZoneIdentifier: String,
-        endTime: LocalTime? = nil,
         isAllDay: Bool = false
     ) throws {
         guard TimeZone(identifier: timeZoneIdentifier) != nil else {
             throw DomainError.invalidTimeZone(timeZoneIdentifier)
         }
+        let resolvedTime = isAllDay ? nil : time
+        guard date != nil || resolvedTime != nil || isAllDay else {
+            throw DomainError.invalidScheduledMoment
+        }
         self.date = date
-        self.time = isAllDay ? nil : time
+        self.time = resolvedTime
         self.timeZoneIdentifier = timeZoneIdentifier
-        self.endTime = isAllDay ? nil : endTime
         self.isAllDay = isAllDay
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
-            date: try container.decode(LocalDate.self, forKey: .date),
+            date: try container.decodeIfPresent(LocalDate.self, forKey: .date),
             time: try container.decodeIfPresent(LocalTime.self, forKey: .time),
             timeZoneIdentifier: try container.decode(String.self, forKey: .timeZoneIdentifier),
-            endTime: try container.decodeIfPresent(LocalTime.self, forKey: .endTime),
             isAllDay: try container.decodeIfPresent(Bool.self, forKey: .isAllDay) ?? false
         )
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(date, forKey: .date)
+        try container.encodeIfPresent(date, forKey: .date)
         try container.encodeIfPresent(time, forKey: .time)
         try container.encode(timeZoneIdentifier, forKey: .timeZoneIdentifier)
-        try container.encodeIfPresent(endTime, forKey: .endTime)
         try container.encode(isAllDay, forKey: .isAllDay)
     }
 
-    func replacingDate(_ newDate: LocalDate) throws -> ScheduledMoment {
+    func replacingDate(_ newDate: LocalDate?) throws -> ScheduledMoment {
         try ScheduledMoment(
             date: newDate,
             time: time,
             timeZoneIdentifier: timeZoneIdentifier,
-            endTime: endTime,
+            isAllDay: isAllDay
+        )
+    }
+
+    func clearingDatePreservingTiming() -> ScheduledMoment? {
+        guard time != nil || isAllDay else {
+            return nil
+        }
+        return try? ScheduledMoment(
+            date: nil,
+            time: time,
+            timeZoneIdentifier: timeZoneIdentifier,
             isAllDay: isAllDay
         )
     }
@@ -58,7 +72,14 @@ nonisolated struct ScheduledMoment: Hashable, Codable, Sendable {
         case date
         case time
         case timeZoneIdentifier
-        case endTime
         case isAllDay
+    }
+}
+
+nonisolated enum TripCalendar {
+    static let timeZoneIdentifier = "Asia/Tokyo"
+
+    static var timeZone: TimeZone {
+        TimeZone(identifier: timeZoneIdentifier) ?? TimeZone(secondsFromGMT: 9 * 3600)!
     }
 }

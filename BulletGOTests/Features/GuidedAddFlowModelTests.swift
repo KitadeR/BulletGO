@@ -99,4 +99,53 @@ struct GuidedAddFlowModelTests {
         #expect(model.isDirty)
         #expect(session.trip?.activities.isEmpty == true)
     }
+
+    @Test func activityCommitUsesTokyoLocalDateAndTimeNotPickerCalendar() throws {
+        var tokyo = Calendar(identifier: .gregorian)
+        tokyo.timeZone = TripCalendar.timeZone
+        let date = tokyo.date(from: DateComponents(year: 2026, month: 10, day: 3))!
+        let start = tokyo.date(from: DateComponents(year: 2026, month: 10, day: 3, hour: 10, minute: 0))!
+        let model = GuidedAddFlowModel(
+            tripID: TripID(),
+            kind: .activity,
+            initialDate: try LocalDate(year: 2026, month: 10, day: 3),
+            now: EngineTestSupport.now
+        )
+        model.draft = .activity(
+            ActivityAddDraft(
+                title: "Kinkaku-ji",
+                place: "Kyoto",
+                hasDate: true,
+                date: date,
+                timing: .start,
+                startTime: start
+            )
+        )
+        let mutations = try model.makeMutations(now: EngineTestSupport.now)
+        guard case .addActivity(let activity, _) = mutations[0] else {
+            Issue.record("Expected addActivity")
+            return
+        }
+        let expectedDate = try LocalDate(year: 2026, month: 10, day: 3)
+        #expect(activity.scheduledAt.value?.timeZoneIdentifier == TripCalendar.timeZoneIdentifier)
+        #expect(activity.scheduledAt.value?.date == expectedDate)
+        #expect(activity.scheduledAt.value?.time?.hour == 10)
+        #expect(activity.scheduledAt.value?.time?.minute == 0)
+    }
+
+    @Test func seedDraftUsesTokyoDateNotDeviceTimeZone() throws {
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let seeded = GuidedAddComposer.seedDraft(
+            kind: .activity,
+            initialDate: oct3,
+            now: EngineTestSupport.now
+        )
+        guard case .activity(let draft) = seeded else {
+            Issue.record("Expected activity draft")
+            return
+        }
+        let local = try ScheduledMomentComposer.localDate(from: draft.date, timeZone: TripCalendar.timeZone)
+        #expect(local == oct3)
+        #expect(draft.hasDate)
+    }
 }

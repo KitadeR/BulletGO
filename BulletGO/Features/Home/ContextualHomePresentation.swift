@@ -391,9 +391,9 @@ nonisolated enum TodayScheduleComposer {
         if case .leg(let id) = row.id, trip.legs.first(where: { $0.id == id })?.phase == .completed {
             return .completed
         }
-        if let moment = scheduledMoment(for: row, in: trip), let time = moment.time {
+        if let moment = scheduledMoment(for: row, in: trip), let time = moment.time, let localDate = moment.date {
             let zone = TimeZone(identifier: moment.timeZoneIdentifier) ?? timeZone
-            if let momentDate = date(from: moment.date, time: time, timeZone: zone), momentDate < now {
+            if let momentDate = date(from: localDate, time: time, timeZone: zone), momentDate < now {
                 return .completed
             }
             if row.isCurrent {

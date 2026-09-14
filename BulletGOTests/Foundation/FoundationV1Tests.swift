@@ -16,18 +16,13 @@ struct SchedulePlacementTests {
             timeZoneIdentifier: DomainTestSupport.timeZone
         )
         #expect(start.placement == .start(start))
-        let ranged = try ScheduledMoment(
-            date: date,
+        let undated = try ScheduledMoment(
+            date: nil,
             time: try LocalTime(hour: 10, minute: 0),
-            timeZoneIdentifier: DomainTestSupport.timeZone,
-            endTime: try LocalTime(hour: 12, minute: 0)
+            timeZoneIdentifier: DomainTestSupport.timeZone
         )
-        guard case .range(let rangeStart, let rangeEnd) = ranged.placement else {
-            Issue.record("Expected range placement")
-            return
-        }
-        #expect(rangeStart.time?.hour == 10)
-        #expect(rangeEnd.time?.hour == 12)
+        let ten = try LocalTime(hour: 10, minute: 0)
+        #expect(undated.placement == .unscheduledStart(ten))
     }
 
     @Test func unknownSlotIsUnscheduled() throws {
@@ -89,5 +84,42 @@ struct AttachmentStoreTests {
         #expect(record.relativePath.contains(tripID.rawValue.uuidString))
         try store.delete(record)
         #expect(!FileManager.default.fileExists(atPath: store.url(for: record).path))
+    }
+
+    @Test func expiredTrashIsRemovedOnCleanupAndRecentTrashIsKept() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "BulletGO-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = AttachmentStore(root: root)
+        let tripID = TripID()
+        let expired = try store.importData(
+            Data("old".utf8),
+            tripID: tripID,
+            fileName: "old.txt",
+            utType: .plainText,
+            scope: .trip
+        )
+        let recent = try store.importData(
+            Data("new".utf8),
+            tripID: tripID,
+            fileName: "new.txt",
+            utType: .plainText,
+            scope: .trip
+        )
+        try store.trash(expired)
+        try store.trash(recent)
+        let expiredFolder = root
+            .appending(path: ".trash", directoryHint: .isDirectory)
+            .appending(path: tripID.rawValue.uuidString, directoryHint: .isDirectory)
+            .appending(path: expired.id.rawValue.uuidString, directoryHint: .isDirectory)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date(timeIntervalSince1970: 1)],
+            ofItemAtPath: expiredFolder.path
+        )
+        try store.cleanupExpiredTrash(olderThan: 24 * 60 * 60)
+        try store.restore(expired)
+        try store.restore(recent)
+        #expect(!FileManager.default.fileExists(atPath: store.url(for: expired).path))
+        #expect(FileManager.default.fileExists(atPath: store.url(for: recent).path))
     }
 }

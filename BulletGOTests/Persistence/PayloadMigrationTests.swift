@@ -9,9 +9,9 @@ struct PayloadMigrationTests {
         let encoded = try v1Record(from: trip, statuses: ["unknown", "unknown", "unknown"])
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
         #expect(decoded.trip.id == trip.id)
-        #expect(decoded.trip.schemaVersion == 6)
-        #expect(decoded.rewritten?.payloadVersion == 6)
-        #expect(decoded.rewritten?.domainSchemaVersion == 6)
+        #expect(decoded.trip.schemaVersion == 7)
+        #expect(decoded.rewritten?.payloadVersion == 7)
+        #expect(decoded.rewritten?.domainSchemaVersion == 7)
         for leg in decoded.trip.legs {
             #expect(leg.reservation.status.status == .unknown)
             #expect(leg.reservation.status.value == nil)
@@ -52,12 +52,12 @@ struct PayloadMigrationTests {
         )
 
         let loaded = try await repository.fetch(id: trip.id)
-        #expect(loaded?.schemaVersion == 6)
+        #expect(loaded?.schemaVersion == 7)
         #expect(loaded?.legs[0].reservation.status.value == .notBooked)
 
         let reloaded = try await repository.fetch(id: trip.id)
         #expect(reloaded == loaded)
-        #expect(reloaded?.schemaVersion == 6)
+        #expect(reloaded?.schemaVersion == 7)
         #expect(reloaded?.legs[0].seatPreference.status == .unknown)
     }
 
@@ -75,8 +75,8 @@ struct PayloadMigrationTests {
             json["legs"] = legs
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 6)
-        #expect(decoded.rewritten?.payloadVersion == 6)
+        #expect(decoded.trip.schemaVersion == 7)
+        #expect(decoded.rewritten?.payloadVersion == 7)
         #expect(decoded.trip.legs.allSatisfy { $0.seatPreference.status == .unknown })
         #expect(decoded.trip.id == trip.id)
         #expect(decoded.trip.name.revisions == trip.name.revisions)
@@ -93,8 +93,8 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "stays")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 6)
-        #expect(decoded.rewritten?.payloadVersion == 6)
+        #expect(decoded.trip.schemaVersion == 7)
+        #expect(decoded.rewritten?.payloadVersion == 7)
         #expect(decoded.trip.stays.isEmpty)
         #expect(decoded.trip.id == trip.id)
         #expect(decoded.trip.savedPlaces.isEmpty)
@@ -115,8 +115,8 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "connectorEstimates")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 6)
-        #expect(decoded.rewritten?.payloadVersion == 6)
+        #expect(decoded.trip.schemaVersion == 7)
+        #expect(decoded.rewritten?.payloadVersion == 7)
         #expect(decoded.trip.savedPlaces.isEmpty)
         #expect(decoded.trip.notes.isEmpty)
         #expect(decoded.trip.attachments.isEmpty)
@@ -136,11 +136,97 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "daySubtitles")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 6)
-        #expect(decoded.rewritten?.payloadVersion == 6)
-        #expect(decoded.rewritten?.domainSchemaVersion == 6)
+        #expect(decoded.trip.schemaVersion == 7)
+        #expect(decoded.rewritten?.payloadVersion == 7)
+        #expect(decoded.rewritten?.domainSchemaVersion == 7)
         #expect(decoded.trip.daySubtitles.isEmpty)
         #expect(decoded.trip.id == trip.id)
+    }
+
+    @Test func v6PayloadLiftsEndTimeAndDropsConnectorCache() throws {
+        var trip = try DomainTestSupport.sampleTrip()
+        let date = try LocalDate(year: 2026, month: 10, day: 3)
+        trip.activities[0].scheduledAt = try Slot.confirmed(
+            value: ScheduledMoment(
+                date: date,
+                time: try LocalTime(hour: 10, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            source: .userStated,
+            updatedAt: DomainTestSupport.timestamp
+        )
+        trip.activities[0].endsAt = try Slot.unknown(updatedAt: DomainTestSupport.timestamp)
+        var encoded = try TripRecordMapper.encode(trip)
+        encoded.payloadVersion = 6
+        encoded.domainSchemaVersion = 6
+        encoded.payload = try mutatedPayload(encoded.payload) { json in
+            json["schemaVersion"] = 6
+            json["connectorEstimates"] = [[
+                "fromItem": ["leg": trip.legs[0].id.rawValue.uuidString],
+                "toItem": ["activity": trip.activities[0].id.rawValue.uuidString],
+                "estimate": [
+                    "mode": "walking",
+                    "durationSeconds": 600,
+                    "distanceMeters": 800,
+                ],
+                "updatedAt": DomainTestSupport.timestamp.timeIntervalSince1970,
+            ]]
+            var activities = json["activities"] as! [[String: Any]]
+            var scheduled = activities[0]["scheduledAt"] as! [String: Any]
+            var value = scheduled["value"] as! [String: Any]
+            value["endTime"] = ["hour": 12, "minute": 0, "second": 0]
+            scheduled["value"] = value
+            activities[0]["scheduledAt"] = scheduled
+            json["activities"] = activities
+        }
+        let decoded = try TripRecordMapper.decodeWithMigration(encoded)
+        #expect(decoded.trip.schemaVersion == 7)
+        #expect(decoded.rewritten?.payloadVersion == 7)
+        #expect(decoded.trip.connectorEstimates.isEmpty)
+        #expect(decoded.trip.activities[0].scheduledAt.value?.time?.hour == 10)
+        #expect(decoded.trip.activities[0].endsAt.value?.time?.hour == 12)
+        #expect(decoded.trip.activities[0].scheduledAt.value?.date == date)
+        let roundTrip = try TripPayloadCodec.decode(try TripPayloadCodec.encode(decoded.trip))
+        #expect(roundTrip.activities[0].endsAt.value?.time?.hour == 12)
+    }
+
+    @Test func v6KnownEndDoesNotLiftEndTime() throws {
+        var trip = try DomainTestSupport.sampleTrip()
+        let date = try LocalDate(year: 2026, month: 10, day: 3)
+        trip.activities[0].scheduledAt = try Slot.confirmed(
+            value: ScheduledMoment(
+                date: date,
+                time: try LocalTime(hour: 10, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            source: .userStated,
+            updatedAt: DomainTestSupport.timestamp
+        )
+        trip.activities[0].endsAt = try Slot.confirmed(
+            value: ScheduledMoment(
+                date: date,
+                time: try LocalTime(hour: 11, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            source: .userStated,
+            updatedAt: DomainTestSupport.timestamp
+        )
+        var encoded = try TripRecordMapper.encode(trip)
+        encoded.payloadVersion = 6
+        encoded.domainSchemaVersion = 6
+        encoded.payload = try mutatedPayload(encoded.payload) { json in
+            json["schemaVersion"] = 6
+            var activities = json["activities"] as! [[String: Any]]
+            var scheduled = activities[0]["scheduledAt"] as! [String: Any]
+            var value = scheduled["value"] as! [String: Any]
+            value["endTime"] = ["hour": 12, "minute": 0, "second": 0]
+            scheduled["value"] = value
+            activities[0]["scheduledAt"] = scheduled
+            json["activities"] = activities
+        }
+        let decoded = try TripRecordMapper.decodeWithMigration(encoded)
+        #expect(decoded.trip.activities[0].endsAt.value?.time?.hour == 11)
+        #expect(decoded.trip.activities[0].scheduledAt.value?.time?.hour == 10)
     }
 
     private func v1Record(from trip: Trip, statuses: [String]) throws -> EncodedTripRecord {

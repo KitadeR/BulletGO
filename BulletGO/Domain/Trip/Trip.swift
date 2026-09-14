@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated struct Trip: Hashable, Codable, Sendable {
-    static let currentSchemaVersion = 6
+    static let currentSchemaVersion = 7
 
     let id: TripID
     var schemaVersion: Int
@@ -184,6 +184,49 @@ nonisolated struct Trip: Hashable, Codable, Sendable {
 
         if let start = startDate.value, let end = endDate.value, start > end {
             throw TripValidationError.invertedTravelDates
+        }
+
+        try ScheduleIntervalValidator.validate(self)
+        try validateCoordinates()
+        try validateScopedRecords()
+    }
+
+    private func validateCoordinates() throws {
+        let places: [PlaceReference?] =
+            legs.flatMap { [$0.originPlace, $0.destinationPlace] }
+            + stays.map(\.placeReference)
+            + activities.map(\.placeReference)
+            + savedPlaces.map(\.place)
+        for place in places.compactMap({ $0 }) {
+            if let coordinate = place.coordinate, !coordinate.isValid {
+                throw TripValidationError.invalidCoordinate
+            }
+        }
+    }
+
+    private func validateScopedRecords() throws {
+        for note in notes where !note.scope.resolves(in: self) {
+            throw TripValidationError.orphanScopedNote(note.id)
+        }
+        for attachment in attachments where !attachment.scope.resolves(in: self) {
+            throw TripValidationError.orphanScopedAttachment(attachment.id)
+        }
+        for task in tasks where !task.scope.resolves(in: self) {
+            throw TripValidationError.orphanTaskScope(task.id)
+        }
+        for check in readinessChecks where !check.scope.resolves(in: self) {
+            throw TripValidationError.orphanReadinessScope(check.id)
+        }
+        let timelineItems = Set(timeline)
+        var connectorPairs: Set<String> = []
+        for estimate in connectorEstimates {
+            guard timelineItems.contains(estimate.fromItem), timelineItems.contains(estimate.toItem) else {
+                throw TripValidationError.orphanConnectorEstimate
+            }
+            let key = ConnectorEstimateComposer.edgeIdentity(estimate)
+            guard connectorPairs.insert(key).inserted else {
+                throw TripValidationError.duplicateConnectorEstimates
+            }
         }
     }
 

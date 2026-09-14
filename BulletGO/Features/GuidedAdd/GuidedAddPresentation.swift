@@ -113,7 +113,7 @@ enum GuidedAddComposer {
     }
 
     static func seedDraft(kind: ItineraryAddKind, initialDate: LocalDate?, now: Date, seedPlace: PlaceReference? = nil) -> GuidedAddDraft {
-        let date = initialDate.flatMap { $0.date(in: TimeZone.current) } ?? now
+        let date = initialDate.flatMap { $0.date(in: TripCalendar.timeZone) } ?? now
         switch kind {
         case .activity:
             var draft = ActivityAddDraft()

@@ -2,6 +2,8 @@ import Foundation
 
 nonisolated enum SchedulePlacement: Hashable, Sendable {
     case unscheduled
+    case unscheduledAllDay
+    case unscheduledStart(LocalTime)
     case dateOnly(LocalDate)
     case allDay(LocalDate)
     case start(ScheduledMoment)
@@ -16,27 +18,22 @@ nonisolated enum StayPresentationRole: Hashable, Sendable {
 
 extension ScheduledMoment {
     var placement: SchedulePlacement {
-        if isAllDay {
-            return .allDay(date)
-        }
-        if time != nil, let endTime {
-            do {
-                let end = try ScheduledMoment(
-                    date: date,
-                    time: endTime,
-                    timeZoneIdentifier: timeZoneIdentifier,
-                    endTime: nil,
-                    isAllDay: false
-                )
-                return .range(start: self, end: end)
-            } catch {
+        if let date {
+            if isAllDay {
+                return .allDay(date)
+            }
+            if time != nil {
                 return .start(self)
             }
+            return .dateOnly(date)
         }
-        if time != nil {
-            return .start(self)
+        if isAllDay {
+            return .unscheduledAllDay
         }
-        return .dateOnly(date)
+        if let time {
+            return .unscheduledStart(time)
+        }
+        return .unscheduled
     }
 }
 
@@ -49,7 +46,23 @@ extension Slot where Value == ScheduledMoment {
     }
 }
 
+extension Activity {
+    nonisolated var schedulePlacement: SchedulePlacement {
+        combinedPlacement(start: scheduledAt, end: endsAt)
+    }
+}
+
+extension Leg {
+    nonisolated var schedulePlacement: SchedulePlacement {
+        combinedPlacement(start: scheduledAt, end: arrivesAt)
+    }
+}
+
 extension Stay {
+    nonisolated var schedulePlacement: SchedulePlacement {
+        combinedPlacement(start: checkIn, end: checkOut)
+    }
+
     nonisolated func occupancyDates() -> [LocalDate] {
         guard let checkInDate = checkIn.value?.date else {
             return []
@@ -89,4 +102,22 @@ nonisolated enum TripsStayNights {
         let value = dates.count - 1
         return value > 0 ? value : nil
     }
+}
+
+private nonisolated func combinedPlacement(
+    start: Slot<ScheduledMoment>,
+    end: Slot<ScheduledMoment>
+) -> SchedulePlacement {
+    let startConfirmed = start.status == .confirmed ? start.value : nil
+    let endConfirmed = end.status == .confirmed ? end.value : nil
+    if let startConfirmed, let endConfirmed, endConfirmed.hasScheduleContent {
+        return .range(start: startConfirmed, end: endConfirmed)
+    }
+    if let startConfirmed {
+        return startConfirmed.placement
+    }
+    if let endConfirmed {
+        return endConfirmed.placement
+    }
+    return .unscheduled
 }

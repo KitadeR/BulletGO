@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UniformTypeIdentifiers
 
 @MainActor
 @Observable
@@ -17,11 +18,18 @@ final class TripSessionModel {
         case failed
     }
 
+    enum SessionProcessFailure: Equatable, Sendable {
+        case itemsOutsideDateRange([TripTimelineItem])
+        case failed
+    }
+
     private(set) var loadState: LoadState
     private(set) var processState: ProcessState
     private(set) var trip: Trip?
     private(set) var trips: [Trip]
     private(set) var lastBrainResult: BrainResult?
+    private(set) var lastReceipt: MutationReceipt?
+    private(set) var lastProcessError: SessionProcessFailure?
     private(set) var catalog: QuestionCatalog?
     private(set) var pack: BaggagePolicyPack?
     private let store: TripStore?
@@ -49,6 +57,8 @@ final class TripSessionModel {
         self.trip = nil
         self.trips = []
         self.lastBrainResult = nil
+        self.lastReceipt = nil
+        self.lastProcessError = nil
         self.catalog = try? QuestionCatalogLoader.loadProduction(from: .main)
         self.pack = try? PackLoader.loadProduction(from: .main)
     }
@@ -68,6 +78,8 @@ final class TripSessionModel {
         self.trip = trip
         self.trips = trip.map { [$0] } ?? []
         self.lastBrainResult = lastBrainResult
+        self.lastReceipt = nil
+        self.lastProcessError = nil
         self.catalog = try? QuestionCatalogLoader.loadProduction(from: .main)
         self.pack = try? PackLoader.loadProduction(from: .main)
         self.clock = clock
@@ -130,12 +142,14 @@ final class TripSessionModel {
         await load()
     }
 
-    func apply(_ result: BrainResult) {
+    func apply(_ result: BrainResult, receipt: MutationReceipt? = nil) {
         trip = result.updatedTrip
         if let index = trips.firstIndex(where: { $0.id == result.updatedTrip.id }) {
             trips[index] = result.updatedTrip
         }
         lastBrainResult = result
+        lastReceipt = receipt
+        lastProcessError = nil
         loadState = .loaded
         processState = .idle
     }
@@ -168,18 +182,115 @@ final class TripSessionModel {
 
     @discardableResult
     func process(_ command: TypedCommand) async -> BrainResult? {
+        await processDetailed(command)?.brain
+    }
+
+    @discardableResult
+    func processDetailed(_ command: TypedCommand) async -> StoreProcessResult? {
         guard let store, let trip else {
             return nil
         }
         processState = .processing
+        lastProcessError = nil
         do {
-            let result = try await store.process(tripID: trip.id, command: command)
-            apply(result)
+            let result = try await store.processDetailed(tripID: trip.id, command: command)
+            apply(result.brain, receipt: result.receipt)
             return result
         } catch {
+            lastProcessError = Self.failure(from: error)
             processState = .failed
             return nil
         }
+    }
+
+    func undo(_ receipt: MutationReceipt) async -> BrainResult? {
+        guard let store else { return nil }
+        processState = .processing
+        lastProcessError = nil
+        do {
+            let result = try await store.undo(receipt: receipt)
+            apply(result)
+            return result
+        } catch {
+            lastProcessError = Self.failure(from: error)
+            processState = .failed
+            return nil
+        }
+    }
+
+    func importAttachment(
+        data: Data,
+        fileName: String,
+        utType: UTType,
+        scope: DomainScope
+    ) async -> StoreProcessResult? {
+        guard let store, let trip else { return nil }
+        processState = .processing
+        lastProcessError = nil
+        do {
+            let result = try await store.importAttachment(
+                tripID: trip.id,
+                data: data,
+                fileName: fileName,
+                utType: utType,
+                scope: scope
+            )
+            apply(result.brain, receipt: result.receipt)
+            return result
+        } catch {
+            lastProcessError = Self.failure(from: error)
+            processState = .failed
+            return nil
+        }
+    }
+
+    func importAttachment(
+        from url: URL,
+        fileName: String,
+        utType: UTType,
+        scope: DomainScope
+    ) async -> StoreProcessResult? {
+        guard let store, let trip else { return nil }
+        processState = .processing
+        lastProcessError = nil
+        do {
+            let result = try await store.importAttachment(
+                tripID: trip.id,
+                from: url,
+                fileName: fileName,
+                utType: utType,
+                scope: scope
+            )
+            apply(result.brain, receipt: result.receipt)
+            return result
+        } catch {
+            lastProcessError = Self.failure(from: error)
+            processState = .failed
+            return nil
+        }
+    }
+
+    func removeAttachment(id: AttachmentID) async -> StoreProcessResult? {
+        guard let store, let trip else { return nil }
+        processState = .processing
+        lastProcessError = nil
+        do {
+            let result = try await store.removeAttachment(tripID: trip.id, id: id)
+            apply(result.brain, receipt: result.receipt)
+            return result
+        } catch {
+            lastProcessError = Self.failure(from: error)
+            processState = .failed
+            return nil
+        }
+    }
+
+    private static func failure(from error: Error) -> SessionProcessFailure {
+        if let validation = error as? TripValidationError,
+           case .itemsOutsideDateRange(let items) = validation {
+            return .itemsOutsideDateRange(items)
+        }
+        return .failed
     }
 
     func selectTrip(id: TripID) async {

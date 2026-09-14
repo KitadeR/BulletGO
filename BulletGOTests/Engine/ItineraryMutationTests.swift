@@ -12,7 +12,7 @@ struct ItineraryMutationTests {
             now: EngineTestSupport.now
         )
         try trip.validate()
-        #expect(trip.schemaVersion == 6)
+        #expect(trip.schemaVersion == 7)
         #expect(trip.legs.isEmpty)
         #expect(trip.stays.isEmpty)
         #expect(trip.timeline.isEmpty)

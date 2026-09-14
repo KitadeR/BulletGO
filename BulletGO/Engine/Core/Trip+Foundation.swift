@@ -4,57 +4,29 @@ extension Trip {
     nonisolated mutating func moveItem(_ item: TripTimelineItem, to date: LocalDate?, at now: Date) throws {
         switch item {
         case .leg(let id):
-            if let date {
-                try updateLeg(id: id) { leg in
+            try updateLeg(id: id) { leg in
+                if let date {
                     let current = leg.scheduledAt.value
                     if let current {
                         let moved = try current.replacingDate(date)
-                        leg.scheduledAt = try leg.scheduledAt.updating(
-                            value: moved,
-                            status: .confirmed,
-                            source: .userStated,
-                            confidence: .high,
-                            at: now
-                        )
+                        leg.scheduledAt = try confirmed(leg.scheduledAt, moved, at: now)
                     } else {
-                        let timeZone = TimeZone(identifier: "GMT")!.identifier
-                        let moment = try ScheduledMoment(date: date, timeZoneIdentifier: timeZone)
-                        leg.scheduledAt = try leg.scheduledAt.updating(
-                            value: moment,
-                            status: .confirmed,
-                            source: .userStated,
-                            confidence: .high,
-                            at: now
+                        let moment = try ScheduledMoment(
+                            date: date,
+                            timeZoneIdentifier: TripCalendar.timeZoneIdentifier
                         )
+                        leg.scheduledAt = try confirmed(leg.scheduledAt, moment, at: now)
                     }
                     if let arrival = leg.arrivesAt.value, let oldDate = current?.date {
-                        let offset = try arrival.date.daysFrom(oldDate)
+                        let offset = try arrival.date.map { try $0.daysFrom(oldDate) } ?? 0
                         let arrivalDate = try date.addingDays(offset)
-                        leg.arrivesAt = try leg.arrivesAt.updating(
-                            value: try arrival.replacingDate(arrivalDate),
-                            status: .confirmed,
-                            source: .userStated,
-                            confidence: .high,
-                            at: now
-                        )
+                        leg.arrivesAt = try confirmed(leg.arrivesAt, try arrival.replacingDate(arrivalDate), at: now)
+                    } else if let arrival = leg.arrivesAt.value, arrival.date == nil, arrival.hasScheduleContent {
+                        leg.arrivesAt = try confirmed(leg.arrivesAt, try arrival.replacingDate(date), at: now)
                     }
-                }
-            } else {
-                try updateLeg(id: id) { leg in
-                    leg.scheduledAt = try leg.scheduledAt.updating(
-                        value: nil,
-                        status: .unknown,
-                        source: .userStated,
-                        confidence: nil,
-                        at: now
-                    )
-                    leg.arrivesAt = try leg.arrivesAt.updating(
-                        value: nil,
-                        status: .unknown,
-                        source: .userStated,
-                        confidence: nil,
-                        at: now
-                    )
+                } else {
+                    leg.scheduledAt = try TripMutationApplier.stripDate(from: leg.scheduledAt, at: now)
+                    leg.arrivesAt = try TripMutationApplier.stripDate(from: leg.arrivesAt, at: now)
                 }
             }
         case .stay(let id):
@@ -67,53 +39,31 @@ extension Trip {
                     } else {
                         duration = 0
                     }
-                    let timeZone = checkIn?.timeZoneIdentifier ?? TimeZone(identifier: "GMT")!.identifier
+                    let timeZone = checkIn?.timeZoneIdentifier ?? TripCalendar.timeZoneIdentifier
                     let newCheckIn = try ScheduledMoment(
                         date: date,
                         time: checkIn?.time,
                         timeZoneIdentifier: timeZone,
-                        endTime: checkIn?.endTime,
                         isAllDay: checkIn?.isAllDay ?? false
                     )
-                    stay.checkIn = try stay.checkIn.updating(
-                        value: newCheckIn,
-                        status: .confirmed,
-                        source: .userStated,
-                        confidence: .high,
-                        at: now
-                    )
+                    stay.checkIn = try confirmed(stay.checkIn, newCheckIn, at: now)
                     if duration > 0 || stay.checkOut.value != nil {
                         let checkOutDate = try date.addingDays(max(duration, 0))
                         let existingOut = stay.checkOut.value
-                        stay.checkOut = try stay.checkOut.updating(
-                            value: try ScheduledMoment(
+                        stay.checkOut = try confirmed(
+                            stay.checkOut,
+                            try ScheduledMoment(
                                 date: checkOutDate,
                                 time: existingOut?.time,
                                 timeZoneIdentifier: existingOut?.timeZoneIdentifier ?? timeZone,
-                                endTime: existingOut?.endTime,
                                 isAllDay: existingOut?.isAllDay ?? false
                             ),
-                            status: .confirmed,
-                            source: .userStated,
-                            confidence: .high,
                             at: now
                         )
                     }
                 } else {
-                    stay.checkIn = try stay.checkIn.updating(
-                        value: nil,
-                        status: .unknown,
-                        source: .userStated,
-                        confidence: nil,
-                        at: now
-                    )
-                    stay.checkOut = try stay.checkOut.updating(
-                        value: nil,
-                        status: .unknown,
-                        source: .userStated,
-                        confidence: nil,
-                        at: now
-                    )
+                    stay.checkIn = try TripMutationApplier.stripDate(from: stay.checkIn, at: now)
+                    stay.checkOut = try TripMutationApplier.stripDate(from: stay.checkOut, at: now)
                 }
             }
         case .activity(let id):
@@ -122,51 +72,35 @@ extension Trip {
                     let previousStart = activity.scheduledAt.value
                     let previousEnd = activity.endsAt.value
                     if let current = activity.scheduledAt.value {
-                        activity.scheduledAt = try activity.scheduledAt.updating(
-                            value: try current.replacingDate(date),
-                            status: .confirmed,
-                            source: .userStated,
-                            confidence: .high,
+                        activity.scheduledAt = try confirmed(
+                            activity.scheduledAt,
+                            try current.replacingDate(date),
                             at: now
                         )
                     } else {
                         let moment = try ScheduledMoment(
                             date: date,
-                            timeZoneIdentifier: TimeZone(identifier: "GMT")!.identifier
+                            timeZoneIdentifier: TripCalendar.timeZoneIdentifier
                         )
-                        activity.scheduledAt = try activity.scheduledAt.updating(
-                            value: moment,
-                            status: .confirmed,
-                            source: .userStated,
-                            confidence: .high,
+                        activity.scheduledAt = try confirmed(activity.scheduledAt, moment, at: now)
+                    }
+                    if let previousEnd, let previousStart, let oldDate = previousStart.date {
+                        let offset = try previousEnd.date.map { try $0.daysFrom(oldDate) } ?? 0
+                        activity.endsAt = try confirmed(
+                            activity.endsAt,
+                            try previousEnd.replacingDate(try date.addingDays(offset)),
                             at: now
                         )
-                    }
-                    if let previousEnd, let previousStart {
-                        let offset = try previousEnd.date.daysFrom(previousStart.date)
-                        activity.endsAt = try activity.endsAt.updating(
-                            value: try previousEnd.replacingDate(try date.addingDays(offset)),
-                            status: .confirmed,
-                            source: .userStated,
-                            confidence: .high,
+                    } else if let previousEnd, previousEnd.hasScheduleContent {
+                        activity.endsAt = try confirmed(
+                            activity.endsAt,
+                            try previousEnd.replacingDate(date),
                             at: now
                         )
                     }
                 } else {
-                    activity.scheduledAt = try activity.scheduledAt.updating(
-                        value: nil,
-                        status: .unknown,
-                        source: .userStated,
-                        confidence: nil,
-                        at: now
-                    )
-                    activity.endsAt = try activity.endsAt.updating(
-                        value: nil,
-                        status: .unknown,
-                        source: .userStated,
-                        confidence: nil,
-                        at: now
-                    )
+                    activity.scheduledAt = try TripMutationApplier.stripDate(from: activity.scheduledAt, at: now)
+                    activity.endsAt = try TripMutationApplier.stripDate(from: activity.endsAt, at: now)
                 }
             }
         }
@@ -250,6 +184,20 @@ extension LocalDate {
         let delta = dates.count - 1
         return self >= other ? delta : -delta
     }
+}
+
+private nonisolated func confirmed(
+    _ slot: Slot<ScheduledMoment>,
+    _ moment: ScheduledMoment,
+    at now: Date
+) throws -> Slot<ScheduledMoment> {
+    try slot.updating(
+        value: moment,
+        status: .confirmed,
+        source: .userStated,
+        confidence: .high,
+        at: now
+    )
 }
 
 private nonisolated func updatedReservationStatus(

@@ -36,6 +36,19 @@ nonisolated enum DomainScope: Hashable, Codable, Sendable {
     case leg(LegID)
     case stay(StayID)
     case activity(ActivityID)
+
+    func resolves(in trip: Trip) -> Bool {
+        switch self {
+        case .trip:
+            true
+        case .leg(let id):
+            trip.legs.contains { $0.id == id }
+        case .stay(let id):
+            trip.stays.contains { $0.id == id }
+        case .activity(let id):
+            trip.activities.contains { $0.id == id }
+        }
+    }
 }
 
 nonisolated enum DomainPath: Hashable, Codable, Sendable {

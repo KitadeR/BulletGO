@@ -4,11 +4,17 @@ nonisolated enum TaskReconciler {
     static func reconcile(
         existing: [TripTask],
         desired: [TripTask],
-        focusLegID: LegID,
+        targetLegIDs: Set<LegID>,
         impact: ImpactAssessment
     ) -> [TripTask] {
-        let untouched = existing.filter { !isFocusTask($0, focusLegID: focusLegID) }
-        let existingFocus = existing.filter { isFocusTask($0, focusLegID: focusLegID) }
+        let untouched = existing.filter { task in
+            guard case .leg(let id) = task.scope else { return true }
+            return !targetLegIDs.contains(id)
+        }
+        let existingFocus = existing.filter { task in
+            guard case .leg(let id) = task.scope else { return false }
+            return targetLegIDs.contains(id)
+        }
         var used = Set<TaskID>()
         var reconciled: [TripTask] = []
 

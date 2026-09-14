@@ -113,9 +113,9 @@ nonisolated enum TaskDisplayPipeline {
             return (9_999, 12, 31, 23, 59, 59)
         }
         return (
-            deadline.date.year,
-            deadline.date.month,
-            deadline.date.day,
+            deadline.date?.year ?? 9_999,
+            deadline.date?.month ?? 12,
+            deadline.date?.day ?? 31,
             deadline.time?.hour ?? 23,
             deadline.time?.minute ?? 59,
             deadline.time?.second ?? 59

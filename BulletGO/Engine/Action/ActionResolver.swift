@@ -9,7 +9,14 @@ nonisolated enum ActionPurpose {
 
 nonisolated enum ActionResolver {
     static func resolve(trip: Trip, pack: BaggagePolicyPack) -> [ActionRequirement] {
-        guard let leg = try? trip.focusLeg() else {
+        guard let id = trip.focusLegID else {
+            return []
+        }
+        return resolve(trip: trip, pack: pack, legID: id)
+    }
+
+    static func resolve(trip: Trip, pack: BaggagePolicyPack, legID: LegID) -> [ActionRequirement] {
+        guard let leg = try? trip.leg(id: legID) else {
             return []
         }
         var actions: [ActionRequirement] = []

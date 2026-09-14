@@ -2,14 +2,17 @@ import Foundation
 
 nonisolated enum ShinkansenBaggageRuleEngine {
     static func evaluate(_ trip: Trip, pack: BaggagePolicyPack, at now: Date) throws -> Trip {
-        guard let focusID = trip.focusLegID else {
-            return trip
-        }
+        try evaluate(trip, pack: pack, at: now, legIDs: trip.focusLegID.map { [$0] } ?? [])
+    }
+
+    static func evaluate(_ trip: Trip, pack: BaggagePolicyPack, at now: Date, legIDs: [LegID]) throws -> Trip {
         var updated = trip
-        let focus = try updated.leg(id: focusID)
-        let nextEvaluations = evaluations(for: focus, trip: updated, pack: pack, at: now)
-        try updated.updateLeg(id: focusID) { leg in
-            leg.policyEvaluations = nextEvaluations
+        for legID in Set(legIDs) {
+            let focus = try updated.leg(id: legID)
+            let nextEvaluations = evaluations(for: focus, trip: updated, pack: pack, at: now)
+            try updated.updateLeg(id: legID) { leg in
+                leg.policyEvaluations = nextEvaluations
+            }
         }
         return updated
     }

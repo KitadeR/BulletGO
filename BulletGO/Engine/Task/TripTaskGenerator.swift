@@ -6,7 +6,18 @@ nonisolated enum TripTaskGenerator {
         trip: Trip,
         pack: BaggagePolicyPack
     ) throws -> [TripTask] {
-        let leg = try trip.focusLeg()
+        try generate(actions: actions, trip: trip, pack: pack, legID: trip.focusLegID)
+    }
+
+    static func generate(
+        actions: [ActionRequirement],
+        trip: Trip,
+        pack: BaggagePolicyPack,
+        legID: LegID?
+    ) throws -> [TripTask] {
+        guard let legID, let leg = try? trip.leg(id: legID) else {
+            return []
+        }
         return actions.compactMap { action in
             guard let template = pack.taskTemplate(contentKey: action.purposeKey) else {
                 return nil

@@ -163,7 +163,7 @@ struct ConnectorEstimateRow: View {
             Spacer()
         }
         .accessibilityHidden(cached == nil)
-        .task {
+        .task(id: taskID) {
             await refreshIfNeeded()
         }
     }
@@ -173,22 +173,29 @@ struct ConnectorEstimateRow: View {
         return String(localized: "\(minutes) min")
     }
 
+    private var taskID: String {
+        let origin = ConnectorEstimateComposer.exitCoordinate(for: from.id.item, in: trip)?.fingerprint ?? "none"
+        let destination = ConnectorEstimateComposer.entryCoordinate(for: to.id.item, in: trip)?.fingerprint ?? "none"
+        return "\(from.id)-\(to.id)-\(origin)-\(destination)"
+    }
+
     private func refreshIfNeeded() async {
         guard ConnectorEstimateComposer.cached(from: from.id.item, to: to.id.item, in: trip) == nil else {
             return
         }
-        guard let origin = ConnectorEstimateComposer.coordinate(for: from.id.item, in: trip),
-              let destination = ConnectorEstimateComposer.coordinate(for: to.id.item, in: trip)
+        guard let origin = ConnectorEstimateComposer.exitCoordinate(for: from.id.item, in: trip),
+              let destination = ConnectorEstimateComposer.entryCoordinate(for: to.id.item, in: trip)
         else {
             return
         }
         do {
             let estimate = try await estimator.estimate(from: origin, to: destination, mode: .walking)
-            let record = ConnectorEstimate(
-                fromItem: from.id.item,
-                toItem: to.id.item,
+            let record = ConnectorEstimateComposer.makeEstimate(
+                from: from.id.item,
+                to: to.id.item,
                 estimate: estimate,
-                updatedAt: session.now
+                in: trip,
+                at: session.now
             )
             _ = await session.process(.applyMutation(.cacheConnectorEstimate(record)))
         } catch {

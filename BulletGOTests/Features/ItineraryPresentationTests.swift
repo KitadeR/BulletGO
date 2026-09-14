@@ -34,6 +34,30 @@ struct ItineraryPresentationTests {
         #expect(sections.contains { $0.id == .day(october2) })
     }
 
+    @Test func unscheduledTenAMKeepsExactGutter() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: try LocalDate(year: 2026, month: 10, day: 1),
+            endDate: try LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let activity = try ItineraryItemFactory.makeActivity(
+            title: "Kinkaku-ji",
+            place: "Kyoto",
+            scheduledAt: try ScheduledMoment(
+                date: nil,
+                time: try LocalTime(hour: 10, minute: 0),
+                timeZoneIdentifier: DomainTestSupport.timeZone
+            ),
+            at: EngineTestSupport.now
+        )
+        trip = try TripMutationApplier.apply(.addActivity(activity, atTimelineIndex: nil), to: trip, at: EngineTestSupport.now)
+        let section = try #require(ItineraryDayComposer.sections(for: trip).first { $0.id == .unscheduled })
+        let row = try #require(section.rows.first { $0.title == "Kinkaku-ji" })
+        #expect(row.gutterDisplay == .exact("10:00"))
+        #expect(row.timeText == "10:00")
+    }
+
     @Test func dateOptionsUseFullRangeWhenStartAndEndExist() throws {
         let trip = try DomainTestSupport.multiDayTrip()
         let oct1 = try LocalDate(year: 2026, month: 10, day: 1)

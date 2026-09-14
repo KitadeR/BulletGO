@@ -72,6 +72,14 @@ nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable, Identifia
         return calendar.date(from: DateComponents(year: year, month: month, day: day))
     }
 
+    func daysUntil(_ other: LocalDate) -> Int {
+        let utc = TimeZone(secondsFromGMT: 0)!
+        guard let start = date(in: utc), let end = other.date(in: utc) else {
+            return 0
+        }
+        return Calendar(identifier: .gregorian).dateComponents([.day], from: start, to: end).day ?? 0
+    }
+
     func addingDays(_ days: Int) throws -> LocalDate {
         let utc = TimeZone(secondsFromGMT: 0)!
         guard let value = date(in: utc),

@@ -17,7 +17,7 @@ final class GuidedAddFlowModel {
     init(tripID: TripID, kind: ItineraryAddKind, initialDate: LocalDate?, now: Date, seedPlace: PlaceReference? = nil) {
         self.tripID = tripID
         self.kind = kind
-        self.timeZoneIdentifier = TimeZone.current.identifier
+        self.timeZoneIdentifier = TripCalendar.timeZoneIdentifier
         self.steps = GuidedAddComposer.steps(for: kind)
         self.draft = GuidedAddComposer.seedDraft(kind: kind, initialDate: initialDate, now: now, seedPlace: seedPlace)
     }
@@ -153,14 +153,24 @@ final class GuidedAddFlowModel {
                 at: now
             )
             activity.placeReference = value.placeReference
-            if value.timing == .range, value.hasDate {
-                let end = try moment(date: value.endTime, includeTime: true, timeZone: timeZone)
-                activity.endsAt = try Slot.confirmed(value: end, source: .userStated, updatedAt: now)
+            if value.timing == .range {
+                let endDate = value.hasDate ? try ScheduledMomentComposer.localDate(from: value.date, timeZone: timeZone) : nil
+                let endTime = try ScheduledMomentComposer.localTime(from: value.endTime, timeZone: timeZone)
+                activity.endsAt = try Slot.confirmed(
+                    value: try ScheduledMomentComposer.start(date: endDate, time: endTime),
+                    source: .userStated,
+                    updatedAt: now
+                )
             }
             return [.addActivity(activity, atTimelineIndex: nil)]
         case .travel(let value):
             let scheduled = value.hasDate
-                ? try moment(date: value.hasDepartureTime ? value.departureTime : value.date, includeTime: value.hasDepartureTime, timeZone: timeZone)
+                ? try composeMoment(
+                    datePicker: value.date,
+                    timePicker: value.hasDepartureTime ? value.departureTime : nil,
+                    includeTime: value.hasDepartureTime,
+                    timeZone: timeZone
+                )
                 : nil
             var leg = try ItineraryItemFactory.makeLeg(
                 origin: trimmed(value.origin),
@@ -174,14 +184,19 @@ final class GuidedAddFlowModel {
             if let mode = value.mode, !value.skipMode {
                 mutations.append(.setTransportMode(leg.id, mode))
             }
-            if value.hasArrivalTime, value.hasDate {
-                let arrival = try moment(date: value.arrivalTime, includeTime: true, timeZone: timeZone)
-                mutations.append(.updateLegArrivesAt(leg.id, arrival))
+            if value.hasArrivalTime {
+                mutations.append(.updateLegArrivesAt(leg.id, try composeMoment(
+                    datePicker: value.hasDate ? value.date : value.arrivalTime,
+                    timePicker: value.arrivalTime,
+                    includeTime: true,
+                    includeDate: value.hasDate,
+                    timeZone: timeZone
+                )))
             }
             return mutations
         case .stay(let value):
-            let checkIn = value.hasCheckIn ? try moment(date: value.checkIn, includeTime: false, timeZone: timeZone) : nil
-            let checkOut = value.hasCheckOut ? try moment(date: value.checkOut, includeTime: false, timeZone: timeZone) : nil
+            let checkIn = value.hasCheckIn ? try composeMoment(datePicker: value.checkIn, timePicker: nil, includeTime: false, timeZone: timeZone) : nil
+            let checkOut = value.hasCheckOut ? try composeMoment(datePicker: value.checkOut, timePicker: nil, includeTime: false, timeZone: timeZone) : nil
             var stay = try ItineraryItemFactory.makeStay(
                 place: trimmed(value.place),
                 checkIn: checkIn,
@@ -194,50 +209,35 @@ final class GuidedAddFlowModel {
     }
 
     private func activityMoment(_ value: ActivityAddDraft, timeZone: TimeZone) throws -> ScheduledMoment? {
-        guard value.hasDate, let date = try? LocalDate(date: value.date, timeZone: timeZone) else {
-            return nil
-        }
+        let localDate = value.hasDate ? try ScheduledMomentComposer.localDate(from: value.date, timeZone: timeZone) : nil
         switch value.timing {
         case .none:
-            return try ScheduledMoment(date: date, timeZoneIdentifier: timeZone.identifier)
+            guard let localDate else { return nil }
+            return try ScheduledMomentComposer.dateOnly(date: localDate, timeZoneIdentifier: timeZone.identifier)
         case .allDay:
-            return try ScheduledMoment(date: date, timeZoneIdentifier: timeZone.identifier, isAllDay: true)
+            return try ScheduledMomentComposer.allDay(date: localDate, timeZoneIdentifier: timeZone.identifier)
         case .start, .range:
-            let time = try LocalTime(
-                hour: Calendar.current.component(.hour, from: value.startTime),
-                minute: Calendar.current.component(.minute, from: value.startTime)
-            )
-            let endTime: LocalTime?
-            if value.timing == .range {
-                endTime = try LocalTime(
-                    hour: Calendar.current.component(.hour, from: value.endTime),
-                    minute: Calendar.current.component(.minute, from: value.endTime)
-                )
-            } else {
-                endTime = nil
-            }
-            return try ScheduledMoment(
-                date: date,
-                time: time,
-                timeZoneIdentifier: timeZone.identifier,
-                endTime: endTime,
-                isAllDay: false
-            )
+            let time = try ScheduledMomentComposer.localTime(from: value.startTime, timeZone: timeZone)
+            return try ScheduledMomentComposer.start(date: localDate, time: time, timeZoneIdentifier: timeZone.identifier)
         }
     }
 
-    private func moment(date: Date, includeTime: Bool, timeZone: TimeZone) throws -> ScheduledMoment {
-        let localDate = try LocalDate(date: date, timeZone: timeZone)
-        let time: LocalTime?
+    private func composeMoment(
+        datePicker: Date,
+        timePicker: Date?,
+        includeTime: Bool,
+        includeDate: Bool = true,
+        timeZone: TimeZone
+    ) throws -> ScheduledMoment {
+        let localDate = includeDate ? try ScheduledMomentComposer.localDate(from: datePicker, timeZone: timeZone) : nil
         if includeTime {
-            time = try LocalTime(
-                hour: Calendar.current.component(.hour, from: date),
-                minute: Calendar.current.component(.minute, from: date)
-            )
-        } else {
-            time = nil
+            let time = try ScheduledMomentComposer.localTime(from: timePicker ?? datePicker, timeZone: timeZone)
+            return try ScheduledMomentComposer.start(date: localDate, time: time, timeZoneIdentifier: timeZone.identifier)
         }
-        return try ScheduledMoment(date: localDate, time: time, timeZoneIdentifier: timeZone.identifier)
+        guard let localDate else {
+            throw DomainError.invalidScheduledMoment
+        }
+        return try ScheduledMomentComposer.dateOnly(date: localDate, timeZoneIdentifier: timeZone.identifier)
     }
 
     private func trimmed(_ value: String) -> String {

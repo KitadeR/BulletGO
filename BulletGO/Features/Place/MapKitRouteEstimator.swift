@@ -60,21 +60,3 @@ extension ConnectorTransportMode {
         }
     }
 }
-
-enum ConnectorEstimateComposer {
-    static func coordinate(for item: TripTimelineItem, in trip: Trip) -> GeoCoordinate? {
-        switch item {
-        case .leg(let id):
-            guard let leg = trip.legs.first(where: { $0.id == id }) else { return nil }
-            return leg.destinationPlace?.coordinate ?? leg.originPlace?.coordinate
-        case .stay(let id):
-            return trip.stays.first(where: { $0.id == id })?.placeReference?.coordinate
-        case .activity(let id):
-            return trip.activities.first(where: { $0.id == id })?.placeReference?.coordinate
-        }
-    }
-
-    static func cached(from: TripTimelineItem, to: TripTimelineItem, in trip: Trip) -> ConnectorEstimate? {
-        trip.connectorEstimates.first { $0.fromItem == from && $0.toItem == to }
-    }
-}

@@ -11,13 +11,15 @@ struct LegDetailView: View {
     @State private var destination = ""
     @State private var hasDate = false
     @State private var date = Date()
-    @State private var confirmDateChange = false
-    @State private var pendingDate: Date?
     @State private var didLoadFields = false
     @State private var selectedDate = Date()
     @State private var reopenedQuestionID: QuestionID?
     @State private var isAnswering = false
     @State private var stepError = false
+    @State private var draft: LegEditDraft?
+    @State private var isSavingEdits = false
+    @State private var saveFailed = false
+    @State private var showDiscard = false
 
     private let timeZone = TimeZone(identifier: "Asia/Tokyo") ?? .gmt
 
@@ -31,15 +33,31 @@ struct LegDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.Color.canvas)
-        .navigationBarBackButtonHidden(true)
+        .navigationBarBackButtonHidden(isDirty)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 ChromeIconButton(
                     systemImage: "chevron.backward",
                     accessibilityLabel: LocalizedStringResource("Back", comment: "Back button on journey detail."),
-                    action: { dismiss() }
+                    action: { attemptLeave() }
                 )
             }
+            if isDirty {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { attemptLeave() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { Task { await saveEdits() } }
+                        .disabled(isSavingEdits)
+                }
+            }
+        }
+        .alert("Couldn’t save", isPresented: $saveFailed) {
+            Button("OK", role: .cancel) {}
+        }
+        .confirmationDialog("Discard edits?", isPresented: $showDiscard, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) { dismiss() }
+            Button("Keep editing", role: .cancel) {}
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(AccessibilityID.legDetail)
@@ -220,26 +238,60 @@ struct LegDetailView: View {
         }
     }
 
+    private var isDirty: Bool {
+        guard let leg, let draft else { return false }
+        return draft.isDirty(comparedTo: leg)
+    }
+
     private func editSection(leg: Leg) -> some View {
         DisclosureGroup {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                TextField("From", text: $origin)
-                    .textFieldStyle(.roundedBorder)
-                TextField("To", text: $destination)
-                    .textFieldStyle(.roundedBorder)
-                Toggle("Has a date", isOn: $hasDate)
-                if hasDate {
-                    DatePicker("Travel date", selection: $date, displayedComponents: .date)
+                if let draftBinding = Binding($draft) {
+                    TextField("From", text: draftBinding.originText)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: draftBinding.wrappedValue.originText) { _, newValue in
+                            if draft?.originPlace?.name != newValue {
+                                draft?.originPlace = nil
+                            }
+                        }
+                    TextField("To", text: draftBinding.destinationText)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: draftBinding.wrappedValue.destinationText) { _, newValue in
+                            if draft?.destinationPlace?.name != newValue {
+                                draft?.destinationPlace = nil
+                            }
+                        }
+                    Toggle("Has a date", isOn: draftBinding.hasDate)
+                    if draftBinding.wrappedValue.hasDate {
+                        DatePicker("Travel date", selection: draftBinding.date, displayedComponents: .date)
+                        Toggle("Departure time", isOn: draftBinding.hasDepartureTime)
+                        if draftBinding.wrappedValue.hasDepartureTime {
+                            DatePicker("Departs", selection: draftBinding.departureTime, displayedComponents: .hourAndMinute)
+                        }
+                        Toggle("Arrival time", isOn: draftBinding.hasArrivalTime)
+                        if draftBinding.wrappedValue.hasArrivalTime {
+                            DatePicker("Arrives", selection: draftBinding.arrivalTime, displayedComponents: .hourAndMinute)
+                        }
+                    }
                 }
                 Button("Move to Unscheduled") {
                     Task { _ = await session.process(.applyMutation(.unscheduleLeg(legID))) }
                 }
-                .disabled(leg.scheduledAt.status != .confirmed)
+                .disabled(leg.scheduledAt.value?.date == nil)
                 Button("Delete journey", role: .destructive) {
                     Task {
-                        _ = await session.process(.applyMutation(.removeLeg(legID)))
-                        dismiss()
+                        if await session.process(.applyMutation(.removeLeg(legID))) != nil {
+                            dismiss()
+                        } else {
+                            saveFailed = true
+                        }
                     }
+                }
+                if isDirty {
+                    Button("Save journey edits") {
+                        Task { await saveEdits() }
+                    }
+                    .disabled(isSavingEdits)
                 }
             }
             .padding(.top, DesignTokens.Spacing.sm)
@@ -247,64 +299,37 @@ struct LegDetailView: View {
             Text("Edit this journey")
                 .font(DesignTokens.Typography.headline)
         }
-        .onChange(of: origin) { _, newValue in
-            guard didLoadFields else { return }
-            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, trimmed != leg.origin.value else { return }
-            Task { _ = await session.process(.applyMutation(.updateLegOrigin(legID, trimmed))) }
-        }
-        .onChange(of: destination) { _, newValue in
-            guard didLoadFields else { return }
-            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty, trimmed != leg.destination.value else { return }
-            Task { _ = await session.process(.applyMutation(.updateLegDestination(legID, trimmed))) }
-        }
-        .onChange(of: hasDate) { _, newValue in
-            guard didLoadFields else { return }
-            if !newValue {
-                Task { _ = await session.process(.applyMutation(.unscheduleLeg(legID))) }
-            }
-        }
-        .onChange(of: date) { _, newValue in
-            guard didLoadFields, hasDate else { return }
-            if leg.scheduledAt.status == .confirmed {
-                pendingDate = newValue
-                confirmDateChange = true
-            } else {
-                Task { await saveDate(newValue) }
-            }
-        }
-        .alert("Change this journey’s date?", isPresented: $confirmDateChange) {
-            Button("Change") {
-                if let pendingDate {
-                    Task { await saveDate(pendingDate) }
-                }
-            }
-            Button("Cancel", role: .cancel) { pendingDate = nil }
-        } message: {
-            Text("Dragging does not change times. This updates the travel date.")
-        }
     }
 
     private func loadLegFields() {
-        origin = leg?.origin.value ?? ""
-        destination = leg?.destination.value ?? ""
-        if let scheduled = leg?.scheduledAt.value,
-           let dateValue = scheduled.date.date(in: TimeZone(identifier: scheduled.timeZoneIdentifier) ?? .current) {
-            hasDate = true
-            date = dateValue
+        guard let leg else { return }
+        origin = leg.origin.value ?? ""
+        destination = leg.destination.value ?? ""
+        draft = LegEditDraft.from(leg, now: session.now)
+        hasDate = draft?.hasDate ?? false
+        date = draft?.date ?? Date()
+    }
+
+    private func attemptLeave() {
+        if isDirty {
+            showDiscard = true
         } else {
-            hasDate = false
+            dismiss()
         }
     }
 
-    private func saveDate(_ value: Date) async {
-        let zone = TimeZone.current
-        guard let local = try? LocalDate(date: value, timeZone: zone),
-              let moment = try? ScheduledMoment(date: local, timeZoneIdentifier: zone.identifier) else {
-            return
+    private func saveEdits() async {
+        guard let draft else { return }
+        isSavingEdits = true
+        defer { isSavingEdits = false }
+        do {
+            let mutations = try draft.mutations(legID: legID)
+            if await session.process(.applyMutations(mutations)) == nil {
+                saveFailed = true
+            }
+        } catch {
+            saveFailed = true
         }
-        _ = await session.process(.applyMutation(.setLegScheduledAt(legID, moment)))
     }
 
     private func confirmDate(for question: QuestionSpec) async {

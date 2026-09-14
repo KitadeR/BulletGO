@@ -109,7 +109,8 @@ struct GuidedAddFlowView: View {
                     search: search,
                     onSelect: { reference in
                         updateActivity { $0.placeReference = reference; $0.place = reference.name }
-                    }
+                    },
+                    onClear: { updateActivity { $0.placeReference = nil } }
                 )
             case .activityDate:
                 Toggle("Add to a day", isOn: activityHasDate)
@@ -153,7 +154,8 @@ struct GuidedAddFlowView: View {
                     accessibilityID: AccessibilityID.guidedAddOrigin,
                     onSelect: { reference in
                         updateTravel { $0.originPlace = reference; $0.origin = reference.name }
-                    }
+                    },
+                    onClear: { updateTravel { $0.originPlace = nil } }
                 )
             case .travelDestination:
                 PlaceSearchField(
@@ -163,7 +165,8 @@ struct GuidedAddFlowView: View {
                     accessibilityID: AccessibilityID.guidedAddDestination,
                     onSelect: { reference in
                         updateTravel { $0.destinationPlace = reference; $0.destination = reference.name }
-                    }
+                    },
+                    onClear: { updateTravel { $0.destinationPlace = nil } }
                 )
             case .travelMode:
                 Picker("Transport", selection: travelMode) {
@@ -208,7 +211,8 @@ struct GuidedAddFlowView: View {
                     search: search,
                     onSelect: { reference in
                         updateStay { $0.placeReference = reference; $0.place = reference.name }
-                    }
+                    },
+                    onClear: { updateStay { $0.placeReference = nil } }
                 )
             case .stayCheckIn:
                 Toggle("Check-in date known", isOn: stayHasCheckIn)

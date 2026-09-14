@@ -14,6 +14,8 @@ struct ItemRecordsView: View {
     @State private var isImportingFile = false
     @State private var renaming: AttachmentRecord?
     @State private var renameText = ""
+    @State private var attachmentFailed = false
+    @State private var noteFailed = false
 
     var body: some View {
         Group {
@@ -35,6 +37,12 @@ struct ItemRecordsView: View {
                 Task { await importFile(url) }
             }
         }
+        .alert("Couldn’t save file", isPresented: $attachmentFailed) {
+            Button("OK", role: .cancel) {}
+        }
+        .alert("Couldn’t save note", isPresented: $noteFailed) {
+            Button("OK", role: .cancel) {}
+        }
         .alert("Rename file", isPresented: Binding(
             get: { renaming != nil },
             set: { if !$0 { renaming = nil } }
@@ -43,7 +51,9 @@ struct ItemRecordsView: View {
             Button("Save") {
                 guard let renaming else { return }
                 Task {
-                    _ = await session.process(.applyMutation(.renameAttachment(renaming.id, renameText)))
+                    if await session.process(.applyMutation(.renameAttachment(renaming.id, renameText))) == nil {
+                        attachmentFailed = true
+                    }
                     self.renaming = nil
                 }
             }
@@ -58,7 +68,6 @@ struct ItemRecordsView: View {
             Button("Save note") {
                 Task { await saveNote() }
             }
-            .disabled(noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .accessibilityIdentifier(AccessibilityID.notesEditor)
     }
@@ -105,59 +114,50 @@ struct ItemRecordsView: View {
 
     private func saveNote() async {
         let body = noteBody.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !body.isEmpty else { return }
         let existing = session.trip?.notes.first(where: { $0.scope == scope })
+        if body.isEmpty {
+            if let existing, await session.process(.applyMutation(.removeNote(existing.id))) == nil {
+                noteFailed = true
+            }
+            return
+        }
         let note = ScopedNote(
             id: existing?.id ?? NoteID(),
             scope: scope,
             body: body,
             updatedAt: session.now
         )
-        _ = await session.process(.applyMutation(.upsertNote(note)))
+        if await session.process(.applyMutation(.upsertNote(note))) == nil {
+            noteFailed = true
+        }
     }
 
     private func importPhoto(_ item: PhotosPickerItem) async {
         defer { pickerItem = nil }
-        guard let trip = session.trip, let data = try? await item.loadTransferable(type: Data.self) else {
+        guard let data = try? await item.loadTransferable(type: Data.self) else {
+            attachmentFailed = true
             return
         }
-        guard let store = try? AttachmentStore.applicationSupport() else { return }
-        do {
-            var record = try store.importData(
-                data,
-                tripID: trip.id,
-                fileName: "photo.jpg",
-                utType: .jpeg,
-                scope: scope
-            )
-            record.scope = scope
-            _ = await session.process(.applyMutation(.addAttachment(record)))
-        } catch {
-            return
+        if await session.importAttachment(data: data, fileName: "photo.jpg", utType: .jpeg, scope: scope) == nil {
+            attachmentFailed = true
         }
     }
 
     private func importFile(_ url: URL) async {
-        guard let trip = session.trip, let store = try? AttachmentStore.applicationSupport() else { return }
-        do {
-            var record = try store.importFile(
-                from: url,
-                tripID: trip.id,
-                fileName: url.lastPathComponent,
-                utType: UTType(filenameExtension: url.pathExtension) ?? .data
-            )
-            record.scope = scope
-            _ = await session.process(.applyMutation(.addAttachment(record)))
-        } catch {
-            return
+        if await session.importAttachment(
+            from: url,
+            fileName: url.lastPathComponent,
+            utType: UTType(filenameExtension: url.pathExtension) ?? .data,
+            scope: scope
+        ) == nil {
+            attachmentFailed = true
         }
     }
 
     private func deleteAttachment(_ record: AttachmentRecord) async {
-        if let store = try? AttachmentStore.applicationSupport() {
-            try? store.delete(record)
+        if await session.removeAttachment(id: record.id) == nil {
+            attachmentFailed = true
         }
-        _ = await session.process(.applyMutation(.removeAttachment(record.id)))
     }
 }
 

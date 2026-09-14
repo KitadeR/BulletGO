@@ -7,11 +7,8 @@ struct StayDetailView: View {
 
     let tripID: TripID
     let stayID: StayID
-    @State private var place = ""
-    @State private var hasCheckIn = false
-    @State private var checkIn = Date()
-    @State private var hasCheckOut = false
-    @State private var checkOut = Date().addingTimeInterval(86_400)
+    @State private var draft: StayEditDraft?
+    @State private var search = MapKitPlaceSearch()
     @State private var didLoad = false
     @State private var isSaving = false
     @State private var saveFailed = false
@@ -22,23 +19,32 @@ struct StayDetailView: View {
     }
 
     private var isDirty: Bool {
-        guard let stay else { return false }
-        return place != (stay.place.value ?? "")
-            || hasCheckIn != (stay.checkIn.status == .confirmed)
-            || hasCheckOut != (stay.checkOut.status == .confirmed)
+        guard let stay, let draft else { return false }
+        return draft.isDirty(comparedTo: stay)
     }
 
     var body: some View {
         Form {
-            Section {
-                TextField("Place", text: $place)
-                Toggle("Check-in date known", isOn: $hasCheckIn)
-                if hasCheckIn {
-                    DatePicker("Check-in", selection: $checkIn, displayedComponents: .date)
-                }
-                Toggle("Check-out date known", isOn: $hasCheckOut)
-                if hasCheckOut {
-                    DatePicker("Check-out", selection: $checkOut, displayedComponents: .date)
+            if let draftBinding = Binding($draft) {
+                PlaceSearchField(
+                    title: "Place",
+                    text: draftBinding.placeText,
+                    search: search,
+                    onSelect: { reference in
+                        draft?.placeReference = reference
+                        draft?.placeText = reference.name
+                    },
+                    onClear: { draft?.placeReference = nil }
+                )
+                Section {
+                    Toggle("Check-in date known", isOn: draftBinding.hasCheckIn)
+                    if draftBinding.wrappedValue.hasCheckIn {
+                        DatePicker("Check-in", selection: draftBinding.checkIn, displayedComponents: .date)
+                    }
+                    Toggle("Check-out date known", isOn: draftBinding.hasCheckOut)
+                    if draftBinding.wrappedValue.hasCheckOut {
+                        DatePicker("Check-out", selection: draftBinding.checkOut, displayedComponents: .date)
+                    }
                 }
             }
             ItemRecordsView(tripID: tripID, scope: .stay(stayID))
@@ -46,11 +52,14 @@ struct StayDetailView: View {
                 Button("Move to Unscheduled") {
                     Task { _ = await session.process(.applyMutation(.unscheduleStay(stayID))) }
                 }
-                .disabled(stay?.checkIn.status != .confirmed)
+                .disabled(stay?.checkIn.value?.date == nil)
                 Button("Delete stay", role: .destructive) {
                     Task {
-                        _ = await session.process(.applyMutation(.removeStay(stayID)))
-                        router.pop()
+                        if await session.process(.applyMutation(.removeStay(stayID))) != nil {
+                            router.pop()
+                        } else {
+                            saveFailed = true
+                        }
                     }
                 }
             }
@@ -67,7 +76,7 @@ struct StayDetailView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await save() } }
-                    .disabled(!isDirty || isSaving || !canSave)
+                    .disabled(!isDirty || isSaving || !(draft?.canSave ?? false))
             }
         }
         .confirmationDialog("Discard changes?", isPresented: $showDiscard, titleVisibility: .visible) {
@@ -80,25 +89,10 @@ struct StayDetailView: View {
         .accessibilityIdentifier(AccessibilityID.stayDetail)
     }
 
-    private var canSave: Bool {
-        !place.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && (!hasCheckIn || !hasCheckOut || checkOut >= checkIn)
-    }
-
     private func load() {
-        guard !didLoad else { return }
+        guard !didLoad, let stay else { return }
         didLoad = true
-        place = stay?.place.value ?? ""
-        if let value = stay?.checkIn.value,
-           let dateValue = value.date.date(in: TimeZone(identifier: value.timeZoneIdentifier) ?? .current) {
-            hasCheckIn = stay?.checkIn.status == .confirmed
-            checkIn = dateValue
-        }
-        if let value = stay?.checkOut.value,
-           let dateValue = value.date.date(in: TimeZone(identifier: value.timeZoneIdentifier) ?? .current) {
-            hasCheckOut = stay?.checkOut.status == .confirmed
-            checkOut = dateValue
-        }
+        draft = StayEditDraft.from(stay, now: session.now)
     }
 
     private func attemptCancel() {
@@ -110,31 +104,15 @@ struct StayDetailView: View {
     }
 
     private func save() async {
+        guard let draft else { return }
         isSaving = true
         defer { isSaving = false }
-        let trimmed = place.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            saveFailed = true
-            return
-        }
-        var mutations: [TripMutation] = [.updateStayPlace(stayID, trimmed)]
-        let timeZone = TimeZone.current
         do {
-            if hasCheckIn {
-                let local = try LocalDate(date: checkIn, timeZone: timeZone)
-                mutations.append(.updateStayCheckIn(stayID, try ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier)))
-            } else {
-                mutations.append(.unscheduleStay(stayID))
-            }
-            if hasCheckOut {
-                let local = try LocalDate(date: checkOut, timeZone: timeZone)
-                mutations.append(.updateStayCheckOut(stayID, try ScheduledMoment(date: local, timeZoneIdentifier: timeZone.identifier)))
+            let mutations = try draft.mutations(stayID: stayID)
+            if await session.process(.applyMutations(mutations)) == nil {
+                saveFailed = true
             }
         } catch {
-            saveFailed = true
-            return
-        }
-        if await session.process(.applyMutations(mutations)) == nil {
             saveFailed = true
         }
     }

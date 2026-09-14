@@ -166,7 +166,21 @@ nonisolated enum TripContentResolver {
                 comment: "Remembered seat preference for a Mount Fuji view."
             ))
         case .scheduledMoment(let moment):
-            .verbatim("\(moment.date.year)/\(moment.date.month)/\(moment.date.day)")
+            if let date = moment.date {
+                .verbatim("\(date.year)/\(date.month)/\(date.day)")
+            } else if let time = moment.time {
+                .verbatim(String(format: "%02d:%02d", time.hour, time.minute))
+            } else if moment.isAllDay {
+                .localized(LocalizedStringResource(
+                    "All day",
+                    comment: "Summary value for an all-day unscheduled moment."
+                ))
+            } else {
+                .localized(LocalizedStringResource(
+                    "Unscheduled",
+                    comment: "Summary value when a scheduled moment has no date."
+                ))
+            }
         case .reservationStatus(let status):
             .localized(reservationLabel(status))
         case .baggagePresence(let presence):

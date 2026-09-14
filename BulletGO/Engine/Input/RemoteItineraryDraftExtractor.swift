@@ -89,12 +89,15 @@ nonisolated enum ItineraryDraftMutations {
                         && $0.2.localizedCaseInsensitiveCompare(destination) == .orderedSame
                 }) {
                     if let date = item.date.flatMap(parseDate) {
-                        let zone = TimeZone.current.identifier
-                        mutations.append(.setLegScheduledAt(existing.0, try ScheduledMoment(date: date, timeZoneIdentifier: zone)))
+                        if let current = trip.legs.first(where: { $0.id == existing.0 })?.scheduledAt.value {
+                            mutations.append(.setLegScheduledAt(existing.0, try current.replacingDate(date)))
+                        } else {
+                            mutations.append(.setLegScheduledAt(existing.0, try ScheduledMomentComposer.dateOnly(date: date)))
+                        }
                     }
                 } else {
                     let moment = try item.date.flatMap(parseDate).map {
-                        try ScheduledMoment(date: $0, timeZoneIdentifier: TimeZone.current.identifier)
+                        try ScheduledMomentComposer.dateOnly(date: $0)
                     }
                     let leg = try ItineraryItemFactory.makeLeg(
                         origin: origin,
@@ -108,14 +111,14 @@ nonisolated enum ItineraryDraftMutations {
             case .stay:
                 guard let place = item.place, !place.isEmpty else { continue }
                 let checkIn = try item.checkIn.flatMap(parseDate).map {
-                    try ScheduledMoment(date: $0, timeZoneIdentifier: TimeZone.current.identifier)
+                    try ScheduledMomentComposer.dateOnly(date: $0)
                 }
                 let stay = try ItineraryItemFactory.makeStay(place: place, checkIn: checkIn, at: now)
                 mutations.append(.addStay(stay, atTimelineIndex: nil))
             case .activity:
                 guard let title = item.title, !title.isEmpty else { continue }
                 let moment = try item.date.flatMap(parseDate).map {
-                    try ScheduledMoment(date: $0, timeZoneIdentifier: TimeZone.current.identifier)
+                    try ScheduledMomentComposer.dateOnly(date: $0)
                 }
                 let activity = try ItineraryItemFactory.makeActivity(
                     title: title,

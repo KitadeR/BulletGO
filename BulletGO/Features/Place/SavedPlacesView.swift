@@ -15,7 +15,8 @@ struct SavedPlacesView: View {
                 title: "Place name",
                 text: $draftName,
                 search: search,
-                onSelect: { selectedPlace = $0 }
+                onSelect: { selectedPlace = $0 },
+                onClear: { selectedPlace = nil }
             )
             Button("Save place") {
                 Task { await savePlace() }

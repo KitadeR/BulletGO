@@ -359,11 +359,10 @@ struct TripsScreen: View {
         Task {
             let from = destination.from
             let to = destination.to
-            if await session.process(.applyMutation(.moveTimelineItem(from: from, to: to))) != nil {
+            if let result = await session.processDetailed(.applyMutation(.moveTimelineItem(from: from, to: to))) {
+                let receipt = result.receipt
                 undoManager?.registerUndo(withTarget: session) { session in
-                    Task {
-                        _ = await session.process(.applyMutation(.moveTimelineItem(from: to, to: from)))
-                    }
+                    Task { _ = await session.undo(receipt) }
                 }
             }
         }
@@ -371,13 +370,11 @@ struct TripsScreen: View {
 
     private func move(_ row: TimelineRow, in trip: Trip, to date: LocalDate?) {
         let item = row.id.item
-        let previous = trip.assignmentDate(for: item)
         Task {
-            if await session.process(.applyMutation(.moveItemToDate(item, date))) != nil {
+            if let result = await session.processDetailed(.applyMutation(.moveItemToDate(item, date))) {
+                let receipt = result.receipt
                 undoManager?.registerUndo(withTarget: session) { session in
-                    Task {
-                        _ = await session.process(.applyMutation(.moveItemToDate(item, previous)))
-                    }
+                    Task { _ = await session.undo(receipt) }
                 }
             }
         }
@@ -385,22 +382,19 @@ struct TripsScreen: View {
 
     private func delete(_ row: TimelineRow, in trip: Trip) {
         let mutation: TripMutation
-        let restore: TripMutation?
         switch row.id {
         case .leg(let id):
             mutation = .removeLeg(id)
-            restore = trip.legs.first { $0.id == id }.map { .addLeg($0, atTimelineIndex: nil) }
         case .stay(let id, _):
             mutation = .removeStay(id)
-            restore = trip.stays.first { $0.id == id }.map { .addStay($0, atTimelineIndex: nil) }
         case .activity(let id):
             mutation = .removeActivity(id)
-            restore = trip.activities.first { $0.id == id }.map { .addActivity($0, atTimelineIndex: nil) }
         }
         Task {
-            if await session.process(.applyMutation(mutation)) != nil, let restore {
+            if let result = await session.processDetailed(.applyMutation(mutation)) {
+                let receipt = result.receipt
                 undoManager?.registerUndo(withTarget: session) { session in
-                    Task { _ = await session.process(.applyMutation(restore)) }
+                    Task { _ = await session.undo(receipt) }
                 }
             }
         }

@@ -1,27 +1,34 @@
 import Foundation
 
+nonisolated enum TripDateRangeHandling: Hashable, Sendable {
+    case rejectOutOfRange
+    case moveOutOfRangeToUnscheduledPreservingTiming
+}
+
 nonisolated enum TripMutation: Hashable, Sendable {
     case setTripName(String)
     case setTripStartDate(LocalDate)
     case setTripEndDate(LocalDate)
+    case setTripDateRange(start: LocalDate, end: LocalDate, handling: TripDateRangeHandling)
     case addLeg(Leg, atTimelineIndex: Int?)
-    case updateLegOrigin(LegID, String)
-    case updateLegDestination(LegID, String)
+    case updateLegOrigin(LegID, PlaceReference)
+    case updateLegDestination(LegID, PlaceReference)
     case unscheduleLeg(LegID)
     case removeLeg(LegID)
     case addStay(Stay, atTimelineIndex: Int?)
-    case updateStayPlace(StayID, String)
+    case updateStayPlace(StayID, PlaceReference)
     case updateStayCheckIn(StayID, ScheduledMoment)
     case updateStayCheckOut(StayID, ScheduledMoment)
     case unscheduleStay(StayID)
     case removeStay(StayID)
     case addActivity(Activity, atTimelineIndex: Int?)
     case updateActivityTitle(ActivityID, String)
-    case updateActivityPlace(ActivityID, String)
+    case updateActivityPlace(ActivityID, PlaceReference)
     case updateActivityScheduledAt(ActivityID, ScheduledMoment)
     case unscheduleActivity(ActivityID)
     case removeActivity(ActivityID)
     case moveTimelineItem(from: Int, to: Int)
+    case moveTimelineItemID(TripTimelineItem, toIndex: Int)
     case setLegScheduledAt(LegID, ScheduledMoment)
     case setTransportMode(LegID, TransportMode)
     case setReservationStatus(LegID, ReservationStatus?, SlotStatus)
@@ -32,6 +39,9 @@ nonisolated enum TripMutation: Hashable, Sendable {
     case setSeatPreference(LegID, SeatPreference)
     case updateLegArrivesAt(LegID, ScheduledMoment)
     case updateActivityEndsAt(ActivityID, ScheduledMoment?)
+    case replaceLegSchedule(LegID, departure: ScheduledMoment?, arrival: ScheduledMoment?)
+    case replaceStaySchedule(StayID, checkIn: ScheduledMoment?, checkOut: ScheduledMoment?)
+    case replaceActivitySchedule(ActivityID, start: ScheduledMoment?, end: ScheduledMoment?)
     case moveItemToDate(TripTimelineItem, LocalDate?)
     case updateReservationDetails(DomainScope, ReservationDetails)
     case updateScopedReservationStatus(DomainScope, ReservationStatus, SlotStatus)
@@ -44,14 +54,25 @@ nonisolated enum TripMutation: Hashable, Sendable {
     case removeSavedPlace(SavedPlaceID)
     case cacheConnectorEstimate(ConnectorEstimate)
     case setDaySubtitle(LocalDate, String?)
+    case restoreItineraryItem(DeletedItineraryItemBundle)
+
+    var recordsChangeEvent: Bool {
+        switch self {
+        case .cacheConnectorEstimate:
+            false
+        default:
+            true
+        }
+    }
 
     var isStructural: Bool {
         switch self {
-        case .setTripName, .setTripStartDate, .setTripEndDate,
+        case .setTripName, .setTripStartDate, .setTripEndDate, .setTripDateRange,
              .addLeg, .updateLegOrigin, .updateLegDestination, .unscheduleLeg, .removeLeg,
              .addStay, .updateStayPlace, .updateStayCheckIn, .updateStayCheckOut, .unscheduleStay, .removeStay,
              .addActivity, .updateActivityTitle, .updateActivityPlace, .updateActivityScheduledAt, .unscheduleActivity, .removeActivity,
-             .moveTimelineItem, .updateLegArrivesAt, .updateActivityEndsAt, .moveItemToDate:
+             .moveTimelineItem, .moveTimelineItemID, .updateLegArrivesAt, .updateActivityEndsAt, .moveItemToDate,
+             .replaceLegSchedule, .replaceStaySchedule, .replaceActivitySchedule, .restoreItineraryItem:
             true
         case .setLegScheduledAt, .setTransportMode, .setReservationStatus, .setBookingService,
              .setBaggagePresence, .addBag, .setBagDimensions, .setSeatPreference,

@@ -43,6 +43,7 @@ enum AccessibilityID {
     static let createTripSheet = "create-trip-sheet"
     static let createTripName = "create-trip-name"
     static let createTripSave = "create-trip-save"
+    static let createTripDateRangeConfirm = "create-trip-date-range-confirm"
     static let createTripButton = "create-trip-button"
     static let itineraryUnscheduled = "itinerary-unscheduled"
     static let stayDetail = "stay-detail"

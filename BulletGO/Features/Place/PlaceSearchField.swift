@@ -6,9 +6,13 @@ struct PlaceSearchField: View {
     var search: (any PlaceSearching)?
     var accessibilityID: String = ""
     var onSelect: (PlaceReference) -> Void
+    var onClear: (() -> Void)? = nil
 
     @State private var completions: [PlaceSearchCompletion] = []
     @State private var isSearching = false
+    @State private var selectedName: String?
+    @State private var generation = 0
+    @State private var debounceTask: Task<Void, Never>?
 
     var body: some View {
         Section {
@@ -16,7 +20,18 @@ struct PlaceSearchField: View {
                 .textInputAutocapitalization(.words)
                 .accessibilityIdentifier(accessibilityID)
                 .onChange(of: text) { _, newValue in
-                    Task { await refresh(newValue) }
+                    if let selectedName, newValue != selectedName {
+                        onClear?()
+                        self.selectedName = nil
+                    }
+                    debounceTask?.cancel()
+                    generation += 1
+                    let current = generation
+                    debounceTask = Task {
+                        try? await Task.sleep(for: .milliseconds(280))
+                        guard !Task.isCancelled, current == generation else { return }
+                        await refresh(newValue, generation: current)
+                    }
                 }
             if isSearching {
                 ProgressView()
@@ -38,17 +53,25 @@ struct PlaceSearchField: View {
         }
     }
 
-    private func refresh(_ query: String) async {
+    private func refresh(_ query: String, generation current: Int) async {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let search, trimmed.count >= 2 else {
             completions = []
+            isSearching = false
             return
         }
         isSearching = true
-        defer { isSearching = false }
+        defer {
+            if current == generation {
+                isSearching = false
+            }
+        }
         do {
-            completions = try await search.completions(for: trimmed)
+            let results = try await search.completions(for: trimmed)
+            guard current == generation else { return }
+            completions = results
         } catch {
+            guard current == generation else { return }
             completions = []
         }
     }
@@ -57,10 +80,12 @@ struct PlaceSearchField: View {
         guard let search else { return }
         do {
             let place = try await search.lookup(completion)
+            selectedName = place.name
             text = place.name
             onSelect(place)
             completions = []
         } catch {
+            selectedName = completion.title
             text = completion.title
             onSelect(.manual(name: completion.title))
             completions = []

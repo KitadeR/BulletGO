@@ -13,11 +13,14 @@ final class MapKitPlaceSearch: NSObject, PlaceSearching, MKLocalSearchCompleterD
         completer.resultTypes = [.pointOfInterest, .address]
     }
 
+    private var lastQuery = ""
+
     func completions(for query: String) async throws -> [PlaceSearchCompletion] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
         generation += 1
         let current = generation
+        lastQuery = trimmed
         if let pending = continuation {
             continuation = nil
             pending.resume(returning: [])
@@ -73,7 +76,7 @@ final class MapKitPlaceSearch: NSObject, PlaceSearching, MKLocalSearchCompleterD
     }
 
     private func finish(_ results: [PlaceSearchCompletion], error: Error? = nil) {
-        guard let continuation else { return }
+        guard completer.queryFragment == lastQuery, let continuation else { return }
         self.continuation = nil
         if let error {
             continuation.resume(throwing: error)

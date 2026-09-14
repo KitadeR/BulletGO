@@ -18,9 +18,20 @@ struct BulletGOApp: App {
             let catalog = try QuestionCatalogLoader.loadProduction(from: .main)
             let pack = try PackLoader.loadProduction(from: .main)
             let clock = AppClock.make()
+            let attachments: AttachmentStore
+            if isUITesting {
+                let root = FileManager.default.temporaryDirectory
+                    .appending(path: "BulletGO-UITesting-Attachments", directoryHint: .isDirectory)
+                try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+                attachments = AttachmentStore(root: root)
+            } else {
+                attachments = try AttachmentStore.applicationSupport()
+            }
+            try? attachments.cleanupExpiredTrash(olderThan: 24 * 60 * 60)
             let tripStore = TripStore(
                 repository: persistence.repository,
-                brain: TripBrain(catalog: catalog, pack: pack, clock: clock)
+                brain: TripBrain(catalog: catalog, pack: pack, clock: clock),
+                attachments: attachments
             )
             let extractor: any ItineraryDraftExtracting
             if let urlString = ProcessInfo.processInfo.environment["BULLETGO_ITINERARY_EXTRACT_URL"],

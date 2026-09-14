@@ -43,7 +43,7 @@ struct TaskEngineTests {
         let reconciled = TaskReconciler.reconcile(
             existing: existing,
             desired: second,
-            focusLegID: trip.legs[0].id,
+            targetLegIDs: [trip.legs[0].id],
             impact: ImpactAssessment(level: .low, targetLegs: [], changedPaths: [])
         )
         let matched = try #require(reconciled.first { $0.contentKey == existing[0].contentKey })
@@ -74,7 +74,7 @@ struct TaskEngineTests {
         let reconciled = TaskReconciler.reconcile(
             existing: tasks,
             desired: desired,
-            focusLegID: trip.legs[0].id,
+            targetLegIDs: [trip.legs[0].id],
             impact: ImpactAssessment(
                 level: .low,
                 targetLegs: [trip.legs[0].id],
@@ -117,7 +117,7 @@ struct TaskEngineTests {
         let reconciled = TaskReconciler.reconcile(
             existing: tasks,
             desired: [],
-            focusLegID: trip.legs[0].id,
+            targetLegIDs: [trip.legs[0].id],
             impact: ImpactAssessment(level: .high, targetLegs: [trip.legs[0].id], changedPaths: [])
         )
         #expect(reconciled.contains { $0.id == other.id && $0.state == .notStarted })
