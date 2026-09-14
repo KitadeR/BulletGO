@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable {
+nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable, Identifiable {
     let year: Int
     let month: Int
     let day: Int
@@ -53,6 +53,8 @@ nonisolated struct LocalDate: Hashable, Codable, Sendable, Comparable {
     var displayString: String {
         String(format: "%04d/%02d/%02d", year, month, day)
     }
+
+    var id: String { displayString }
 
     init(date: Date, timeZone: TimeZone) throws {
         var calendar = Calendar(identifier: .gregorian)

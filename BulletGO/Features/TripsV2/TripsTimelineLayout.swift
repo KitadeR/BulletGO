@@ -37,18 +37,20 @@ struct TripsDaySection: View {
     var trip: Trip
     var catalog: QuestionCatalog?
     var locale: Locale
-    var onAdd: (LocalDate) -> Void
+    var onAdd: (LocalDate, TripsFloatingAddAction) -> Void
     var onMove: (TimelineRow, Int) -> Void
     var onMoveToDate: (TimelineRow, LocalDate?) -> Void
     var onDelete: (TimelineRow) -> Void
+    var onEditSubtitle: (LocalDate) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if let date = section.date {
                 TripsDaySectionHeader(
                     date: date,
-                    place: TripsV2Formatting.placeLabel(for: section),
-                    locale: locale
+                    subtitle: trip.daySubtitle(on: date),
+                    locale: locale,
+                    onEditSubtitle: { onEditSubtitle(date) }
                 )
             } else {
                 Text(section.title)
@@ -60,7 +62,7 @@ struct TripsDaySection: View {
                 TripsEmptyDayState(
                     date: date,
                     addTitle: addTitle(for: date),
-                    onAdd: { onAdd(date) }
+                    onSelect: { onAdd(date, $0) }
                 )
                 .padding(.horizontal, TripsV2Style.screenPadding)
             } else {
@@ -98,7 +100,7 @@ struct TripsDaySection: View {
                     TripsDayAddButton(
                         date: date,
                         title: addTitle(for: date),
-                        action: { onAdd(date) }
+                        onSelect: { onAdd(date, $0) }
                     )
                     .padding(.horizontal, TripsV2Style.screenPadding)
                 }
@@ -126,7 +128,7 @@ struct TripsDaySection: View {
     private func addTitle(for date: LocalDate) -> LocalizedStringResource {
         LocalizedStringResource(
             "Add to \(TripsDateFormatting.addDayLabel(date))",
-            comment: "Button that opens add-to-trip with this day prefilled."
+            comment: "Menu that opens Guided Add with this day prefilled."
         )
     }
 

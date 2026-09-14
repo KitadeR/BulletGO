@@ -44,22 +44,15 @@ enum AccessibilityID {
     static let createTripName = "create-trip-name"
     static let createTripSave = "create-trip-save"
     static let createTripButton = "create-trip-button"
-    static let addItinerarySheet = "add-itinerary-sheet"
-    static let addItineraryButton = "add-itinerary-button"
-    static let addItineraryKind = "add-itinerary-kind"
-    static let addItineraryOrigin = "add-itinerary-origin"
-    static let addItineraryDestination = "add-itinerary-destination"
-    static let addItinerarySave = "add-itinerary-save"
-    static let itineraryTalkSheet = "itinerary-talk-sheet"
-    static let itineraryTalkInput = "itinerary-talk-input"
-    static let itineraryTalkSubmit = "itinerary-talk-submit"
-    static let itineraryDraftReview = "itinerary-draft-review"
-    static let itineraryDraftConfirm = "itinerary-draft-confirm"
     static let itineraryUnscheduled = "itinerary-unscheduled"
     static let stayDetail = "stay-detail"
     static let activityDetail = "activity-detail"
-    static let talkAboutTrip = "talk-about-trip"
     static let tripsDateSelector = "trips-date-selector"
+    static let tripsDateRange = "trips-date-range"
+    static let tripsDaySubtitleSheet = "trips-day-subtitle-sheet"
+    static let tripsDaySubtitleField = "trips-day-subtitle-field"
+    static let tripsDaySubtitleSave = "trips-day-subtitle-save"
+    static let tripsDaySubtitleClear = "trips-day-subtitle-clear"
     static let tripsV2Screen = "trips-v2-screen"
     static let tripsV2DateStrip = "trips-v2-date-strip"
     static let tripsV2FloatingAdd = "trips-v2-floating-add"
@@ -99,6 +92,7 @@ enum AccessibilityID {
     static let youLuggage = "you-luggage"
     static let youDocuments = "you-documents"
     static let youSettings = "you-settings"
+    static let homeOpenTrips = "home-open-trips"
     static let finishedOpenTrips = "finished-open-trips"
     static let baggageGuide = "baggage-guide"
     static let baggageGuideNext = "baggage-guide-next"
@@ -136,6 +130,14 @@ enum AccessibilityID {
 
     static func tripsDayAdd(_ date: LocalDate) -> String {
         "trips-day-add-\(date.year)-\(date.month)-\(date.day)"
+    }
+
+    static func tripsDaySubtitle(_ date: LocalDate) -> String {
+        "trips-day-subtitle-\(date.year)-\(date.month)-\(date.day)"
+    }
+
+    static func tripsDaySubtitleAdd(_ date: LocalDate) -> String {
+        "trips-day-subtitle-add-\(date.year)-\(date.month)-\(date.day)"
     }
 
     static func nowTask(contentKey: String) -> String {

@@ -156,9 +156,9 @@ struct BaggageCheckView: View {
             )
         case .policyResult:
             PrimaryCTA(
-                title: LocalizedStringResource("Back to Home", comment: "Return to Home after baggage measurement."),
+                title: LocalizedStringResource("Done", comment: "Return to the journey after baggage measurement."),
                 accessibilityID: AccessibilityID.baggageGuideDone,
-                action: { router.showHome(reset: true) }
+                action: { router.pop() }
             )
         }
     }

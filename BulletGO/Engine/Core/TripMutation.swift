@@ -43,6 +43,7 @@ nonisolated enum TripMutation: Hashable, Sendable {
     case addSavedPlace(SavedPlace)
     case removeSavedPlace(SavedPlaceID)
     case cacheConnectorEstimate(ConnectorEstimate)
+    case setDaySubtitle(LocalDate, String?)
 
     var isStructural: Bool {
         switch self {
@@ -56,7 +57,7 @@ nonisolated enum TripMutation: Hashable, Sendable {
              .setBaggagePresence, .addBag, .setBagDimensions, .setSeatPreference,
              .updateReservationDetails, .updateScopedReservationStatus,
              .upsertNote, .removeNote, .addAttachment, .renameAttachment, .removeAttachment,
-             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate:
+             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate, .setDaySubtitle:
             false
         }
     }

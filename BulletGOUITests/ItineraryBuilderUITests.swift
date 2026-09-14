@@ -6,7 +6,7 @@ final class ItineraryBuilderUITests: XCTestCase {
     }
 
     @MainActor
-    func testEmptyStoreCreatesTripAddsTransportAndTalks() throws {
+    func testEmptyStoreCreatesTripAndAddsTravel() throws {
         let app = XCUIApplication()
         if app.state != .notRunning {
             app.terminate()
@@ -39,27 +39,14 @@ final class ItineraryBuilderUITests: XCTestCase {
         openTripsTab(in: app)
         XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
 
-        tapID(app, "add-itinerary-button")
-        XCTAssertTrue(element(app, "add-itinerary-sheet").waitForExistence(timeout: 5))
-        let origin = app.textFields["add-itinerary-origin"].firstMatch
-        let destination = app.textFields["add-itinerary-destination"].firstMatch
-        XCTAssertTrue(origin.waitForExistence(timeout: 5))
-        focusAndType(origin, "Tokyo")
-        focusAndType(destination, "Osaka")
-        dismissKeyboard(in: app)
-        tapID(app, "add-itinerary-save")
+        addTravelViaFAB(in: app, origin: "Tokyo", destination: "Osaka")
         XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
-
-        tapID(app, "talk-about-trip")
-        XCTAssertTrue(element(app, "itinerary-talk-sheet").waitForExistence(timeout: 5))
-        let input = app.textFields["itinerary-talk-input"].firstMatch
-        XCTAssertTrue(input.waitForExistence(timeout: 5))
-        focusAndType(input, "October 2 morning, Tokyo to Kyoto by Shinkansen. Large suitcase.")
-        dismissKeyboard(in: app)
-        tapID(app, "itinerary-talk-submit")
-        XCTAssertTrue(element(app, "itinerary-draft-review").waitForExistence(timeout: 8))
-        tapID(app, "itinerary-draft-confirm")
-        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
+        XCTAssertTrue(
+            app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Tokyo'")).firstMatch
+                .waitForExistence(timeout: 8)
+        )
+        XCTAssertFalse(element(app, "add-itinerary-button").exists)
+        XCTAssertFalse(element(app, "talk-about-trip").exists)
     }
 
     @MainActor
@@ -96,15 +83,7 @@ final class ItineraryBuilderUITests: XCTestCase {
             "Empty Oct 3 day did not appear"
         )
 
-        tapID(app, "trips-day-add-2026-10-3")
-        XCTAssertTrue(element(app, "add-itinerary-sheet").waitForExistence(timeout: 5))
-        let origin = app.textFields["add-itinerary-origin"].firstMatch
-        let destination = app.textFields["add-itinerary-destination"].firstMatch
-        XCTAssertTrue(origin.waitForExistence(timeout: 5))
-        focusAndType(origin, "Nara")
-        focusAndType(destination, "Osaka")
-        dismissKeyboard(in: app)
-        tapID(app, "add-itinerary-save")
+        addTravelViaFAB(in: app, origin: "Nara", destination: "Osaka")
         XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
         XCTAssertTrue(element(app, "itinerary-day-2026-10-3").waitForExistence(timeout: 8))
         XCTAssertFalse(element(app, "trips-empty-day").waitForExistence(timeout: 2))
@@ -112,8 +91,45 @@ final class ItineraryBuilderUITests: XCTestCase {
             app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Nara'")).firstMatch
                 .waitForExistence(timeout: 8)
         )
-        XCTAssertTrue(element(app, "add-itinerary-button").exists)
-        XCTAssertTrue(element(app, "talk-about-trip").exists)
+        XCTAssertFalse(element(app, "add-itinerary-button").exists)
+        XCTAssertFalse(element(app, "talk-about-trip").exists)
+    }
+
+    @MainActor
+    private func addTravelViaFAB(in app: XCUIApplication, origin: String, destination: String) {
+        tapID(app, "trips-v2-floating-add")
+        let travel = element(app, "trips-v2-add-leg")
+        if travel.waitForExistence(timeout: 3) {
+            tapID(app, "trips-v2-add-leg")
+        } else if app.buttons["Travel"].waitForExistence(timeout: 3) {
+            app.buttons["Travel"].tap()
+        } else {
+            XCTFail("Missing Guided Add Travel action")
+        }
+
+        XCTAssertTrue(element(app, "guided-add-sheet").waitForExistence(timeout: 8))
+        let originField = app.textFields["guided-add-origin"].firstMatch
+        XCTAssertTrue(originField.waitForExistence(timeout: 5))
+        focusAndType(originField, origin)
+        dismissKeyboard(in: app)
+        tapID(app, "guided-add-continue")
+
+        let destinationField = app.textFields["guided-add-destination"].firstMatch
+        XCTAssertTrue(destinationField.waitForExistence(timeout: 5))
+        focusAndType(destinationField, destination)
+        dismissKeyboard(in: app)
+        tapID(app, "guided-add-continue")
+
+        if element(app, "guided-add-skip").waitForExistence(timeout: 3) {
+            tapID(app, "guided-add-skip")
+        } else {
+            tapID(app, "guided-add-continue")
+        }
+
+        if element(app, "guided-add-continue").waitForExistence(timeout: 3) {
+            tapID(app, "guided-add-continue")
+        }
+        tapID(app, "guided-add-save")
     }
 
     @MainActor

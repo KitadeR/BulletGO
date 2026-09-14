@@ -102,20 +102,18 @@ struct AppRouterTests {
         #expect(router.presentation == nil)
     }
 
-    @Test func presentsAddSheetWithOptionalInitialDate() throws {
+    @Test func presentsGuidedAddWithOptionalInitialDate() throws {
         let trip = try DomainTestSupport.sampleTrip()
         let router = AppRouter()
         router.selectedTab = .trips
         router.push(.legDetail(trip.id, trip.legs[0].id))
-        router.present(.addItineraryItem(trip.id, initialDate: nil))
+        router.present(.guidedAdd(trip.id, .travel, initialDate: nil, seedPlace: nil))
         #expect(router.path == [.legDetail(trip.id, trip.legs[0].id)])
-        #expect(router.presentation == .addItineraryItem(trip.id, initialDate: nil))
+        #expect(router.presentation == .guidedAdd(trip.id, .travel, initialDate: nil, seedPlace: nil))
         router.dismissPresentation()
         let date = try LocalDate(year: 2026, month: 10, day: 3)
-        router.present(.addItineraryItem(trip.id, initialDate: date))
-        #expect(router.presentation == .addItineraryItem(trip.id, initialDate: date))
+        router.present(.guidedAdd(trip.id, .travel, initialDate: date, seedPlace: nil))
+        #expect(router.presentation == .guidedAdd(trip.id, .travel, initialDate: date, seedPlace: nil))
         #expect(router.presentation?.id.hasSuffix("2026/10/03") == true)
-        router.present(.itineraryTalk(trip.id, .trip))
-        #expect(router.presentation == .itineraryTalk(trip.id, .trip))
     }
 }

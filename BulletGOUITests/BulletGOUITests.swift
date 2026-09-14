@@ -94,10 +94,7 @@ final class BulletGOUITests: XCTestCase {
         XCTAssertTrue(element(app, "baggage-result").waitForExistence(timeout: 8))
         if element(app, "baggage-guide-done").waitForExistence(timeout: 3) {
             tapID(app, "baggage-guide-done")
-            XCTAssertTrue(
-                element(app, "leg-detail").waitForExistence(timeout: 10)
-                    || element(app, "contextual-home").waitForExistence(timeout: 5)
-            )
+            XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 10))
             XCTAssertFalse(element(app, "now-task-capture_dimensions").waitForExistence(timeout: 3))
         }
     }
@@ -124,13 +121,9 @@ final class BulletGOUITests: XCTestCase {
             tapID(app, "baggage-submit")
             if element(app, "baggage-guide-done").waitForExistence(timeout: 6) {
                 tapID(app, "baggage-guide-done")
-            } else {
-                tapID(app, "tab-home", timeout: 3)
             }
         }
-        if !element(app, "now-task-select_booking_method").waitForExistence(timeout: 4) {
-            tapID(app, "tab-home", timeout: 3)
-        }
+        XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 8))
         tapID(app, "now-task-select_booking_method", timeout: 10)
         XCTAssertTrue(element(app, "task-detail").waitForExistence(timeout: 5))
         tapID(app, "task-primary-action")

@@ -362,6 +362,8 @@ nonisolated enum TripMutationApplier {
                 $0.fromItem == estimate.fromItem && $0.toItem == estimate.toItem
             }
             updated.connectorEstimates.append(estimate)
+        case .setDaySubtitle(let date, let text):
+            updated.setDaySubtitle(text, on: date)
         }
 
         updated.changeEvents.append(
@@ -469,7 +471,7 @@ nonisolated enum TripMutationApplier {
         case .updateReservationDetails(let scope, _), .updateScopedReservationStatus(let scope, _, _):
             scope
         case .upsertNote, .removeNote, .addAttachment, .renameAttachment, .removeAttachment,
-             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate:
+             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate, .setDaySubtitle:
             .trip
         }
     }

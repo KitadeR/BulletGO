@@ -9,6 +9,7 @@ nonisolated enum TripPayloadMigrator {
             migrateSeatPreferences(in: &json, timestamp: timestamp)
             migrateStays(in: &json)
             migrateFoundationV1(in: &json, timestamp: timestamp)
+            migrateDaySubtitles(in: &json)
         }
     }
 
@@ -17,6 +18,7 @@ nonisolated enum TripPayloadMigrator {
             migrateSeatPreferences(in: &json, timestamp: timestamp)
             migrateStays(in: &json)
             migrateFoundationV1(in: &json, timestamp: timestamp)
+            migrateDaySubtitles(in: &json)
         }
     }
 
@@ -24,12 +26,20 @@ nonisolated enum TripPayloadMigrator {
         try migrate(data) { json, timestamp in
             migrateStays(in: &json)
             migrateFoundationV1(in: &json, timestamp: timestamp)
+            migrateDaySubtitles(in: &json)
         }
     }
 
     static func migrateV4Payload(_ data: Data) throws -> Data {
         try migrate(data) { json, timestamp in
             migrateFoundationV1(in: &json, timestamp: timestamp)
+            migrateDaySubtitles(in: &json)
+        }
+    }
+
+    static func migrateV5Payload(_ data: Data) throws -> Data {
+        try migrate(data) { json, _ in
+            migrateDaySubtitles(in: &json)
         }
     }
 
@@ -68,6 +78,12 @@ nonisolated enum TripPayloadMigrator {
                 activities[index]["endsAt"] = slotJSON(for: "unknown", timestamp: timestamp)
             }
             trip["activities"] = activities
+        }
+    }
+
+    private static func migrateDaySubtitles(in trip: inout [String: Any]) {
+        if trip["daySubtitles"] == nil {
+            trip["daySubtitles"] = [Any]()
         }
     }
 

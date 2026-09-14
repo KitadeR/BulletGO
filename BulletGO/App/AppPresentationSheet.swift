@@ -22,10 +22,6 @@ struct AppPresentationSheet: View {
             SwitchTripSheet()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-        case .addItineraryItem(let tripID, let initialDate):
-            AddItineraryItemSheet(tripID: tripID, initialDate: initialDate)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         case .guidedAdd(let tripID, let kind, let initialDate, let seedPlace):
             GuidedAddFlowView(
                 tripID: tripID,
@@ -37,10 +33,6 @@ struct AppPresentationSheet: View {
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
-        case .itineraryTalk(let tripID, let scope):
-            ItineraryTalkSheet(tripID: tripID, scope: scope)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
         }
     }
 }

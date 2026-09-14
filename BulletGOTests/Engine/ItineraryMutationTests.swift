@@ -12,7 +12,7 @@ struct ItineraryMutationTests {
             now: EngineTestSupport.now
         )
         try trip.validate()
-        #expect(trip.schemaVersion == 5)
+        #expect(trip.schemaVersion == 6)
         #expect(trip.legs.isEmpty)
         #expect(trip.stays.isEmpty)
         #expect(trip.timeline.isEmpty)
@@ -224,5 +224,42 @@ struct ItineraryMutationTests {
         trip = try TripMutationApplier.apply(.removeSavedPlace(saved.id), to: trip, at: EngineTestSupport.now)
         #expect(trip.notes.isEmpty)
         #expect(trip.savedPlaces.isEmpty)
+    }
+
+    @Test func daySubtitleRoundTripsAndClears() throws {
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        trip = try TripMutationApplier.apply(
+            .setDaySubtitle(oct1, "  京都に移動  "),
+            to: trip,
+            at: EngineTestSupport.now
+        )
+        #expect(trip.daySubtitle(on: oct1) == "京都に移動")
+        #expect(trip.daySubtitles.map(\.text) == ["京都に移動"])
+        trip = try TripMutationApplier.apply(
+            .setDaySubtitle(oct1, "   "),
+            to: trip,
+            at: EngineTestSupport.now
+        )
+        #expect(trip.daySubtitle(on: oct1) == nil)
+        #expect(trip.daySubtitles.isEmpty)
+        var restored = try TripMutationApplier.apply(
+            .setDaySubtitle(oct1, "Kyoto"),
+            to: trip,
+            at: EngineTestSupport.now
+        )
+        restored = try TripPayloadCodec.decode(TripPayloadCodec.encode(restored))
+        #expect(restored.daySubtitle(on: oct1) == "Kyoto")
+        restored = try TripMutationApplier.apply(
+            .setDaySubtitle(oct1, nil),
+            to: restored,
+            at: EngineTestSupport.now
+        )
+        #expect(restored.daySubtitles.isEmpty)
     }
 }

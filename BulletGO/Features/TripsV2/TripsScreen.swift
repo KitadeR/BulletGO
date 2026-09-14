@@ -11,6 +11,13 @@ struct TripsScreen: View {
     @State private var didApplyInitialDay = false
     @State private var pendingDeleteTrip = false
     @State private var showProcessFailure = false
+    @State private var editingDaySubtitle: LocalDate?
+    @State private var usesCompactNavigationTitle = false
+    @State private var dateChipBarHeight = TripsV2Style.dateChipSize.height + 4
+    @State private var scrollPosition = ScrollPosition()
+    @State private var scrollOffsetY: CGFloat = 0
+    @State private var dayOffsets: [LocalDate: CGFloat] = [:]
+    @State private var pendingJumpUntilLaidOut: LocalDate?
 
     var body: some View {
         Group {
@@ -33,8 +40,9 @@ struct TripsScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(TripsV2Style.canvas)
-        .navigationTitle(session.trip?.name.value ?? "BulletGO")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(Text(verbatim: session.trip?.name.value ?? "BulletGO"))
+        .toolbarTitleDisplayMode(navigationTitleDisplayMode)
+        .modifier(TripsNavigationSubtitle(text: tripDateRangeSubtitle))
         .toolbar { toolbarContent }
         .alert("Couldn’t update this trip", isPresented: $showProcessFailure) {
             Button("OK", role: .cancel) {}
@@ -53,25 +61,21 @@ struct TripsScreen: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(AccessibilityID.tripTimeline)
+    }
+
+    private var navigationTitleDisplayMode: ToolbarTitleDisplayMode {
+        guard session.loadState == .loaded, session.trip != nil else { return .inline }
+        return usesCompactNavigationTitle ? .inline : .large
+    }
+
+    private var tripDateRangeSubtitle: String {
+        guard session.loadState == .loaded, let trip = session.trip else { return "" }
+        return TripsV2Formatting.dateRange(for: trip, locale: locale) ?? ""
     }
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if session.loadState == .loaded, let trip = session.trip {
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Add with AI") {
-                    router.present(.itineraryTalk(trip.id, .trip))
-                }
-                .accessibilityIdentifier(AccessibilityID.talkAboutTrip)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button("Add") {
-                    router.present(.addItineraryItem(trip.id, initialDate: selectedDate))
-                }
-                .accessibilityIdentifier(AccessibilityID.addItineraryButton)
-            }
             ToolbarItem(placement: .secondaryAction) {
                 Menu("Trip") {
                     Button("Switch trip", systemImage: "arrow.left.arrow.right") {
@@ -137,32 +141,9 @@ struct TripsScreen: View {
             now: session.now,
             insertingEmptyDay: emptyDayToInsert(in: trip)
         )
-        return VStack(alignment: .leading, spacing: 16) {
-            Button {
-                router.present(.switchTrip)
-            } label: {
-                TripsV2Header(
-                    destinations: TripsV2Formatting.destinations(in: trip).isEmpty
-                        ? (trip.name.value ?? "")
-                        : TripsV2Formatting.destinations(in: trip),
-                    datesText: TripsV2Formatting.dateRange(for: trip, locale: locale)
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Switch trip"))
-            if !snapshot.dateOptions.isEmpty {
-                TripsDateStrip(
-                    options: snapshot.dateOptions,
-                    selectedDate: selectedDate,
-                    locale: locale,
-                    onSelect: { date in
-                        selectedDate = date
-                        programmaticTarget = date
-                    }
-                )
-            }
-            ScrollViewReader { proxy in
-                ScrollView {
+        return ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                Section {
                     VStack(alignment: .leading, spacing: 28) {
                         ForEach(snapshot.sections) { section in
                             TripsDaySection(
@@ -170,8 +151,8 @@ struct TripsScreen: View {
                                 trip: trip,
                                 catalog: session.catalog,
                                 locale: locale,
-                                onAdd: { date in
-                                    router.present(.addItineraryItem(trip.id, initialDate: date))
+                                onAdd: { date, action in
+                                    presentGuidedAdd(tripID: trip.id, action: action, date: date)
                                 },
                                 onMove: { row, offset in
                                     move(row, in: trip, offset: offset)
@@ -181,55 +162,124 @@ struct TripsScreen: View {
                                 },
                                 onDelete: { row in
                                     delete(row, in: trip)
+                                },
+                                onEditSubtitle: { date in
+                                    editingDaySubtitle = date
                                 }
                             )
-                            .id(ItineraryDayComposer.scrollAnchor(for: section))
                             .background {
                                 sectionAnchor(section)
                             }
+                            .id(ItineraryDayComposer.scrollAnchor(for: section))
                         }
                     }
                     .padding(.top, 8)
                     .padding(.bottom, 88)
-                }
-                .scrollIndicators(.hidden)
-                .coordinateSpace(.named(tripsScrollSpace))
-                .onPreferenceChange(DayOffsetPreference.self) { offsets in
-                    syncSelectedDate(with: offsets)
-                }
-                .accessibilityIdentifier(AccessibilityID.tripTimeline)
-                .onAppear {
-                    applyInitialDayIfNeeded(snapshot, proxy: proxy)
-                }
-                .onChange(of: programmaticTarget) { _, target in
-                    guard let target else { return }
-                    proxy.scrollTo(ItineraryDayComposer.scrollAnchor(for: target), anchor: .top)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .accessibilityIdentifier(AccessibilityID.tripTimeline)
+                    } header: {
+                        Group {
+                            if !snapshot.dateOptions.isEmpty {
+                                TripsDateStrip(
+                                    options: snapshot.dateOptions,
+                                    selectedDate: selectedDate,
+                                    locale: locale,
+                                    onSelect: { date in
+                                        selectedDate = date
+                                        jumpToDay(date)
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.bottom, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.regularMaterial)
+                        .onGeometryChange(for: CGFloat.self) { proxy in
+                            proxy.size.height
+                        } action: { _, height in
+                            guard height > 0, abs(dateChipBarHeight - height) > 0.5 else { return }
+                            dateChipBarHeight = height
+                        }
+                    }
                 }
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .overlay(alignment: .bottomTrailing) {
-            TripsFloatingAdd(
-                selectedDate: selectedDate,
-                locale: locale,
-                onSelect: { action in
-                    presentGuidedAdd(tripID: trip.id, action: action)
+            .scrollIndicators(.hidden)
+            .scrollEdgeEffectStyle(.hard, for: .top)
+            .scrollPosition($scrollPosition)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y
+            } action: { _, offsetY in
+                scrollOffsetY = offsetY
+            }
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, scrolled in
+                updateNavigationTitleMode(scrolled: scrolled)
+            }
+            .coordinateSpace(.named(tripsScrollSpace))
+            .onPreferenceChange(DayOffsetPreference.self) { offsets in
+                dayOffsets = offsets
+                syncSelectedDate(with: offsets)
+            }
+            .onChange(of: dayOffsets) {
+                applyInitialDayIfNeeded(snapshot)
+                if let date = pendingJumpUntilLaidOut, dayOffsets[date] != nil {
+                    pendingJumpUntilLaidOut = nil
+                    performProgrammaticJump(to: date)
                 }
-            )
-            .padding(.trailing, 20)
-            .padding(.bottom, 12)
-            .ignoresSafeArea(.keyboard)
-        }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                TripsFloatingAdd(
+                    selectedDate: selectedDate,
+                    locale: locale,
+                    onSelect: { action in
+                        presentGuidedAdd(tripID: trip.id, action: action)
+                    }
+                )
+                .padding(.trailing, 20)
+                .padding(.bottom, 12)
+                .ignoresSafeArea(.keyboard)
+                .accessibilityIdentifier(AccessibilityID.tripsV2FloatingAdd)
+            }
+            .sheet(item: $editingDaySubtitle) { date in
+                TripsDaySubtitleEditor(
+                    date: date,
+                    initialText: trip.daySubtitle(on: date) ?? "",
+                    locale: locale,
+                    onSave: { text in
+                        Task {
+                            _ = await session.process(.applyMutation(.setDaySubtitle(date, text)))
+                        }
+                        editingDaySubtitle = nil
+                    },
+                    onCancel: { editingDaySubtitle = nil }
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func presentGuidedAdd(tripID: TripID, action: TripsFloatingAddAction) {
+    private func presentGuidedAdd(
+        tripID: TripID,
+        action: TripsFloatingAddAction,
+        date: LocalDate? = nil
+    ) {
         let kind: ItineraryAddKind
         switch action {
         case .activity: kind = .activity
         case .leg: kind = .travel
         case .stay: kind = .stay
         }
-        router.present(.guidedAdd(tripID, kind, initialDate: selectedDate, seedPlace: nil))
+        router.present(.guidedAdd(tripID, kind, initialDate: date ?? selectedDate, seedPlace: nil))
+    }
+
+    private func updateNavigationTitleMode(scrolled: CGFloat) {
+        if usesCompactNavigationTitle {
+            if scrolled < tripsTitleHideDistance * 0.2 {
+                usesCompactNavigationTitle = false
+            }
+        } else if scrolled >= tripsTitleHideDistance * 0.8 {
+            usesCompactNavigationTitle = true
+        }
     }
 
     private func emptyDayToInsert(in trip: Trip) -> LocalDate? {
@@ -250,29 +300,42 @@ struct TripsScreen: View {
         return candidate
     }
 
-    private func applyInitialDayIfNeeded(_ snapshot: TripsTimelineSnapshot, proxy: ScrollViewProxy) {
+    private func applyInitialDayIfNeeded(_ snapshot: TripsTimelineSnapshot) {
         guard !didApplyInitialDay else { return }
+        guard let initial = snapshot.initialDate else {
+            didApplyInitialDay = true
+            return
+        }
+        guard dayOffsets[initial] != nil else { return }
         didApplyInitialDay = true
-        guard let initial = snapshot.initialDate else { return }
         selectedDate = initial
-        programmaticTarget = initial
-        proxy.scrollTo(ItineraryDayComposer.scrollAnchor(for: initial), anchor: .top)
+        jumpToDay(initial)
+    }
+
+    private func jumpToDay(_ date: LocalDate) {
+        programmaticTarget = date
+        if dayOffsets[date] != nil {
+            performProgrammaticJump(to: date)
+        } else {
+            pendingJumpUntilLaidOut = date
+        }
+    }
+
+    private func performProgrammaticJump(to date: LocalDate) {
+        guard let minY = dayOffsets[date] else { return }
+        scrollPosition.scrollTo(y: scrollOffsetY + (minY - dayJumpTopInset))
     }
 
     private func syncSelectedDate(with offsets: [LocalDate: CGFloat]) {
         if let target = programmaticTarget {
-            if let offset = offsets[target], abs(offset - selectionAnchor) < 48 {
+            if let offset = offsets[target], abs(offset - selectionAnchor) < 80 {
                 programmaticTarget = nil
             }
             return
         }
-        let visible = offsets.filter { $0.value <= selectionAnchor }
-        guard let current = visible.max(by: { $0.value < $1.value })?.key else {
-            return
-        }
-        if selectedDate != current {
-            selectedDate = current
-        }
+        let current = TripsV2Formatting.selectedDate(from: offsets, pin: selectionAnchor)
+        guard let current, selectedDate != current else { return }
+        selectedDate = current
     }
 
     private func sectionAnchor(_ section: ItinerarySection) -> some View {
@@ -342,10 +405,26 @@ struct TripsScreen: View {
             }
         }
     }
+
+    private var dayJumpTopInset: CGFloat {
+        dateChipBarHeight + 8
+    }
+
+    private var selectionAnchor: CGFloat {
+        dateChipBarHeight + 24
+    }
 }
 
 private let tripsScrollSpace = "trips-v2-scroll"
-private let selectionAnchor: CGFloat = 140
+private let tripsTitleHideDistance: CGFloat = 64
+
+private struct TripsNavigationSubtitle: ViewModifier {
+    var text: String
+
+    func body(content: Content) -> some View {
+        content.navigationSubtitle(Text(verbatim: text))
+    }
+}
 
 private struct DayOffsetPreference: PreferenceKey {
     static var defaultValue: [LocalDate: CGFloat] = [:]
@@ -466,6 +545,11 @@ enum TripsV2PreviewData {
         trip = try TripMutationApplier.apply(.addActivity(fushimi, atTimelineIndex: nil), to: trip, at: now)
         trip = try TripMutationApplier.apply(.addActivity(ramen, atTimelineIndex: nil), to: trip, at: now)
         trip = try TripMutationApplier.apply(.addActivity(tea, atTimelineIndex: nil), to: trip, at: now)
+        trip = try TripMutationApplier.apply(
+            .setDaySubtitle(oct2, "京都に移動"),
+            to: trip,
+            at: now
+        )
         return trip
     }
 }

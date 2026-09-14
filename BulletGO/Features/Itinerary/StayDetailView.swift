@@ -69,11 +69,6 @@ struct StayDetailView: View {
                 Button("Save") { Task { await save() } }
                     .disabled(!isDirty || isSaving || !canSave)
             }
-            ToolbarItem(placement: .primaryAction) {
-                Button("Talk") {
-                    router.present(.itineraryTalk(tripID, .stay(stayID)))
-                }
-            }
         }
         .confirmationDialog("Discard changes?", isPresented: $showDiscard, titleVisibility: .visible) {
             Button("Discard", role: .destructive) { dismiss() }

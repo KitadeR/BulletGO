@@ -604,4 +604,36 @@ struct ItineraryDraftTests {
         #expect(validated.items.isEmpty)
         #expect(!validated.unresolved.isEmpty)
     }
+
+    @Test func dateChipSelectionWaitsUntilTheNextHeadingReachesThePin() throws {
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct2 = try LocalDate(year: 2026, month: 10, day: 2)
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let pin: CGFloat = 24
+
+        #expect(
+            TripsV2Formatting.selectedDate(
+                from: [oct1: 8, oct2: 420, oct3: 860],
+                pin: pin
+            ) == oct1
+        )
+        #expect(
+            TripsV2Formatting.selectedDate(
+                from: [oct1: -180, oct2: 120, oct3: 540],
+                pin: pin
+            ) == oct1
+        )
+        #expect(
+            TripsV2Formatting.selectedDate(
+                from: [oct1: -360, oct2: 25, oct3: 420],
+                pin: pin
+            ) == oct1
+        )
+        #expect(
+            TripsV2Formatting.selectedDate(
+                from: [oct1: -400, oct2: 20, oct3: 380],
+                pin: pin
+            ) == oct2
+        )
+    }
 }

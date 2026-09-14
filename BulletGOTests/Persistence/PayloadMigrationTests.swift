@@ -9,9 +9,9 @@ struct PayloadMigrationTests {
         let encoded = try v1Record(from: trip, statuses: ["unknown", "unknown", "unknown"])
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
         #expect(decoded.trip.id == trip.id)
-        #expect(decoded.trip.schemaVersion == 5)
-        #expect(decoded.rewritten?.payloadVersion == 5)
-        #expect(decoded.rewritten?.domainSchemaVersion == 5)
+        #expect(decoded.trip.schemaVersion == 6)
+        #expect(decoded.rewritten?.payloadVersion == 6)
+        #expect(decoded.rewritten?.domainSchemaVersion == 6)
         for leg in decoded.trip.legs {
             #expect(leg.reservation.status.status == .unknown)
             #expect(leg.reservation.status.value == nil)
@@ -52,12 +52,12 @@ struct PayloadMigrationTests {
         )
 
         let loaded = try await repository.fetch(id: trip.id)
-        #expect(loaded?.schemaVersion == 5)
+        #expect(loaded?.schemaVersion == 6)
         #expect(loaded?.legs[0].reservation.status.value == .notBooked)
 
         let reloaded = try await repository.fetch(id: trip.id)
         #expect(reloaded == loaded)
-        #expect(reloaded?.schemaVersion == 5)
+        #expect(reloaded?.schemaVersion == 6)
         #expect(reloaded?.legs[0].seatPreference.status == .unknown)
     }
 
@@ -75,8 +75,8 @@ struct PayloadMigrationTests {
             json["legs"] = legs
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 5)
-        #expect(decoded.rewritten?.payloadVersion == 5)
+        #expect(decoded.trip.schemaVersion == 6)
+        #expect(decoded.rewritten?.payloadVersion == 6)
         #expect(decoded.trip.legs.allSatisfy { $0.seatPreference.status == .unknown })
         #expect(decoded.trip.id == trip.id)
         #expect(decoded.trip.name.revisions == trip.name.revisions)
@@ -93,8 +93,8 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "stays")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 5)
-        #expect(decoded.rewritten?.payloadVersion == 5)
+        #expect(decoded.trip.schemaVersion == 6)
+        #expect(decoded.rewritten?.payloadVersion == 6)
         #expect(decoded.trip.stays.isEmpty)
         #expect(decoded.trip.id == trip.id)
         #expect(decoded.trip.savedPlaces.isEmpty)
@@ -115,14 +115,32 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "connectorEstimates")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 5)
-        #expect(decoded.rewritten?.payloadVersion == 5)
+        #expect(decoded.trip.schemaVersion == 6)
+        #expect(decoded.rewritten?.payloadVersion == 6)
         #expect(decoded.trip.savedPlaces.isEmpty)
         #expect(decoded.trip.notes.isEmpty)
         #expect(decoded.trip.attachments.isEmpty)
         #expect(decoded.trip.connectorEstimates.isEmpty)
         #expect(decoded.trip.legs.allSatisfy { $0.arrivesAt.status == .unknown })
         #expect(decoded.trip.activities.allSatisfy { $0.endsAt.status == .unknown })
+        #expect(decoded.trip.daySubtitles.isEmpty)
+    }
+
+    @Test func v5PayloadGainsEmptyDaySubtitles() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        var encoded = try TripRecordMapper.encode(trip)
+        encoded.payloadVersion = 5
+        encoded.domainSchemaVersion = 5
+        encoded.payload = try mutatedPayload(encoded.payload) { json in
+            json["schemaVersion"] = 5
+            json.removeValue(forKey: "daySubtitles")
+        }
+        let decoded = try TripRecordMapper.decodeWithMigration(encoded)
+        #expect(decoded.trip.schemaVersion == 6)
+        #expect(decoded.rewritten?.payloadVersion == 6)
+        #expect(decoded.rewritten?.domainSchemaVersion == 6)
+        #expect(decoded.trip.daySubtitles.isEmpty)
+        #expect(decoded.trip.id == trip.id)
     }
 
     private func v1Record(from trip: Trip, statuses: [String]) throws -> EncodedTripRecord {

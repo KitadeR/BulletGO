@@ -51,6 +51,14 @@ nonisolated enum TripsV2Formatting {
         formatDay(date, locale: locale, weekday: false)
     }
 
+    static func selectedDate(from offsets: [LocalDate: CGFloat], pin: CGFloat) -> LocalDate? {
+        let reachedPin = offsets.filter { $0.value <= pin }
+        if let current = reachedPin.max(by: { $0.value < $1.value })?.key {
+            return current
+        }
+        return offsets.min(by: { $0.value < $1.value })?.key
+    }
+
     static func stayDateRange(from start: LocalDate, to end: LocalDate, locale: Locale) -> String {
         "\(formatDay(start, locale: locale, weekday: false)) → \(formatDay(end, locale: locale, weekday: false))"
     }
@@ -64,19 +72,6 @@ nonisolated enum TripsV2Formatting {
         calendar.timeZone = timeZone
         let days = calendar.dateComponents([.day], from: start, to: end).day ?? 0
         return days > 0 ? days : nil
-    }
-
-    static func placeLabel(for section: ItinerarySection) -> String? {
-        guard let first = section.rows.first else {
-            return nil
-        }
-        if first.isLeg {
-            return first.title
-        }
-        if case .verbatim(let value) = first.subtitle, !value.isEmpty {
-            return value
-        }
-        return nil
     }
 
     private static func append(_ value: String?, into result: inout [String], seen: inout Set<String>) {

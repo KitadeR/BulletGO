@@ -79,11 +79,6 @@ struct ActivityDetailView: View {
                 Button("Save") { Task { await save() } }
                     .disabled(!isDirty || isSaving)
             }
-            ToolbarItem(placement: .primaryAction) {
-                Button("Talk") {
-                    router.present(.itineraryTalk(tripID, .activity(activityID)))
-                }
-            }
         }
         .confirmationDialog("Discard changes?", isPresented: $showDiscard, titleVisibility: .visible) {
             Button("Discard", role: .destructive) { dismiss() }

@@ -11,24 +11,7 @@ struct TripsFloatingAdd: View {
     var body: some View {
         let menu = Menu {
             Section {
-                actionButton(
-                    title: "Place or activity",
-                    systemImage: "mappin",
-                    action: .activity,
-                    accessibilityID: AccessibilityID.tripsV2AddActivity
-                )
-                actionButton(
-                    title: "Travel",
-                    systemImage: "arrow.right",
-                    action: .leg,
-                    accessibilityID: AccessibilityID.tripsV2AddLeg
-                )
-                actionButton(
-                    title: "Stay",
-                    systemImage: "bed.double",
-                    action: .stay,
-                    accessibilityID: AccessibilityID.tripsV2AddStay
-                )
+                TripsAddKindMenuItems(onSelect: onSelect, includeAccessibilityIDs: true)
             } header: {
                 menuHeader
             }
@@ -67,16 +50,49 @@ struct TripsFloatingAdd: View {
             Text("Add to trip")
         }
     }
+}
 
-    private func actionButton(
+struct TripsAddKindMenuItems: View {
+    var onSelect: (TripsFloatingAddAction) -> Void
+    var includeAccessibilityIDs: Bool = false
+
+    var body: some View {
+        item(
+            title: "Place or activity",
+            systemImage: "mappin",
+            action: .activity,
+            accessibilityID: AccessibilityID.tripsV2AddActivity
+        )
+        item(
+            title: "Travel",
+            systemImage: "arrow.right",
+            action: .leg,
+            accessibilityID: AccessibilityID.tripsV2AddLeg
+        )
+        item(
+            title: "Stay",
+            systemImage: "bed.double",
+            action: .stay,
+            accessibilityID: AccessibilityID.tripsV2AddStay
+        )
+    }
+
+    @ViewBuilder
+    private func item(
         title: LocalizedStringKey,
         systemImage: String,
         action: TripsFloatingAddAction,
         accessibilityID: String
     ) -> some View {
-        Button(title, systemImage: systemImage) {
-            onSelect(action)
+        if includeAccessibilityIDs {
+            Button(title, systemImage: systemImage) {
+                onSelect(action)
+            }
+            .accessibilityIdentifier(accessibilityID)
+        } else {
+            Button(title, systemImage: systemImage) {
+                onSelect(action)
+            }
         }
-        .accessibilityIdentifier(accessibilityID)
     }
 }

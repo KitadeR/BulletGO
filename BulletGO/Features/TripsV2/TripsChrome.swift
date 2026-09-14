@@ -1,27 +1,5 @@
 import SwiftUI
 
-struct TripsV2Header: View {
-    var destinations: String
-    var datesText: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(verbatim: destinations)
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(DesignTokens.Color.primaryText)
-                .fixedSize(horizontal: false, vertical: true)
-            if let datesText {
-                Text(verbatim: datesText)
-                    .font(.system(size: 14))
-                    .foregroundStyle(DesignTokens.Color.secondaryText)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, TripsV2Style.screenPadding)
-        .accessibilityElement(children: .combine)
-    }
-}
-
 struct TripsDateStrip: View {
     var options: [TripsDayOption]
     var selectedDate: LocalDate?
@@ -83,23 +61,83 @@ struct TripsDateStrip: View {
 
 struct TripsDaySectionHeader: View {
     var date: LocalDate
-    var place: String?
+    var subtitle: String?
     var locale: Locale
+    var onEditSubtitle: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(verbatim: TripsV2Formatting.dayHeading(date, locale: locale))
                 .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(DesignTokens.Color.primaryText)
-            if let place, !place.isEmpty {
-                Text(verbatim: place)
-                    .font(.system(size: 13))
-                    .foregroundStyle(DesignTokens.Color.secondaryText)
+            Button(action: onEditSubtitle) {
+                if let subtitle, !subtitle.isEmpty {
+                    Text(verbatim: subtitle)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(DesignTokens.Color.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Add subtitle")
+                        .font(.system(size: 16))
+                        .foregroundStyle(DesignTokens.Color.secondaryText.opacity(0.7))
+                }
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(
+                subtitle == nil
+                    ? AccessibilityID.tripsDaySubtitleAdd(date)
+                    : AccessibilityID.tripsDaySubtitle(date)
+            )
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, TripsV2Style.screenPadding)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(AccessibilityID.tripsDaySection(date))
+        .accessibilityElement(children: .contain)
+    }
+}
+
+struct TripsDaySubtitleEditor: View {
+    var date: LocalDate
+    var initialText: String
+    var locale: Locale
+    var onSave: (String?) -> Void
+    var onCancel: () -> Void
+
+    @State private var text: String = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Subtitle", text: $text)
+                    .accessibilityIdentifier(AccessibilityID.tripsDaySubtitleField)
+            }
+            .navigationTitle(Text(verbatim: TripsV2Formatting.dayHeading(date, locale: locale)))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave(text)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.tripsDaySubtitleSave)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Button("Remove subtitle", role: .destructive) {
+                        onSave(nil)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .accessibilityIdentifier(AccessibilityID.tripsDaySubtitleClear)
+                }
+            }
+        }
+        .onAppear { text = initialText }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+        .accessibilityIdentifier(AccessibilityID.tripsDaySubtitleSheet)
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated struct Trip: Hashable, Codable, Sendable {
-    static let currentSchemaVersion = 5
+    static let currentSchemaVersion = 6
 
     let id: TripID
     var schemaVersion: Int
@@ -22,6 +22,7 @@ nonisolated struct Trip: Hashable, Codable, Sendable {
     var notes: [ScopedNote]
     var attachments: [AttachmentRecord]
     var connectorEstimates: [ConnectorEstimate]
+    var daySubtitles: [DaySubtitle]
     let createdAt: Date
     var updatedAt: Date
 
@@ -29,7 +30,7 @@ nonisolated struct Trip: Hashable, Codable, Sendable {
         case id, schemaVersion, name, startDate, endDate, traveler
         case legs, stays, activities, timeline, baggageInventory
         case tasks, readinessChecks, currentContext, changeEvents
-        case savedPlaces, notes, attachments, connectorEstimates
+        case savedPlaces, notes, attachments, connectorEstimates, daySubtitles
         case createdAt, updatedAt
     }
 
@@ -53,6 +54,7 @@ nonisolated struct Trip: Hashable, Codable, Sendable {
         notes: [ScopedNote] = [],
         attachments: [AttachmentRecord] = [],
         connectorEstimates: [ConnectorEstimate] = [],
+        daySubtitles: [DaySubtitle] = [],
         createdAt: Date,
         updatedAt: Date
     ) {
@@ -75,6 +77,7 @@ nonisolated struct Trip: Hashable, Codable, Sendable {
         self.notes = notes
         self.attachments = attachments
         self.connectorEstimates = connectorEstimates
+        self.daySubtitles = daySubtitles
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -100,6 +103,7 @@ nonisolated struct Trip: Hashable, Codable, Sendable {
         notes = try container.decodeIfPresent([ScopedNote].self, forKey: .notes) ?? []
         attachments = try container.decodeIfPresent([AttachmentRecord].self, forKey: .attachments) ?? []
         connectorEstimates = try container.decodeIfPresent([ConnectorEstimate].self, forKey: .connectorEstimates) ?? []
+        daySubtitles = try container.decodeIfPresent([DaySubtitle].self, forKey: .daySubtitles) ?? []
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     }

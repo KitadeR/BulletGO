@@ -15,6 +15,10 @@ build/
 
 ## Editor / tooling
 buildServer.json
+.codex-finalizer/
+.codex_build/
+.codex_outputs/
+presentation_work/
 
 ## Obj-C/Swift specific
 *.hmap

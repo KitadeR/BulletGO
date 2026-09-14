@@ -95,7 +95,7 @@ nonisolated enum ImpactAnalyzer {
                 ImpactAssessment(level: .medium, targetLegs: [], changedPaths: [.trip(.timeline)])
             )
         case .upsertNote, .removeNote, .addAttachment, .renameAttachment, .removeAttachment,
-             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate:
+             .addSavedPlace, .removeSavedPlace, .cacheConnectorEstimate, .setDaySubtitle:
             (
                 .other,
                 ImpactAssessment(level: .low, targetLegs: [], changedPaths: [.trip(.timeline)])
