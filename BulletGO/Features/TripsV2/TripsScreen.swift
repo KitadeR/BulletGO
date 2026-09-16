@@ -12,6 +12,8 @@ struct TripsScreen: View {
     @State private var pendingDeleteTrip = false
     @State private var showProcessFailure = false
     @State private var editingDaySubtitle: LocalDate?
+    @State private var quickContext: TripsQuickContextAnchor?
+    @State private var pendingRouteAfterQuickContext: AppRoute?
     @State private var usesCompactNavigationTitle = false
     @State private var dateChipBarHeight = TripsV2Style.dateChipSize.height + 4
     @State private var scrollPosition = ScrollPosition()
@@ -165,6 +167,9 @@ struct TripsScreen: View {
                                 },
                                 onEditSubtitle: { date in
                                     editingDaySubtitle = date
+                                },
+                                onOpenQuickContext: { row in
+                                    quickContext = TripsQuickContextAnchor(row: row)
                                 }
                             )
                             .background {
@@ -254,6 +259,24 @@ struct TripsScreen: View {
                     },
                     onCancel: { editingDaySubtitle = nil }
                 )
+            }
+            .sheet(item: $quickContext, onDismiss: {
+                if let route = pendingRouteAfterQuickContext {
+                    pendingRouteAfterQuickContext = nil
+                    router.push(route)
+                }
+            }) { anchor in
+                if let snapshot = TripsQuickContextComposer.snapshot(
+                    row: anchor.row,
+                    trip: trip,
+                    catalog: session.catalog,
+                    now: session.now
+                ) {
+                    TripsQuickContextSheet(snapshot: snapshot) { route in
+                        pendingRouteAfterQuickContext = route
+                        quickContext = nil
+                    }
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

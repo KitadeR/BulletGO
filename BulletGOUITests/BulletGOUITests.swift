@@ -273,10 +273,12 @@ final class BulletGOUITests: XCTestCase {
         let hittable = NSPredicate(format: "hittable == true")
         _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: hittable, object: row)], timeout: 5)
         row.tap()
-        if !element(app, "leg-detail").waitForExistence(timeout: 8) {
+        if !element(app, "trips-quick-context").waitForExistence(timeout: 8) {
             app.swipeUp()
             row.tap()
         }
+        XCTAssertTrue(element(app, "trips-quick-context").waitForExistence(timeout: 8), "Quick Context A did not open")
+        tapID(app, "trips-quick-context-details")
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 12))
     }
 

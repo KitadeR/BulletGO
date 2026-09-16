@@ -42,6 +42,7 @@ struct TripsDaySection: View {
     var onMoveToDate: (TimelineRow, LocalDate?) -> Void
     var onDelete: (TimelineRow) -> Void
     var onEditSubtitle: (LocalDate) -> Void
+    var onOpenQuickContext: (TimelineRow) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -80,7 +81,8 @@ struct TripsDaySection: View {
                                 row: row,
                                 trip: trip,
                                 catalog: catalog,
-                                locale: locale
+                                locale: locale,
+                                onOpenQuickContext: onOpenQuickContext
                             )
                             .contextMenu {
                                 menu(for: row)

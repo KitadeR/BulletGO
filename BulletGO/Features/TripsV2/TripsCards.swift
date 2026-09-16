@@ -5,6 +5,7 @@ struct TripsTimelineItemRow: View {
     var trip: Trip
     var catalog: QuestionCatalog?
     var locale: Locale
+    var onOpenQuickContext: (TimelineRow) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: TripsV2Style.cardGap) {
@@ -12,7 +13,11 @@ struct TripsTimelineItemRow: View {
             card
         }
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier(rowIdentifier)
+        .accessibilityAction {
+            onOpenQuickContext(row)
+        }
     }
 
     @ViewBuilder
@@ -20,15 +25,15 @@ struct TripsTimelineItemRow: View {
         switch row.id {
         case .leg:
             if let presentation = TripsLegCardComposer.presentation(row: row, trip: trip, catalog: catalog) {
-                TripsLegCard(presentation: presentation)
+                TripsLegCard(presentation: presentation, onOpen: { onOpenQuickContext(row) })
             }
         case .activity:
             if let presentation = TripsActivityCardComposer.presentation(row: row, trip: trip) {
-                TripsActivityCard(presentation: presentation)
+                TripsActivityCard(presentation: presentation, onOpen: { onOpenQuickContext(row) })
             }
         case .stay:
             if let presentation = TripsStayCardComposer.presentation(row: row, trip: trip, locale: locale) {
-                TripsStayCard(presentation: presentation)
+                TripsStayCard(presentation: presentation, onOpen: { onOpenQuickContext(row) })
             }
         }
     }
@@ -47,13 +52,11 @@ struct TripsTimelineItemRow: View {
 
 struct TripsLegCard: View {
     var presentation: TripsLegCardPresentation
-    @Environment(AppRouter.self) private var router
+    var onOpen: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button {
-                push(presentation.destination)
-            } label: {
+            Button(action: onOpen) {
                 VStack(alignment: .leading, spacing: 6) {
                     DisplayTextLabel(text: presentation.transport)
                         .font(.system(size: 12, weight: .semibold))
@@ -81,9 +84,7 @@ struct TripsLegCard: View {
                     .fill(TripsV2Style.divider)
                     .frame(height: 1)
                     .padding(.horizontal, 14)
-                Button {
-                    push(action.destination ?? presentation.destination)
-                } label: {
+                Button(action: onOpen) {
                     HStack(spacing: 8) {
                         Circle()
                             .fill(TripsV2Style.accent)
@@ -124,26 +125,14 @@ struct TripsLegCard: View {
         }
         return parts.joined(separator: " · ")
     }
-
-    private func push(_ destination: AppRoute?) {
-        guard let destination else {
-            return
-        }
-        router.push(destination)
-    }
 }
 
 struct TripsActivityCard: View {
     var presentation: TripsActivityCardPresentation
-    @Environment(AppRouter.self) private var router
+    var onOpen: () -> Void
 
     var body: some View {
-        Button {
-            guard let destination = presentation.destination else {
-                return
-            }
-            router.push(destination)
-        } label: {
+        Button(action: onOpen) {
             HStack(alignment: .center, spacing: 14) {
                 TripsPhotoPlaceholder(
                     label: LocalizedStringResource(
@@ -183,15 +172,10 @@ struct TripsActivityCard: View {
 
 struct TripsStayCard: View {
     var presentation: TripsStayCardPresentation
-    @Environment(AppRouter.self) private var router
+    var onOpen: () -> Void
 
     var body: some View {
-        Button {
-            guard let destination = presentation.destination else {
-                return
-            }
-            router.push(destination)
-        } label: {
+        Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 0) {
                 TripsPhotoPlaceholder(
                     label: LocalizedStringResource(

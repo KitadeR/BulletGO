@@ -78,6 +78,8 @@ enum AccessibilityID {
     static let attachmentsEditor = "attachments-editor"
     static let tripsEmptyDay = "trips-empty-day"
     static let tripsPreparation = "trips-leg-preparation"
+    static let tripsQuickContext = "trips-quick-context"
+    static let tripsQuickContextDetails = "trips-quick-context-details"
     static let homeTab = "tab-home"
     static let tripsTab = "tab-trips"
     static let youTab = "tab-you"
@@ -120,6 +122,10 @@ enum AccessibilityID {
 
     static func timelineActivity(_ id: ActivityID) -> String {
         "timeline-activity-\(id.rawValue.uuidString)"
+    }
+
+    static func tripsQuickContextItem(_ id: String) -> String {
+        "trips-quick-context-item-\(id)"
     }
 
     static func homeScheduleRow(_ id: TimelineRowKind) -> String {
