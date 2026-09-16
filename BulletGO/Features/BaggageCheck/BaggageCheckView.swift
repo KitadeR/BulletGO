@@ -40,7 +40,7 @@ struct BaggageCheckView: View {
                     case .illustration:
                         BaggageMeasurementDiagram()
                     case .instruction:
-                        BaggageMeasurementDiagram()
+                        EmptyView()
                     case .dimensionInput:
                         inputFields
                     case .policyResult:
@@ -93,7 +93,6 @@ struct BaggageCheckView: View {
 
     private var inputFields: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.lg) {
-            BaggageMeasurementDiagram()
             dimensionField(
                 title: LocalizedStringResource("Length", comment: "Bag length field label."),
                 text: $lengthText,

@@ -115,12 +115,17 @@ final class BulletGOUITests: XCTestCase {
         tapID(app, "question-choice-yes")
 
         XCTAssertTrue(element(app, "leg-cockpit-summary").waitForExistence(timeout: 12))
-        let capture = element(app, "now-task-capture_dimensions")
-        XCTAssertTrue(capture.waitForExistence(timeout: 8), "Missing capture dimensions")
-        if !capture.isHittable {
-            app.swipeUp()
+        if element(app, "leg-cockpit-luggage").waitForExistence(timeout: 4) {
+            tapID(app, "leg-cockpit-luggage")
+        } else {
+            tapID(app, "leg-cockpit-whats-next")
+            let capture = element(app, "now-task-capture_dimensions")
+            XCTAssertTrue(capture.waitForExistence(timeout: 8), "Missing capture dimensions")
+            if !capture.isHittable {
+                app.swipeUp()
+            }
+            capture.tap()
         }
-        capture.tap()
 
         XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 10))
         advanceBaggageGuideIfNeeded(in: app)
@@ -148,7 +153,16 @@ final class BulletGOUITests: XCTestCase {
         tapID(app, "question-choice-yes")
         XCTAssertTrue(element(app, "leg-cockpit-whats-next").waitForExistence(timeout: 12))
         let capture = element(app, "now-task-capture_dimensions")
-        if capture.waitForExistence(timeout: 6) {
+        if !capture.exists, element(app, "leg-cockpit-luggage").waitForExistence(timeout: 4) {
+            tapID(app, "leg-cockpit-luggage")
+            XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 8))
+            advanceBaggageGuideIfNeeded(in: app)
+            fillBaggage(in: app, length: "80", width: "40", height: "40")
+            tapID(app, "baggage-submit")
+            if element(app, "baggage-guide-done").waitForExistence(timeout: 6) {
+                tapID(app, "baggage-guide-done")
+            }
+        } else if capture.waitForExistence(timeout: 6) {
             capture.tap()
             XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 8))
             advanceBaggageGuideIfNeeded(in: app)
@@ -159,11 +173,74 @@ final class BulletGOUITests: XCTestCase {
             }
         }
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 8))
+        if !element(app, "now-task-select_booking_method").waitForExistence(timeout: 3) {
+            tapID(app, "leg-cockpit-whats-next")
+        }
         tapID(app, "now-task-select_booking_method", timeout: 10)
         XCTAssertTrue(element(app, "task-detail").waitForExistence(timeout: 5))
         tapID(app, "task-primary-action")
         XCTAssertTrue(element(app, "coming-soon-view").waitForExistence(timeout: 12))
         XCTAssertFalse(element(app, "feature-hub-list").exists)
+    }
+
+    @MainActor
+    func testCockpitLuggageOpensBaggageGuide() throws {
+        let app = launchApp()
+
+        completeTokyoKyotoSetup(in: app)
+        XCTAssertTrue(element(app, "leg-cockpit-luggage").waitForExistence(timeout: 8))
+        tapID(app, "leg-cockpit-luggage")
+        XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 10))
+        advanceBaggageGuideIfNeeded(in: app)
+        fillBaggage(in: app, length: "80", width: "40", height: "41")
+        tapID(app, "baggage-submit")
+        XCTAssertTrue(element(app, "baggage-result").waitForExistence(timeout: 8))
+        tapID(app, "baggage-guide-done")
+        XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 10))
+        XCTAssertFalse(element(app, "leg-cockpit-luggage").waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testHomePrimaryNowOpensBaggageGuide() throws {
+        let app = launchApp()
+
+        completeTokyoKyotoSetup(in: app)
+        openHomeTab(in: app)
+        XCTAssertTrue(element(app, "contextual-home").waitForExistence(timeout: 8))
+        tapID(app, "primary-now")
+        XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 10))
+        advanceBaggageGuideIfNeeded(in: app)
+        fillBaggage(in: app, length: "80", width: "40", height: "41")
+        tapID(app, "baggage-submit")
+        XCTAssertTrue(element(app, "baggage-result").waitForExistence(timeout: 8))
+        tapID(app, "baggage-guide-done")
+        XCTAssertTrue(element(app, "contextual-home").waitForExistence(timeout: 10))
+    }
+
+    @MainActor
+    private func completeTokyoKyotoSetup(in app: XCUIApplication) {
+        openTokyoKyoto(in: app)
+        tapID(app, "start-guidance")
+        enterReferenceTalk(in: app)
+        tapID(app, "guidance-continue")
+        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 10))
+        tapID(app, "date-confirm")
+        tapID(app, "question-choice-notBooked")
+        tapID(app, "question-choice-yes")
+        XCTAssertTrue(element(app, "leg-cockpit-summary").waitForExistence(timeout: 12))
+    }
+
+    @MainActor
+    private func openHomeTab(in app: XCUIApplication) {
+        if app.tabBars.buttons["Home"].waitForExistence(timeout: 4) {
+            app.tabBars.buttons["Home"].tap()
+            return
+        }
+        if app.tabBars.buttons["ホーム"].waitForExistence(timeout: 2) {
+            app.tabBars.buttons["ホーム"].tap()
+            return
+        }
+        tapID(app, "tab-home")
     }
 
     @MainActor

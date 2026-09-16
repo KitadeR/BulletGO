@@ -34,6 +34,7 @@ struct LegCockpitPresentationTests {
         let snapshot = LegCockpitComposer.snapshot(trip: trip, leg: trip.legs[0], catalog: catalog)
         #expect(snapshot.whatsNext?.kind == .task(first.id))
         #expect(snapshot.needsSetup == false)
+        #expect(snapshot.luggageGuide == nil)
     }
 
     @Test func emptyLegStartsWithDateAsCurrent() throws {
@@ -66,6 +67,8 @@ struct LegCockpitPresentationTests {
         )
         #expect(snapshot.setup?.currentQuestionID == .transport)
         #expect(snapshot.setup?.steps.first { $0.question.id == .legDate }?.kind == .completed)
+        #expect(snapshot.setup?.steps.first { $0.question.id == .legDate }?.stepNumber == 1)
+        #expect(snapshot.setup?.steps.first { $0.question.id == .transport }?.stepNumber == 2)
     }
 
     @Test func shinkansenAddsLuggageStep() throws {
@@ -196,12 +199,104 @@ struct LegCockpitPresentationTests {
         #expect(originalFocus == trip.legs[0].id)
         #expect(trip.focusLegID == trip.legs[1].id)
     }
+
+    @Test func luggageGuideOpensWhenCaptureTaskHasTheProcedure() throws {
+        var trip = try markReady(try DomainTestSupport.sampleTrip())
+        let task = makeTask(
+            ActionPurpose.captureDimensions,
+            importance: .required,
+            scope: trip.legs[0].id,
+            relatedGuideID: .shinkansenBaggageMeasurement
+        )
+        trip.tasks = [task]
+        let snapshot = LegCockpitComposer.snapshot(
+            trip: trip,
+            leg: trip.legs[0],
+            catalog: try EngineTestSupport.catalog()
+        )
+        #expect(snapshot.luggageGuide?.kind == .task(task.id))
+        #expect(snapshot.luggageGuide?.destination == .baggageCheck(trip.id, trip.legs[0].id, task.id))
+    }
+
+    @Test func luggageGuideIsAbsentWithoutAProcedure() throws {
+        var trip = try markReady(try DomainTestSupport.sampleTrip())
+        trip.tasks = [makeTask(ActionPurpose.captureDimensions, importance: .required, scope: trip.legs[0].id)]
+        let snapshot = LegCockpitComposer.snapshot(
+            trip: trip,
+            leg: trip.legs[0],
+            catalog: try EngineTestSupport.catalog()
+        )
+        #expect(snapshot.luggageGuide == nil)
+    }
+
+    @Test func completedCaptureDoesNotKeepALuggageGuide() throws {
+        var trip = try markReady(try DomainTestSupport.sampleTrip())
+        var task = makeTask(
+            ActionPurpose.captureDimensions,
+            importance: .required,
+            scope: trip.legs[0].id,
+            relatedGuideID: .shinkansenBaggageMeasurement
+        )
+        task.state = .completed
+        trip.tasks = [task]
+        let snapshot = LegCockpitComposer.snapshot(
+            trip: trip,
+            leg: trip.legs[0],
+            catalog: try EngineTestSupport.catalog()
+        )
+        #expect(snapshot.luggageGuide == nil)
+    }
+
+    @Test func allDayScheduleHidesTheClock() throws {
+        var trip = try markReady(try DomainTestSupport.sampleTrip())
+        try trip.updateLeg(id: trip.legs[0].id) { leg in
+            leg.scheduledAt = try Slot.confirmed(
+                value: try ScheduledMoment(
+                    date: try LocalDate(year: 2026, month: 10, day: 1),
+                    timeZoneIdentifier: DomainTestSupport.timeZone,
+                    isAllDay: true
+                ),
+                source: .userStated,
+                updatedAt: DomainTestSupport.timestamp
+            )
+        }
+        let snapshot = LegCockpitComposer.snapshot(
+            trip: trip,
+            leg: trip.legs[0],
+            catalog: try EngineTestSupport.catalog()
+        )
+        #expect(snapshot.dateText == (try LocalDate(year: 2026, month: 10, day: 1)).displayString)
+        #expect(snapshot.timeText == nil)
+    }
+
+    @Test func unscheduledClockKeepsTimeWithoutADate() throws {
+        var trip = try markReady(try DomainTestSupport.sampleTrip())
+        try trip.updateLeg(id: trip.legs[0].id) { leg in
+            leg.scheduledAt = try Slot.confirmed(
+                value: try ScheduledMoment(
+                    date: nil,
+                    time: try LocalTime(hour: 10, minute: 0),
+                    timeZoneIdentifier: DomainTestSupport.timeZone
+                ),
+                source: .userStated,
+                updatedAt: DomainTestSupport.timestamp
+            )
+        }
+        let snapshot = LegCockpitComposer.snapshot(
+            trip: trip,
+            leg: trip.legs[0],
+            catalog: try EngineTestSupport.catalog()
+        )
+        #expect(snapshot.dateText == nil)
+        #expect(snapshot.timeText == "10:00")
+    }
 }
 
 private func makeTask(
     _ contentKey: String,
     importance: TaskImportance,
-    scope: LegID
+    scope: LegID,
+    relatedGuideID: ProcedureID? = nil
 ) -> TripTask {
     TripTask(
         id: TaskID(),
@@ -216,7 +311,7 @@ private func makeTask(
         scope: .leg(scope),
         relatedActionID: nil,
         relatedPolicyID: .jrShinkansenOversizedBaggage,
-        relatedGuideID: nil,
+        relatedGuideID: relatedGuideID,
         completionCondition: .userConfirmsDone
     )
 }

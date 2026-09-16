@@ -35,14 +35,14 @@ struct LegDetailView: View {
         .background(DesignTokens.Color.canvas)
         .navigationBarBackButtonHidden(isDirty)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                ChromeIconButton(
-                    systemImage: "chevron.backward",
-                    accessibilityLabel: LocalizedStringResource("Back", comment: "Back button on journey detail."),
-                    action: { attemptLeave() }
-                )
-            }
             if isDirty {
+                ToolbarItem(placement: .topBarLeading) {
+                    ChromeIconButton(
+                        systemImage: "chevron.backward",
+                        accessibilityLabel: LocalizedStringResource("Back", comment: "Back button on journey detail."),
+                        action: { attemptLeave() }
+                    )
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { attemptLeave() }
                 }
@@ -99,7 +99,7 @@ struct LegDetailView: View {
                 case .cockpit:
                     if let cockpit = snapshot.cockpit {
                         LegCockpitContentView(cockpit: cockpit) { item in
-                            handleWhatsNext(item, trip: trip)
+                            openCockpitItem(item, trip: trip)
                         }
                     }
                 }
@@ -125,11 +125,7 @@ struct LegDetailView: View {
 
                 editSection(leg: leg)
 
-                Form {
-                    ItemRecordsView(tripID: trip.id, scope: .leg(leg.id))
-                }
-                .scrollDisabled(true)
-                .frame(minHeight: 420)
+                recordsSection(tripID: trip.id, legID: leg.id)
             }
             .padding(DesignTokens.Spacing.lg)
             .padding(.bottom, DesignTokens.Spacing.xl)
@@ -205,7 +201,7 @@ struct LegDetailView: View {
         .accessibilityIdentifier(AccessibilityID.startGuidance)
     }
 
-    private func handleWhatsNext(_ item: TimelineNowItem, trip: Trip) {
+    private func openCockpitItem(_ item: TimelineNowItem, trip: Trip) {
         switch item.kind {
         case .task:
             if let destination = HomePrimaryActionComposer.destination(for: item, trip: trip) {
@@ -275,6 +271,19 @@ struct LegDetailView: View {
             .padding(.top, DesignTokens.Spacing.sm)
         } label: {
             Text("Edit this journey")
+                .font(DesignTokens.Typography.headline)
+        }
+    }
+
+    private func recordsSection(tripID: TripID, legID: LegID) -> some View {
+        DisclosureGroup {
+            Form {
+                ItemRecordsView(tripID: tripID, scope: .leg(legID))
+            }
+            .scrollDisabled(true)
+            .fixedSize(horizontal: false, vertical: true)
+        } label: {
+            Text("Notes and files")
                 .font(DesignTokens.Typography.headline)
         }
     }

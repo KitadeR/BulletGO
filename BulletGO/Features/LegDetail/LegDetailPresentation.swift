@@ -58,7 +58,76 @@ nonisolated struct LegCockpitSnapshot: Equatable, Sendable {
     var bookingReadiness: PreparationStatusKind
     var luggageReadiness: PreparationStatusKind
     var whatsNext: TimelineNowItem?
+    var luggageGuide: TimelineNowItem?
     var needsSetup: Bool
+}
+
+nonisolated enum LegCockpitBlockID: String, Hashable, Sendable {
+    case whatsNext
+    case luggage
+    case summary
+    case readiness
+}
+
+nonisolated struct LegCockpitBlock: Identifiable, Equatable, Sendable {
+    var id: LegCockpitBlockID
+    var stepNumber: Int
+    var title: LocalizedStringResource
+
+    static func == (lhs: LegCockpitBlock, rhs: LegCockpitBlock) -> Bool {
+        lhs.id == rhs.id
+            && lhs.stepNumber == rhs.stepNumber
+            && lhs.title.key == rhs.title.key
+    }
+}
+
+nonisolated enum LegCockpitAccordionComposer {
+    static func blocks(for cockpit: LegCockpitSnapshot) -> [LegCockpitBlock] {
+        var blocks: [LegCockpitBlock] = []
+        if cockpit.whatsNext != nil {
+            blocks.append(
+                LegCockpitBlock(
+                    id: .whatsNext,
+                    stepNumber: blocks.count + 1,
+                    title: LocalizedStringResource("What’s next", comment: "A heading for the next step in a leg.")
+                )
+            )
+        }
+        if cockpit.luggageGuide != nil {
+            blocks.append(
+                LegCockpitBlock(
+                    id: .luggage,
+                    stepNumber: blocks.count + 1,
+                    title: LocalizedStringResource("Luggage", comment: "Summary heading for luggage presence.")
+                )
+            )
+        }
+        blocks.append(
+            LegCockpitBlock(
+                id: .summary,
+                stepNumber: blocks.count + 1,
+                title: LocalizedStringResource("Summary", comment: "A heading for a section of a leg's details.")
+            )
+        )
+        blocks.append(
+            LegCockpitBlock(
+                id: .readiness,
+                stepNumber: blocks.count + 1,
+                title: LocalizedStringResource("Readiness")
+            )
+        )
+        return blocks
+    }
+
+    static func initialExpandedID(for cockpit: LegCockpitSnapshot) -> LegCockpitBlockID {
+        if cockpit.luggageGuide != nil {
+            return .luggage
+        }
+        if cockpit.whatsNext != nil {
+            return .whatsNext
+        }
+        return .summary
+    }
 }
 
 nonisolated enum LegDetailComposer {
@@ -178,6 +247,7 @@ nonisolated enum LegCockpitComposer {
             bookingReadiness: bookingReadiness(trip: trip, leg: leg),
             luggageReadiness: luggageReadiness(trip: trip, leg: leg),
             whatsNext: whatsNext(trip: trip, leg: leg, catalog: catalog),
+            luggageGuide: luggageGuide(trip: trip, leg: leg),
             needsSetup: needsSetup(trip: trip, leg: leg, catalog: catalog)
         )
     }
@@ -247,6 +317,32 @@ nonisolated enum LegCockpitComposer {
         return items.first.map { HomePrimaryActionComposer.routed($0, trip: trip) }
     }
 
+    private static func luggageGuide(trip: Trip, leg: Leg) -> TimelineNowItem? {
+        guard let task = trip.tasks.first(where: { task in
+            guard task.contentKey == ActionPurpose.captureDimensions,
+                  task.relatedGuideID == .shinkansenBaggageMeasurement,
+                  task.state != .completed,
+                  task.state != .cancelled
+            else {
+                return false
+            }
+            if case .leg(let id) = task.scope {
+                return id == leg.id
+            }
+            return false
+        }) else {
+            return nil
+        }
+        let item = TimelineNowItem(
+            id: .task(task.id),
+            kind: .task(task.id),
+            contentKey: task.contentKey,
+            content: TripContentResolver.task(contentKey: task.contentKey),
+            destination: .taskDetail(trip.id, task.id)
+        )
+        return HomePrimaryActionComposer.routed(item, trip: trip)
+    }
+
     private static func needsSetup(trip: Trip, leg: Leg, catalog: QuestionCatalog?) -> Bool {
         guard let catalog, trip.focusLegID == leg.id else {
             return false
@@ -267,7 +363,11 @@ nonisolated enum LegCockpitComposer {
     }
 
     private static func timeText(_ leg: Leg) -> String? {
-        guard leg.scheduledAt.status == .confirmed, let time = leg.scheduledAt.value?.time else {
+        guard leg.scheduledAt.status == .confirmed,
+              let moment = leg.scheduledAt.value,
+              !moment.isAllDay,
+              let time = moment.time
+        else {
             return nil
         }
         return String(format: "%02d:%02d", time.hour, time.minute)

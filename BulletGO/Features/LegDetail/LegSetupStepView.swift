@@ -54,11 +54,7 @@ struct LegSetupStepView: View {
     @ViewBuilder
     private var header: some View {
         let row = HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: iconName)
-                .font(DesignTokens.Typography.headline)
-                .foregroundStyle(iconColor)
-                .frame(width: 28, height: 28)
-                .accessibilityHidden(true)
+            AccordionStepBadge(number: step.stepNumber, tone: badgeTone)
             VStack(alignment: .leading, spacing: 2) {
                 Text(step.title)
                     .font(DesignTokens.Typography.headline)
@@ -91,29 +87,16 @@ struct LegSetupStepView: View {
         }
     }
 
-    private var iconName: String {
+    private var badgeTone: AccordionStepBadge.Tone {
         switch step.kind {
         case .completed:
-            "checkmark.circle.fill"
+            .completed
         case .deferred:
-            "clock"
+            .deferred
         case .current:
-            step.systemImage
+            .current
         case .upcoming:
-            "circle"
-        }
-    }
-
-    private var iconColor: Color {
-        switch step.kind {
-        case .completed:
-            DesignTokens.Color.success
-        case .deferred:
-            DesignTokens.Color.remembered
-        case .current:
-            DesignTokens.Color.tint
-        case .upcoming:
-            DesignTokens.Color.secondaryText
+            .upcoming
         }
     }
 

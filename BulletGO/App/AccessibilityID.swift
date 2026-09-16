@@ -101,6 +101,7 @@ enum AccessibilityID {
     static let legCockpitSummary = "leg-cockpit-summary"
     static let legCockpitReadiness = "leg-cockpit-readiness"
     static let legCockpitWhatsNext = "leg-cockpit-whats-next"
+    static let legCockpitLuggage = "leg-cockpit-luggage"
 
     static func timelineLeg(_ id: LegID) -> String {
         "timeline-leg-\(id.rawValue.uuidString)"
