@@ -8,7 +8,6 @@ struct StayDetailView: View {
     let tripID: TripID
     let stayID: StayID
     @State private var draft: StayEditDraft?
-    @State private var search = MapKitPlaceSearch()
     @State private var didLoad = false
     @State private var isSaving = false
     @State private var saveFailed = false
@@ -29,7 +28,6 @@ struct StayDetailView: View {
                 PlaceSearchField(
                     title: "Place",
                     text: draftBinding.placeText,
-                    search: search,
                     onSelect: { reference in
                         draft?.placeReference = reference
                         draft?.placeText = reference.name

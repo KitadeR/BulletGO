@@ -8,35 +8,45 @@ struct PlaceSearchField: View {
     var onSelect: (PlaceReference) -> Void
     var onClear: (() -> Void)? = nil
 
-    @State private var completions: [PlaceSearchCompletion] = []
-    @State private var isSearching = false
-    @State private var selectedName: String?
-    @State private var generation = 0
-    @State private var debounceTask: Task<Void, Never>?
+    @Environment(\.placeSearching) private var environmentSearch
+    @State private var model = PlaceSearchModel()
 
     var body: some View {
         Section {
             TextField(title, text: $text)
                 .textInputAutocapitalization(.words)
+                .submitLabel(.search)
+                .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+                .accessibilityLabel(Text(title))
+                .accessibilityHint("Search places")
                 .accessibilityIdentifier(accessibilityID)
+                .onSubmit {
+                    model.searchNow()
+                }
                 .onChange(of: text) { _, newValue in
-                    if let selectedName, newValue != selectedName {
+                    let hadSelection = model.selected != nil
+                    model.updateQuery(newValue)
+                    if hadSelection, model.selected == nil {
                         onClear?()
-                        self.selectedName = nil
-                    }
-                    debounceTask?.cancel()
-                    generation += 1
-                    let current = generation
-                    debounceTask = Task {
-                        try? await Task.sleep(for: .milliseconds(280))
-                        guard !Task.isCancelled, current == generation else { return }
-                        await refresh(newValue, generation: current)
                     }
                 }
-            if isSearching {
-                ProgressView()
+            if let selected = model.selected {
+                selectedRow(selected)
             }
-            ForEach(completions) { completion in
+            if model.isSearching || model.isResolving {
+                ProgressView()
+                    .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+                    .accessibilityLabel("Searching")
+            }
+            if model.failure != nil {
+                failureRow
+            } else if model.showsEmptyResults {
+                Text("No places found")
+                    .foregroundStyle(DesignTokens.Color.secondaryText)
+                    .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+                    .accessibilityIdentifier(AccessibilityID.placeSearchEmpty)
+            }
+            ForEach(model.completions) { completion in
                 Button {
                     Task { await choose(completion) }
                 } label: {
@@ -48,47 +58,73 @@ struct PlaceSearchField: View {
                                 .foregroundStyle(DesignTokens.Color.secondaryText)
                         }
                     }
+                    .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
                 }
+                .disabled(model.isResolving)
+                .accessibilityLabel(Text(verbatim: completion.title))
+                .accessibilityHint("Choose this place")
+                .accessibilityValue(Text(verbatim: completion.subtitle))
+                .accessibilityIdentifier(AccessibilityID.placeSearchResult(completion.id))
+            }
+        }
+        .task {
+            model.search = search ?? environmentSearch
+            if model.query != text {
+                model.updateQuery(text)
             }
         }
     }
 
-    private func refresh(_ query: String, generation current: Int) async {
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let search, trimmed.count >= 2 else {
-            completions = []
-            isSearching = false
-            return
-        }
-        isSearching = true
-        defer {
-            if current == generation {
-                isSearching = false
+    @ViewBuilder
+    private func selectedRow(_ place: PlaceReference) -> some View {
+        HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(DesignTokens.Color.tint)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Selected place")
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundStyle(DesignTokens.Color.secondaryText)
+                Text(verbatim: place.name)
+                if let address = place.displayAddress {
+                    Text(verbatim: address)
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundStyle(DesignTokens.Color.secondaryText)
+                }
             }
         }
-        do {
-            let results = try await search.completions(for: trimmed)
-            guard current == generation else { return }
-            completions = results
-        } catch {
-            guard current == generation else { return }
-            completions = []
+        .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(selectedAccessibilityLabel(place))
+        .accessibilityIdentifier(AccessibilityID.placeSearchSelected)
+    }
+
+    private var failureRow: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            Text("Couldn’t search places")
+                .foregroundStyle(DesignTokens.Color.secondaryText)
+                .accessibilityIdentifier(AccessibilityID.placeSearchFailed)
+            Button("Retry") {
+                model.retry()
+            }
+            .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+            .accessibilityIdentifier(AccessibilityID.placeSearchRetry)
         }
     }
 
     private func choose(_ completion: PlaceSearchCompletion) async {
-        guard let search else { return }
-        do {
-            let place = try await search.lookup(completion)
-            selectedName = place.name
-            text = place.name
-            onSelect(place)
-            completions = []
-        } catch {
-            selectedName = completion.title
-            text = completion.title
-            onSelect(.manual(name: completion.title))
-            completions = []
+        await model.select(completion)
+        text = model.query
+        if let selected = model.selected {
+            onSelect(selected)
+        }
+    }
+
+    private func selectedAccessibilityLabel(_ place: PlaceReference) -> Text {
+        if let address = place.displayAddress {
+            Text("Selected place, \(place.name), \(address)")
+        } else {
+            Text("Selected place, \(place.name)")
         }
     }
 }

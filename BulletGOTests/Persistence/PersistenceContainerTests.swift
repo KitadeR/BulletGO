@@ -57,6 +57,54 @@ struct PersistenceContainerTests {
         #expect(trips[0].activities.count == 3)
     }
 
+    @Test func emptyTripWithMappedActivitySurvivesRelaunch() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "BulletGO-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let storeURL = directory.appending(path: "BulletGO.store")
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let now = EngineTestSupport.now
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        var trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: try LocalDate(year: 2026, month: 10, day: 1),
+            endDate: try LocalDate(year: 2026, month: 10, day: 8),
+            now: now
+        )
+        let moment = try ScheduledMoment(date: oct3, timeZoneIdentifier: DomainTestSupport.timeZone)
+        var activity = try ItineraryItemFactory.makeActivity(
+            title: "Kinkaku-ji",
+            place: "Kinkaku-ji",
+            scheduledAt: moment,
+            at: now
+        )
+        activity.placeReference = PlaceReference(
+            provider: .appleMaps,
+            providerID: "poi-kinkaku",
+            name: "Kinkaku-ji",
+            coordinate: GeoCoordinate(latitude: 35.0394, longitude: 135.7292),
+            address: "1 Kinkakujicho, Kita-ku, Kyoto",
+            category: "MKPOICategoryLandmark"
+        )
+        trip = try TripMutationApplier.apply(.addActivity(activity, atTimelineIndex: nil), to: trip, at: now)
+
+        do {
+            let stack = try PersistenceStack.onDisk(url: storeURL)
+            try await stack.repository.save(trip)
+            #expect(try await stack.repository.fetch(id: trip.id) == trip)
+        }
+
+        let reopened = try PersistenceStack.onDisk(url: storeURL)
+        let loaded = try await reopened.repository.fetch(id: trip.id)
+        #expect(loaded?.activities.count == 1)
+        #expect(loaded?.activities.first?.placeReference?.providerID == "poi-kinkaku")
+        #expect(loaded?.activities.first?.placeReference?.provider == .appleMaps)
+        #expect(loaded?.activities.first?.placeReference?.name == "Kinkaku-ji")
+        #expect(loaded?.activities.first?.scheduledAt.value?.date == oct3)
+        #expect(loaded?.timeline == [.activity(activity.id)])
+    }
+
     @Test func bootstrapWithoutSeedLeavesStoreEmpty() async throws {
         let stack = try PersistenceStack.inMemory()
         try await stack.bootstrap()

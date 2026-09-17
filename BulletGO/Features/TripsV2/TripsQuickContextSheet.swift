@@ -42,8 +42,6 @@ struct TripsQuickContextSheet: View {
         .presentationDetents([.height(Self.sheetHeight)])
         .presentationDragIndicator(.visible)
         .modifier(QuickContextSheetChrome())
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(AccessibilityID.tripsQuickContext)
     }
 
     private var header: some View {
@@ -52,6 +50,7 @@ struct TripsQuickContextSheet: View {
                 .font(DesignTokens.Typography.title)
                 .foregroundStyle(DesignTokens.Color.primaryText)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier(AccessibilityID.tripsQuickContext)
             if let metaText = snapshot.metaText {
                 Text(verbatim: metaText)
                     .font(DesignTokens.Typography.footnote)

@@ -39,6 +39,26 @@ nonisolated struct PlaceReference: Hashable, Codable, Sendable {
             category: nil
         )
     }
+
+    static func resolved(_ reference: PlaceReference?, name: String) -> PlaceReference {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard var reference else {
+            return .manual(name: trimmed)
+        }
+        if reference.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            reference.name = trimmed
+        }
+        return reference
+    }
+
+    var displayAddress: String? {
+        let trimmed = address?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+nonisolated enum PlaceSearchFailure: Error, Equatable, Sendable {
+    case unavailable
 }
 
 nonisolated struct SavedPlace: Hashable, Codable, Sendable, Identifiable {

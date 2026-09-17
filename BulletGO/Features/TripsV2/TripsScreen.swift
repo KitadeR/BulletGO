@@ -8,6 +8,8 @@ struct TripsScreen: View {
 
     @State private var selectedDate: LocalDate?
     @State private var programmaticTarget: LocalDate?
+    @State private var selectionLocked = false
+    @State private var interactingStartOffset: CGFloat?
     @State private var didApplyInitialDay = false
     @State private var pendingDeleteTrip = false
     @State private var showProcessFailure = false
@@ -27,6 +29,7 @@ struct TripsScreen: View {
             case .loading:
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel("Loading")
                     .accessibilityIdentifier(AccessibilityID.tripTimelineLoading)
             case .failed:
                 failedState
@@ -105,8 +108,10 @@ struct TripsScreen: View {
             Image(systemName: "map")
                 .font(.largeTitle)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
+                .accessibilityHidden(true)
             Text("Your trip will appear here")
                 .font(DesignTokens.Typography.headline)
+                .accessibilityIdentifier(AccessibilityID.tripTimelineEmpty)
             Text("Create a trip to start arranging dates, places, and journeys.")
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
@@ -119,8 +124,6 @@ struct TripsScreen: View {
         }
         .padding(DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(AccessibilityID.tripTimelineEmpty)
     }
 
     private var failedState: some View {
@@ -191,6 +194,7 @@ struct TripsScreen: View {
                                     locale: locale,
                                     onSelect: { date in
                                         selectedDate = date
+                                        selectionLocked = true
                                         jumpToDay(date)
                                     }
                                 )
@@ -220,6 +224,22 @@ struct TripsScreen: View {
                 geometry.contentOffset.y + geometry.contentInsets.top
             } action: { _, scrolled in
                 updateNavigationTitleMode(scrolled: scrolled)
+            }
+            .onScrollPhaseChange { _, newPhase in
+                switch newPhase {
+                case .interacting:
+                    if programmaticTarget == nil {
+                        interactingStartOffset = scrollOffsetY
+                    }
+                    programmaticTarget = nil
+                case .idle, .decelerating:
+                    if let start = interactingStartOffset, abs(scrollOffsetY - start) > 24 {
+                        selectionLocked = false
+                    }
+                    interactingStartOffset = nil
+                default:
+                    break
+                }
             }
             .coordinateSpace(.named(tripsScrollSpace))
             .onPreferenceChange(DayOffsetPreference.self) { offsets in
@@ -332,6 +352,7 @@ struct TripsScreen: View {
         guard dayOffsets[initial] != nil else { return }
         didApplyInitialDay = true
         selectedDate = initial
+        selectionLocked = true
         jumpToDay(initial)
     }
 
@@ -350,12 +371,7 @@ struct TripsScreen: View {
     }
 
     private func syncSelectedDate(with offsets: [LocalDate: CGFloat]) {
-        if let target = programmaticTarget {
-            if let offset = offsets[target], abs(offset - selectionAnchor) < 80 {
-                programmaticTarget = nil
-            }
-            return
-        }
+        guard programmaticTarget == nil, !selectionLocked else { return }
         let current = TripsV2Formatting.selectedDate(from: offsets, pin: selectionAnchor)
         guard let current, selectedDate != current else { return }
         selectedDate = current
@@ -470,11 +486,13 @@ struct TripsV2PreviewRoot: View {
         .environment(router)
         .environment(session)
         .environment(\.locale, Locale(identifier: "ja"))
+        .environment(\.placeSearching, MapKitPlaceSearch())
         .sheet(item: $router.presentation) { presentation in
             AppPresentationSheet(presentation: presentation, now: session.now)
                 .environment(router)
                 .environment(session)
                 .environment(\.locale, Locale(identifier: "ja"))
+                .environment(\.placeSearching, MapKitPlaceSearch())
         }
     }
 }
@@ -588,5 +606,35 @@ enum TripsV2PreviewData {
         )
     )
     .environment(\.locale, Locale(identifier: "ja"))
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        TripsScreen()
+    }
+    .environment(AppRouter())
+    .environment(
+        TripSessionModel(
+            previewState: .loaded,
+            trip: TripsV2PreviewData.planningTrip,
+            clock: .fixed(try! LocalDate(year: 2026, month: 10, day: 3).date(in: TimeZone(identifier: "Asia/Tokyo")!)!)
+        )
+    )
+    .preferredColorScheme(.dark)
+}
+
+#Preview("XL Dynamic Type") {
+    NavigationStack {
+        TripsScreen()
+    }
+    .environment(AppRouter())
+    .environment(
+        TripSessionModel(
+            previewState: .loaded,
+            trip: TripsV2PreviewData.planningTrip,
+            clock: .fixed(try! LocalDate(year: 2026, month: 10, day: 3).date(in: TimeZone(identifier: "Asia/Tokyo")!)!)
+        )
+    )
+    .dynamicTypeSize(.accessibility3)
 }
 #endif

@@ -28,7 +28,6 @@ struct AppPresentationSheet: View {
                 kind: kind,
                 initialDate: initialDate,
                 now: now,
-                search: MapKitPlaceSearch(),
                 seedPlace: seedPlace
             )
             .presentationDetents([.large])

@@ -9,6 +9,7 @@ struct BulletGOApp: App {
     private let persistence: PersistenceStack
     private let isUITesting: Bool
     private let seedReferenceTrip: Bool
+    private let placeSearch: any PlaceSearching
 
     init() {
         do {
@@ -43,6 +44,7 @@ struct BulletGOApp: App {
             self.isUITesting = isUITesting
             self.seedReferenceTrip = seedReferenceTrip
             self.persistence = persistence
+            self.placeSearch = PlaceSearchFactory.make(isUITesting: isUITesting)
             _session = State(initialValue: TripSessionModel(store: tripStore, draftExtractor: extractor, clock: clock))
         } catch {
             fatalError("Failed to create app dependencies: \(error)")
@@ -63,6 +65,7 @@ struct BulletGOApp: App {
                 #endif
             }
             .environment(\.featureRegistry, .production)
+            .environment(\.placeSearching, placeSearch)
             .task {
                 if isUITesting {
                     UIView.setAnimationsEnabled(false)

@@ -148,4 +148,91 @@ struct GuidedAddFlowModelTests {
         #expect(local == oct3)
         #expect(draft.hasDate)
     }
+
+    @Test func activityCommitKeepsMapKitPlaceAndSelectedDate() async throws {
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let place = PlaceReference(
+            provider: .appleMaps,
+            providerID: "poi-kinkaku",
+            name: "Kinkaku-ji",
+            coordinate: GeoCoordinate(latitude: 35.0394, longitude: 135.7292),
+            address: "1 Kinkakujicho, Kita-ku, Kyoto",
+            category: "MKPOICategoryLandmark"
+        )
+        let repository = InMemoryTripRepository()
+        let trip = try EmptyTripFactory.make(
+            name: "Japan trip",
+            startDate: LocalDate(year: 2026, month: 10, day: 1),
+            endDate: LocalDate(year: 2026, month: 10, day: 8),
+            now: EngineTestSupport.now
+        )
+        try await repository.save(trip)
+        let session = TripSessionModel(
+            store: TripStore(repository: repository, brain: try EngineTestSupport.brain())
+        )
+        await session.load()
+        let model = GuidedAddFlowModel(
+            tripID: trip.id,
+            kind: .activity,
+            initialDate: oct3,
+            now: EngineTestSupport.now
+        )
+        guard let date = oct3.date(in: TripCalendar.timeZone) else {
+            Issue.record("Expected Tokyo date")
+            return
+        }
+        model.draft = .activity(
+            ActivityAddDraft(
+                title: "Kinkaku-ji",
+                place: "Kinkaku-ji",
+                hasDate: true,
+                date: date,
+                placeReference: place
+            )
+        )
+        #expect(session.trip?.activities.isEmpty == true)
+        #expect(try model.makeMutations(now: EngineTestSupport.now).count == 1)
+        #expect(session.trip?.activities.isEmpty == true)
+
+        let saved = await model.commit(session: session)
+        #expect(saved)
+        let activity = try #require(session.trip?.activities.first)
+        #expect(activity.placeReference?.provider == .appleMaps)
+        #expect(activity.placeReference?.providerID == "poi-kinkaku")
+        #expect(activity.placeReference?.address == "1 Kinkakujicho, Kita-ku, Kyoto")
+        #expect(activity.scheduledAt.value?.date == oct3)
+        #expect(session.trip?.timeline == [.activity(activity.id)])
+        #expect(session.trip?.activities.count == 1)
+    }
+
+    @Test func typedPlaceWithoutSelectionBecomesManualReference() throws {
+        let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        guard let date = oct3.date(in: TripCalendar.timeZone) else {
+            Issue.record("Expected Tokyo date")
+            return
+        }
+        let model = GuidedAddFlowModel(
+            tripID: TripID(),
+            kind: .activity,
+            initialDate: oct3,
+            now: EngineTestSupport.now
+        )
+        model.draft = .activity(
+            ActivityAddDraft(
+                title: "Walk in Gion",
+                place: "Gion",
+                hasDate: true,
+                date: date
+            )
+        )
+        let mutations = try model.makeMutations(now: EngineTestSupport.now)
+        guard case .addActivity(let activity, _) = mutations[0] else {
+            Issue.record("Expected addActivity")
+            return
+        }
+        #expect(activity.placeReference?.provider == .manual)
+        #expect(activity.placeReference?.name == "Gion")
+        #expect(activity.placeReference?.providerID == nil)
+        #expect(activity.scheduledAt.value?.date == oct3)
+    }
 }

@@ -56,13 +56,10 @@ struct ActivityEditDraft: Equatable {
         guard !trimmedTitle.isEmpty || !trimmedPlace.isEmpty else {
             throw DomainError.invalidScheduledMoment
         }
-        let place = placeReference.map { reference in
-            var updated = reference
-            if updated.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                updated.name = trimmedPlace.isEmpty ? trimmedTitle : trimmedPlace
-            }
-            return updated
-        } ?? .manual(name: trimmedPlace.isEmpty ? trimmedTitle : trimmedPlace)
+        let place = PlaceReference.resolved(
+            placeReference,
+            name: trimmedPlace.isEmpty ? trimmedTitle : trimmedPlace
+        )
         let start = try composeStart()
         let end = try composeEnd()
         return [
@@ -144,13 +141,7 @@ struct StayEditDraft: Equatable {
         guard !trimmed.isEmpty else {
             throw DomainError.invalidScheduledMoment
         }
-        let place = placeReference.map { reference in
-            var updated = reference
-            if updated.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                updated.name = trimmed
-            }
-            return updated
-        } ?? .manual(name: trimmed)
+        let place = PlaceReference.resolved(placeReference, name: trimmed)
         return [
             .updateStayPlace(stayID, place),
             .replaceStaySchedule(stayID, checkIn: try composeCheckIn(), checkOut: try composeCheckOut()),
@@ -246,8 +237,8 @@ struct LegEditDraft: Equatable {
             throw DomainError.invalidScheduledMoment
         }
         return [
-            .updateLegOrigin(legID, resolvedPlace(originPlace, name: originName)),
-            .updateLegDestination(legID, resolvedPlace(destinationPlace, name: destinationName)),
+            .updateLegOrigin(legID, PlaceReference.resolved(originPlace, name: originName)),
+            .updateLegDestination(legID, PlaceReference.resolved(destinationPlace, name: destinationName)),
             .replaceLegSchedule(legID, departure: try composeDeparture(), arrival: try composeArrival()),
         ]
     }
@@ -340,16 +331,6 @@ private func composeStayMoment(
     }
     guard let localDate else { return nil }
     return try ScheduledMomentComposer.dateOnly(date: localDate)
-}
-
-private func resolvedPlace(_ reference: PlaceReference?, name: String) -> PlaceReference {
-    guard var reference else {
-        return .manual(name: name)
-    }
-    if reference.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        reference.name = name
-    }
-    return reference
 }
 
 private func combine(_ date: Date, _ time: LocalTime?, fallback: Date, timeZone: TimeZone) -> Date {

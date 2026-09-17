@@ -8,7 +8,6 @@ struct ActivityDetailView: View {
     let tripID: TripID
     let activityID: ActivityID
     @State private var draft: ActivityEditDraft?
-    @State private var search = MapKitPlaceSearch()
     @State private var didLoad = false
     @State private var isSaving = false
     @State private var saveFailed = false
@@ -47,7 +46,6 @@ struct ActivityDetailView: View {
                 PlaceSearchField(
                     title: "Place",
                     text: draftBinding.placeText,
-                    search: search,
                     onSelect: { reference in
                         draft?.placeReference = reference
                         draft?.placeText = reference.name

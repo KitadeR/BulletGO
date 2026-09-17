@@ -246,5 +246,6 @@ private struct TripsPhotoPlaceholder: View {
             .foregroundStyle(TripsV2Style.placeholderText)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(TripsV2Style.placeholderFill)
+            .accessibilityHidden(true)
     }
 }

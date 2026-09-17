@@ -11,6 +11,7 @@ struct ContextualHomeView: View {
             case .loading:
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel("Loading")
                     .accessibilityIdentifier(AccessibilityID.contextualHomeLoading)
             case .failed:
                 ContentUnavailableView {
@@ -48,6 +49,7 @@ struct ContextualHomeView: View {
                 .accessibilityHidden(true)
             Text("No trip yet")
                 .font(DesignTokens.Typography.headline)
+                .accessibilityIdentifier(AccessibilityID.contextualHomeEmpty)
             Text("Create a trip to see what matters now, and keep the full itinerary in Trips.")
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
@@ -61,8 +63,6 @@ struct ContextualHomeView: View {
         }
         .padding(DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(AccessibilityID.contextualHomeEmpty)
     }
 
     private func loadedHome(_ trip: Trip) -> some View {
@@ -159,13 +159,12 @@ struct ContextualHomeView: View {
             Text(heading)
                 .font(DesignTokens.Typography.headline)
                 .padding(.horizontal, DesignTokens.Spacing.md)
+                .accessibilityIdentifier(AccessibilityID.nowSection)
             HomePrimaryNowCard(item: item, accessibilityID: AccessibilityID.primaryNow) {
                 handlePrimary(item)
             }
             .padding(.horizontal, DesignTokens.Spacing.md)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(AccessibilityID.nowSection)
     }
 
     private func arrangeTripsPrompt() -> some View {
@@ -304,6 +303,7 @@ struct HomeTodaySchedule: View {
             Text("Today’s schedule")
                 .font(DesignTokens.Typography.headline)
                 .padding(.horizontal, DesignTokens.Spacing.md)
+                .accessibilityIdentifier(AccessibilityID.todaySchedule)
             ForEach(rows) { item in
                 Group {
                     if let destination = item.row.destination {
@@ -322,8 +322,6 @@ struct HomeTodaySchedule: View {
                 .padding(.horizontal, DesignTokens.Spacing.md)
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(AccessibilityID.todaySchedule)
     }
 
     private func scheduleRow(_ item: TodayScheduleRow) -> some View {
@@ -348,6 +346,7 @@ struct HomeTodaySchedule: View {
                 Text(verbatim: timeLabel)
                     .font(DesignTokens.Typography.caption)
                     .foregroundStyle(DesignTokens.Color.secondaryText)
+                    .fixedSize(horizontal: true, vertical: true)
             }
         }
         .frame(minHeight: DesignTokens.TapTarget.minimum)

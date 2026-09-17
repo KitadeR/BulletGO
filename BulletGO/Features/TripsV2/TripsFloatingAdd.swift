@@ -9,19 +9,17 @@ struct TripsFloatingAdd: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        let menu = Menu {
+        let menu = Menu("Add to trip", systemImage: "plus") {
             Section {
                 TripsAddKindMenuItems(onSelect: onSelect, includeAccessibilityIDs: true)
             } header: {
                 menuHeader
             }
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 58, height: 58)
-                .contentShape(Circle())
         }
+        .labelStyle(.iconOnly)
+        .font(.system(size: 22, weight: .semibold))
+        .frame(width: 58, height: 58)
+        .contentShape(Circle())
         .menuIndicator(.hidden)
         .menuOrder(.fixed)
 

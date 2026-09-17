@@ -13,7 +13,7 @@ struct NowConcernCard: View {
                 Image(systemName: systemImage)
                     .font(DesignTokens.Typography.title)
                     .foregroundStyle(DesignTokens.Color.tint)
-                    .frame(width: DesignTokens.TapTarget.minimum, height: DesignTokens.TapTarget.minimum)
+                    .frame(minWidth: DesignTokens.TapTarget.minimum, minHeight: DesignTokens.TapTarget.minimum)
                     .background(DesignTokens.Color.tintSoft, in: Circle())
                     .accessibilityHidden(true)
 

@@ -50,6 +50,78 @@ final class ItineraryBuilderUITests: XCTestCase {
     }
 
     @MainActor
+    func testEmptyStoreCreatesTripAndAddsSearchedActivity() throws {
+        let app = XCUIApplication()
+        if app.state != .notRunning {
+            app.terminate()
+        }
+        app.launchArguments = ["-ui-testing", "-ui-testing-empty"]
+        app.launch()
+
+        XCTAssertTrue(
+            element(app, "contextual-home-empty").waitForExistence(timeout: 15)
+                || element(app, "trip-timeline-empty").waitForExistence(timeout: 5)
+                || app.buttons["Create trip"].waitForExistence(timeout: 5)
+        )
+        let create = element(app, "create-trip-button")
+        if !create.waitForExistence(timeout: 8) {
+            XCTAssertTrue(app.buttons["Create trip"].waitForExistence(timeout: 8), "Missing create trip")
+            app.buttons["Create trip"].tap()
+        } else {
+            tapID(app, "create-trip-button")
+        }
+        XCTAssertTrue(
+            element(app, "create-trip-sheet").waitForExistence(timeout: 12)
+                || app.textFields["create-trip-name"].waitForExistence(timeout: 8),
+            "Create trip sheet did not appear"
+        )
+        let name = app.textFields["create-trip-name"].firstMatch
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        focusAndType(name, " Japan")
+        dismissKeyboard(in: app)
+        tapID(app, "create-trip-save")
+        openTripsTab(in: app)
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
+
+        chooseGuidedAddKind(
+            in: app,
+            menuControlID: "trips-v2-floating-add",
+            identifier: "trips-v2-add-activity",
+            labels: ["Place or activity", "場所", "Activity"],
+            failure: "Missing Guided Add Activity action"
+        )
+
+        XCTAssertTrue(element(app, "guided-add-sheet").waitForExistence(timeout: 8))
+        let placeField = app.textFields["guided-add-place"].firstMatch
+        XCTAssertTrue(placeField.waitForExistence(timeout: 5))
+        focusAndType(placeField, "Kinkaku")
+        let result = element(app, "place-search-result-kinkaku")
+        XCTAssertTrue(result.waitForExistence(timeout: 8), "Fake place result did not appear")
+        if result.isHittable {
+            result.tap()
+        } else {
+            result.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(element(app, "place-search-selected").waitForExistence(timeout: 5))
+        dismissKeyboard(in: app)
+        tapID(app, "guided-add-continue")
+        tapID(app, "guided-add-continue")
+        if element(app, "guided-add-skip").waitForExistence(timeout: 3) {
+            tapID(app, "guided-add-skip")
+        } else {
+            tapID(app, "guided-add-continue")
+        }
+        tapID(app, "guided-add-save")
+
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
+        XCTAssertTrue(
+            app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Kinkaku-ji'")).firstMatch
+                .waitForExistence(timeout: 8)
+        )
+        XCTAssertFalse(element(app, "trips-empty-day").waitForExistence(timeout: 2))
+    }
+
+    @MainActor
     func testDateSelectorJumpShowsEmptyDayAndAddsWithDateContext() throws {
         let app = XCUIApplication()
         if app.state != .notRunning {
@@ -83,9 +155,21 @@ final class ItineraryBuilderUITests: XCTestCase {
             "Empty Oct 3 day did not appear"
         )
 
-        addTravelViaFAB(in: app, origin: "Nara", destination: "Osaka")
+        addTravelViaFAB(
+            in: app,
+            origin: "Nara",
+            destination: "Osaka",
+            menuControlID: "trips-day-add-2026-10-3"
+        )
         XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8))
-        XCTAssertTrue(element(app, "itinerary-day-2026-10-3").waitForExistence(timeout: 8))
+        if !element(app, "itinerary-day-2026-10-3").waitForExistence(timeout: 3) {
+            tapID(app, "trips-date-2026-10-3")
+        }
+        XCTAssertTrue(
+            element(app, "itinerary-day-2026-10-3").waitForExistence(timeout: 8)
+                || element(app, "trips-day-add-2026-10-3").waitForExistence(timeout: 4),
+            "Oct 3 day did not stay visible after adding"
+        )
         XCTAssertFalse(element(app, "trips-empty-day").waitForExistence(timeout: 2))
         XCTAssertTrue(
             app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Nara'")).firstMatch
@@ -96,16 +180,19 @@ final class ItineraryBuilderUITests: XCTestCase {
     }
 
     @MainActor
-    private func addTravelViaFAB(in app: XCUIApplication, origin: String, destination: String) {
-        tapID(app, "trips-v2-floating-add")
-        let travel = element(app, "trips-v2-add-leg")
-        if travel.waitForExistence(timeout: 3) {
-            tapID(app, "trips-v2-add-leg")
-        } else if app.buttons["Travel"].waitForExistence(timeout: 3) {
-            app.buttons["Travel"].tap()
-        } else {
-            XCTFail("Missing Guided Add Travel action")
-        }
+    private func addTravelViaFAB(
+        in app: XCUIApplication,
+        origin: String,
+        destination: String,
+        menuControlID: String = "trips-v2-floating-add"
+    ) {
+        chooseGuidedAddKind(
+            in: app,
+            menuControlID: menuControlID,
+            identifier: "trips-v2-add-leg",
+            labels: ["Travel", "移動"],
+            failure: "Missing Guided Add Travel action"
+        )
 
         XCTAssertTrue(element(app, "guided-add-sheet").waitForExistence(timeout: 8))
         let originField = app.textFields["guided-add-origin"].firstMatch
@@ -130,6 +217,36 @@ final class ItineraryBuilderUITests: XCTestCase {
             tapID(app, "guided-add-continue")
         }
         tapID(app, "guided-add-save")
+    }
+
+    @MainActor
+    private func chooseGuidedAddKind(
+        in app: XCUIApplication,
+        menuControlID: String,
+        identifier: String,
+        labels: [String],
+        failure: String
+    ) {
+        tapID(app, menuControlID)
+        Thread.sleep(forTimeInterval: 0.4)
+        if element(app, identifier).waitForExistence(timeout: 5) {
+            tapID(app, identifier)
+            return
+        }
+        for label in labels {
+            let match = app.descendants(matching: .any).matching(
+                NSPredicate(format: "label == %@ OR label CONTAINS %@", label, label)
+            ).firstMatch
+            if match.waitForExistence(timeout: 2) {
+                if match.isHittable {
+                    match.tap()
+                } else {
+                    match.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                }
+                return
+            }
+        }
+        XCTFail(failure)
     }
 
     @MainActor

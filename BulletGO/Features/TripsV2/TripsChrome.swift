@@ -70,6 +70,8 @@ struct TripsDaySectionHeader: View {
             Text(verbatim: TripsV2Formatting.dayHeading(date, locale: locale))
                 .font(.system(size: 23, weight: .semibold))
                 .foregroundStyle(DesignTokens.Color.primaryText)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier(AccessibilityID.tripsDaySection(date))
             Button(action: onEditSubtitle) {
                 if let subtitle, !subtitle.isEmpty {
                     Text(verbatim: subtitle)
@@ -83,6 +85,7 @@ struct TripsDaySectionHeader: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Edit day subtitle")
             .accessibilityIdentifier(
                 subtitle == nil
                     ? AccessibilityID.tripsDaySubtitleAdd(date)
@@ -92,7 +95,6 @@ struct TripsDaySectionHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, TripsV2Style.screenPadding)
-        .accessibilityElement(children: .contain)
     }
 }
 

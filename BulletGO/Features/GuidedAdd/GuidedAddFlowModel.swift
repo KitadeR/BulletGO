@@ -152,7 +152,7 @@ final class GuidedAddFlowModel {
                 scheduledAt: scheduled,
                 at: now
             )
-            activity.placeReference = value.placeReference
+            activity.placeReference = PlaceReference.resolved(value.placeReference, name: place)
             if value.timing == .range {
                 let endDate = value.hasDate ? try ScheduledMomentComposer.localDate(from: value.date, timeZone: timeZone) : nil
                 let endTime = try ScheduledMomentComposer.localTime(from: value.endTime, timeZone: timeZone)
@@ -178,8 +178,8 @@ final class GuidedAddFlowModel {
                 scheduledAt: scheduled,
                 at: now
             )
-            leg.originPlace = value.originPlace
-            leg.destinationPlace = value.destinationPlace
+            leg.originPlace = PlaceReference.resolved(value.originPlace, name: trimmed(value.origin))
+            leg.destinationPlace = PlaceReference.resolved(value.destinationPlace, name: trimmed(value.destination))
             var mutations: [TripMutation] = [.addLeg(leg, atTimelineIndex: nil)]
             if let mode = value.mode, !value.skipMode {
                 mutations.append(.setTransportMode(leg.id, mode))
@@ -203,7 +203,7 @@ final class GuidedAddFlowModel {
                 checkOut: checkOut,
                 at: now
             )
-            stay.placeReference = value.placeReference
+            stay.placeReference = PlaceReference.resolved(value.placeReference, name: trimmed(value.place))
             return [.addStay(stay, atTimelineIndex: nil)]
         }
     }

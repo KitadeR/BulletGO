@@ -36,6 +36,7 @@ struct CreateTripSheet: View {
             }
             .navigationTitle(tripID == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier(AccessibilityID.createTripSheet)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { router.dismissPresentation() }
@@ -52,8 +53,6 @@ struct CreateTripSheet: View {
                 .padding(DesignTokens.Spacing.md)
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(AccessibilityID.createTripSheet)
         .onAppear(perform: loadExisting)
         .onChange(of: draft.startDate) { _, _ in refreshImpact() }
         .onChange(of: draft.endDate) { _, _ in refreshImpact() }

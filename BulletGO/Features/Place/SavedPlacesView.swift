@@ -6,7 +6,6 @@ struct SavedPlacesView: View {
 
     let tripID: TripID
     @State private var draftName = ""
-    @State private var search = MapKitPlaceSearch()
     @State private var selectedPlace: PlaceReference?
 
     var body: some View {
@@ -14,7 +13,6 @@ struct SavedPlacesView: View {
             PlaceSearchField(
                 title: "Place name",
                 text: $draftName,
-                search: search,
                 onSelect: { selectedPlace = $0 },
                 onClear: { selectedPlace = nil }
             )

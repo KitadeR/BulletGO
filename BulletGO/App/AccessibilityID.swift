@@ -67,8 +67,14 @@ enum AccessibilityID {
     static let guidedAddSkip = "guided-add-skip"
     static let guidedAddSave = "guided-add-save"
     static let guidedAddTitle = "guided-add-title"
+    static let guidedAddPlace = "guided-add-place"
+    static let guidedAddStayPlace = "guided-add-stay-place"
     static let guidedAddOrigin = "guided-add-origin"
     static let guidedAddDestination = "guided-add-destination"
+    static let placeSearchRetry = "place-search-retry"
+    static let placeSearchEmpty = "place-search-empty"
+    static let placeSearchFailed = "place-search-failed"
+    static let placeSearchSelected = "place-search-selected"
     static let tripSwitcher = "trip-switcher"
     static let tripSwitcherRow = "trip-switcher-row"
     static let tripMap = "trip-map"
@@ -144,6 +150,10 @@ enum AccessibilityID {
         case .activity(let id):
             "home-schedule-activity-\(id.rawValue.uuidString)"
         }
+    }
+
+    static func placeSearchResult(_ id: String) -> String {
+        "place-search-result-\(id)"
     }
 
     static func tripsDateOption(_ date: LocalDate) -> String {

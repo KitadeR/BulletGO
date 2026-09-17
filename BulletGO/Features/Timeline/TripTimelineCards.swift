@@ -24,7 +24,7 @@ struct TripsDayAddButton: View {
 
     var body: some View {
         Menu {
-            TripsAddKindMenuItems(onSelect: onSelect)
+            TripsAddKindMenuItems(onSelect: onSelect, includeAccessibilityIDs: true)
         } label: {
             Label {
                 Text(title)

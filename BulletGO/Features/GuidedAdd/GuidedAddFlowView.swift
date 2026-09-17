@@ -4,9 +4,10 @@ struct GuidedAddFlowView: View {
     @Environment(TripSessionModel.self) private var session
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.placeSearching) private var environmentSearch
 
     @State private var model: GuidedAddFlowModel
-    @State private var search: (any PlaceSearching)?
+    private let searchOverride: (any PlaceSearching)?
 
     init(
         tripID: TripID,
@@ -23,7 +24,11 @@ struct GuidedAddFlowView: View {
             now: now,
             seedPlace: seedPlace
         ))
-        _search = State(initialValue: search)
+        searchOverride = search
+    }
+
+    private var search: (any PlaceSearching)? {
+        searchOverride ?? environmentSearch
     }
 
     var body: some View {
@@ -107,8 +112,15 @@ struct GuidedAddFlowView: View {
                     title: "Where?",
                     text: activityPlace,
                     search: search,
+                    accessibilityID: AccessibilityID.guidedAddPlace,
                     onSelect: { reference in
-                        updateActivity { $0.placeReference = reference; $0.place = reference.name }
+                        updateActivity {
+                            $0.placeReference = reference
+                            $0.place = reference.name
+                            if trimmed($0.title).isEmpty {
+                                $0.title = reference.name
+                            }
+                        }
                     },
                     onClear: { updateActivity { $0.placeReference = nil } }
                 )
@@ -134,6 +146,9 @@ struct GuidedAddFlowView: View {
                 reviewRow("What", trimmed(draft.title).isEmpty ? trimmed(draft.place) : trimmed(draft.title))
                 if !trimmed(draft.place).isEmpty {
                     reviewRow("Where", trimmed(draft.place))
+                }
+                if let address = draft.placeReference?.displayAddress {
+                    reviewRow("Address", address)
                 }
                 reviewRow("When", activityWhenText(draft))
             default:
@@ -209,6 +224,7 @@ struct GuidedAddFlowView: View {
                     title: "Where are you staying?",
                     text: stayPlace,
                     search: search,
+                    accessibilityID: AccessibilityID.guidedAddStayPlace,
                     onSelect: { reference in
                         updateStay { $0.placeReference = reference; $0.place = reference.name }
                     },
@@ -226,6 +242,9 @@ struct GuidedAddFlowView: View {
                 }
             case .stayReview:
                 reviewRow("Stay", trimmed(draft.place))
+                if let address = draft.placeReference?.displayAddress {
+                    reviewRow("Address", address)
+                }
                 reviewRow("Check-in", draft.hasCheckIn ? formatted(draft.checkIn) : String(localized: "Later"))
                 reviewRow("Check-out", draft.hasCheckOut ? formatted(draft.checkOut) : String(localized: "Later"))
             default:
@@ -425,3 +444,23 @@ private extension GuidedAddFlowView {
         Binding(get: { stayDraft.checkOut }, set: { newValue in updateStay { $0.checkOut = newValue } })
     }
 }
+
+#if DEBUG
+#Preview("XL Dynamic Type") {
+    GuidedAddFlowView(
+        tripID: PreviewTrips.planning.id,
+        kind: .activity,
+        initialDate: PreviewTrips.planning.startDate.value,
+        now: PreviewTrips.phaseClockNow
+    )
+    .environment(AppRouter())
+    .environment(
+        TripSessionModel(
+            previewState: .loaded,
+            trip: PreviewTrips.planning,
+            clock: .fixed(PreviewTrips.phaseClockNow)
+        )
+    )
+    .dynamicTypeSize(.accessibility3)
+}
+#endif

@@ -57,6 +57,8 @@ struct TripsDaySection: View {
                 Text(section.title)
                     .font(.system(size: 23, weight: .semibold))
                     .padding(.horizontal, TripsV2Style.screenPadding)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier(AccessibilityID.itineraryUnscheduled)
             }
 
             if section.rows.isEmpty, let date = section.date {
@@ -108,8 +110,6 @@ struct TripsDaySection: View {
                 }
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(sectionIdentifier)
     }
 
     @ViewBuilder
@@ -133,13 +133,6 @@ struct TripsDaySection: View {
             comment: "Menu that opens Guided Add with this day prefilled."
         )
     }
-
-    private var sectionIdentifier: String {
-        if let date = section.date {
-            return AccessibilityID.tripsDaySection(date)
-        }
-        return AccessibilityID.itineraryUnscheduled
-    }
 }
 
 struct ConnectorEstimateRow: View {
@@ -157,6 +150,7 @@ struct ConnectorEstimateRow: View {
                 Text(durationText(cached.estimate))
                     .font(DesignTokens.Typography.caption)
                     .foregroundStyle(DesignTokens.Color.secondaryText)
+                    .accessibilityLabel(Text("About \(durationText(cached.estimate))"))
             } else {
                 Rectangle()
                     .fill(TripsV2Style.guide)

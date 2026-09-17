@@ -55,6 +55,7 @@ struct AppRootView: View {
     AppRootView()
         .environment(AppRouter())
         .environment(TripSessionModel(previewState: .loaded, trip: PreviewTrips.reference))
+        .environment(\.placeSearching, MapKitPlaceSearch())
 }
 
 #Preview("Japanese") {
