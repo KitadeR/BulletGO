@@ -5,12 +5,30 @@ import Testing
 @MainActor
 struct ItineraryPresentationTests {
     @Test func undatedTripKeepsASingleUnscheduledSection() throws {
-        let trip = try DomainTestSupport.sampleTrip()
+        var trip = try DomainTestSupport.sampleTrip()
+        trip.startDate = try Slot.unknown(updatedAt: DomainTestSupport.timestamp)
+        trip.endDate = try Slot.unknown(updatedAt: DomainTestSupport.timestamp)
         let sections = ItineraryDayComposer.sections(for: trip)
-        #expect(sections.count == 1)
-        #expect(sections[0].id == .unscheduled)
-        #expect(sections[0].rows.count == 6)
-        #expect(sections[0].rows[0].title == "Tokyo → Kyoto")
+        #expect(sections.map(\.id) == [.unscheduled])
+        let unscheduled = try #require(sections.first)
+        #expect(unscheduled.rows.count == 6)
+        #expect(unscheduled.rows.first?.title == "Tokyo → Kyoto")
+    }
+
+    @Test func datedTripWithOnlyUnscheduledItemsShowsEmptyDaysThenUnscheduled() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
+        let oct8 = try LocalDate(year: 2026, month: 10, day: 8)
+        let sections = ItineraryDayComposer.sections(for: trip)
+        #expect(sections.compactMap(\.date).first == oct1)
+        #expect(sections.compactMap(\.date).last == oct8)
+        #expect(sections.compactMap(\.date).count == 8)
+        let daySectionsAreEmpty = sections.dropLast().allSatisfy(\.rows.isEmpty)
+        #expect(daySectionsAreEmpty)
+        let unscheduled = try #require(sections.last)
+        #expect(unscheduled.id == .unscheduled)
+        #expect(unscheduled.rows.count == 6)
+        #expect(unscheduled.rows.first?.title == "Tokyo → Kyoto")
     }
 
     @Test func datedItemsKeepUnscheduledLast() throws {
@@ -30,8 +48,10 @@ struct ItineraryPresentationTests {
         let october2 = try LocalDate(year: 2026, month: 10, day: 2)
         #expect(sections.last?.id == .unscheduled)
         #expect(sections.last?.rows.contains { $0.title == "USJ" } == true)
-        #expect(sections.first?.id == .day(october2))
-        #expect(sections.contains { $0.id == .day(october2) })
+        #expect(sections.contains { $0.id == .day(october2) && !$0.rows.isEmpty })
+        let october1 = try LocalDate(year: 2026, month: 10, day: 1)
+        #expect(sections.first?.id == .day(october1))
+        #expect(sections.contains { $0.id == .day(october1) && $0.rows.isEmpty })
     }
 
     @Test func unscheduledTenAMKeepsExactGutter() throws {
@@ -190,7 +210,7 @@ struct ItineraryPresentationTests {
         let checkInDay = try #require(sections.first { $0.id == .day(oct2) })
         #expect(checkInDay.rows.contains { $0.id == checkInStay.id })
         #expect(sections.contains { $0.id == .day(oct1) && $0.rows.contains { $0.id == checkInStay.id } } == false)
-        #expect(sections.contains { $0.id == .day(oct3) } == false)
+        #expect(sections.contains { $0.id == .day(oct3) && $0.rows.isEmpty })
     }
 
     @Test func timingGutterMapsConfirmedActivityTimeAndLeavesUnknownBlank() throws {
@@ -424,17 +444,20 @@ struct ItineraryPresentationTests {
         #expect(label.contains("土") == false)
     }
 
-    @Test func emptyDayAppearsOnlyWhenSelectedAndInRange() throws {
+    @Test func emptyDaysInTripRangeAppearWithoutSelectingThem() throws {
         let trip = try DomainTestSupport.multiDayTrip()
+        let oct1 = try LocalDate(year: 2026, month: 10, day: 1)
         let oct3 = try LocalDate(year: 2026, month: 10, day: 3)
+        let oct8 = try LocalDate(year: 2026, month: 10, day: 8)
         let oct9 = try LocalDate(year: 2026, month: 10, day: 9)
-        let populated = ItineraryDayComposer.sections(for: trip)
-        #expect(populated.contains { $0.id == .day(oct3) } == false)
-        let inserted = ItineraryDayComposer.sections(for: trip, insertingEmptyDay: oct3)
-        #expect(inserted.contains { $0.id == .day(oct3) && $0.rows.isEmpty })
-        #expect(inserted.last?.id == .unscheduled)
-        let ignored = ItineraryDayComposer.sections(for: trip, insertingEmptyDay: oct9)
-        #expect(ignored.contains { $0.id == .day(oct9) } == false)
+        let sections = ItineraryDayComposer.sections(for: trip)
+        let dayIDs = sections.compactMap(\.date)
+        #expect(dayIDs.first == oct1)
+        #expect(dayIDs.last == oct8)
+        #expect(dayIDs.count == 8)
+        #expect(sections.contains { $0.id == .day(oct3) && $0.rows.isEmpty })
+        #expect(sections.last?.id == .unscheduled)
+        #expect(sections.contains { $0.id == .day(oct9) } == false)
     }
 
     @Test func preparationUsesRealStateAndIgnoresUnverifiedOnly() throws {

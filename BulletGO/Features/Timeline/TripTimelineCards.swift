@@ -11,7 +11,7 @@ struct TripsEmptyDayState: View {
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier(AccessibilityID.tripsEmptyDay)
+                .accessibilityIdentifier(AccessibilityID.tripsEmptyDay(date))
             TripsDayAddButton(date: date, title: addTitle, onSelect: onSelect)
         }
     }

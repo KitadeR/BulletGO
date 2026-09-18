@@ -82,7 +82,9 @@ enum AccessibilityID {
     static let reservationEditor = "reservation-editor"
     static let notesEditor = "notes-editor"
     static let attachmentsEditor = "attachments-editor"
-    static let tripsEmptyDay = "trips-empty-day"
+    static func tripsEmptyDay(_ date: LocalDate) -> String {
+        "trips-empty-day-\(date.year)-\(date.month)-\(date.day)"
+    }
     static let tripsPreparation = "trips-leg-preparation"
     static let tripsQuickContext = "trips-quick-context"
     static let tripsQuickContextDetails = "trips-quick-context-details"

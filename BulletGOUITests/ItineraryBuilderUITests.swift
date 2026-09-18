@@ -118,7 +118,6 @@ final class ItineraryBuilderUITests: XCTestCase {
             app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Kinkaku-ji'")).firstMatch
                 .waitForExistence(timeout: 8)
         )
-        XCTAssertFalse(element(app, "trips-empty-day").waitForExistence(timeout: 2))
     }
 
     @MainActor
@@ -148,7 +147,7 @@ final class ItineraryBuilderUITests: XCTestCase {
         tapID(app, "trips-date-2026-10-3")
         XCTAssertTrue(element(app, "trips-day-add-2026-10-3").waitForExistence(timeout: 8), "Empty Oct 3 add control missing")
         XCTAssertTrue(
-            element(app, "trips-empty-day").waitForExistence(timeout: 4)
+            element(app, "trips-empty-day-2026-10-3").waitForExistence(timeout: 4)
                 || app.staticTexts["Nothing planned yet"].exists
                 || app.staticTexts["まだ予定はありません"].exists
                 || element(app, "itinerary-day-2026-10-3").exists,
@@ -170,7 +169,7 @@ final class ItineraryBuilderUITests: XCTestCase {
                 || element(app, "trips-day-add-2026-10-3").waitForExistence(timeout: 4),
             "Oct 3 day did not stay visible after adding"
         )
-        XCTAssertFalse(element(app, "trips-empty-day").waitForExistence(timeout: 2))
+        XCTAssertFalse(element(app, "trips-empty-day-2026-10-3").waitForExistence(timeout: 2))
         XCTAssertTrue(
             app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Nara'")).firstMatch
                 .waitForExistence(timeout: 8)

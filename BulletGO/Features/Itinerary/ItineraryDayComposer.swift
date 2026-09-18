@@ -81,11 +81,14 @@ nonisolated enum ItineraryDayComposer {
             }
         }
 
-        var orderedDays = days.keys.sorted()
-        if let empty = insertingEmptyDay, days[empty] == nil, dateOptions(for: trip).contains(empty) {
-            orderedDays.append(empty)
-            orderedDays.sort()
+        var orderedDays = dateOptions(for: trip)
+        for date in days.keys where !orderedDays.contains(date) {
+            orderedDays.append(date)
         }
+        if let empty = insertingEmptyDay, !orderedDays.contains(empty), dateOptions(for: trip).contains(empty) {
+            orderedDays.append(empty)
+        }
+        orderedDays.sort()
 
         var sections: [ItinerarySection] = []
         for date in orderedDays {

@@ -2013,7 +2013,7 @@
       }
     },
     "Nothing planned yet" : {
-      "comment" : "Empty day copy when the selected date has no itinerary items.",
+      "comment" : "Empty day copy when a day in the trip has no itinerary items.",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
