@@ -79,7 +79,7 @@ struct PlaceSearchField: View {
     private func selectedRow(_ place: PlaceReference) -> some View {
         HStack(alignment: .top, spacing: DesignTokens.Spacing.sm) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(DesignTokens.Color.tint)
+                .foregroundStyle(DesignTokens.Color.primaryText)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Selected place")
@@ -126,5 +126,89 @@ struct PlaceSearchField: View {
         } else {
             Text("Selected place, \(place.name)")
         }
+    }
+}
+
+struct GuidedAddPlaceEditor: View {
+    var title: LocalizedStringKey
+    var fieldTitle: LocalizedStringKey
+    @Binding var text: String
+    var selected: PlaceReference?
+    var accessibilityID: String = ""
+    var onSelect: (PlaceReference) -> Void
+    var onClear: () -> Void
+
+    @Environment(\.placeSearching) private var environmentSearch
+    @State private var model = PlaceSearchModel()
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        GuidedAddCard {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(title)
+                    .font(DesignTokens.Typography.headline)
+                    .foregroundStyle(DesignTokens.Color.primaryText)
+                GuidedAddInnerSearchField(
+                    title: fieldTitle,
+                    text: $text,
+                    accessibilityID: accessibilityID,
+                    focused: $focused,
+                    onSubmit: { model.searchNow() }
+                )
+                .onChange(of: text) { _, newValue in
+                    let hadSelection = model.selected != nil
+                    model.updateQuery(newValue)
+                    if hadSelection, model.selected == nil {
+                        onClear()
+                    }
+                }
+                if model.isSearching || model.isResolving {
+                    ProgressView()
+                        .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+                }
+                ForEach(model.completions) { completion in
+                    Button {
+                        Task { await choose(completion) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(verbatim: completion.title)
+                                .font(DesignTokens.Typography.headline)
+                                .foregroundStyle(DesignTokens.Color.primaryText)
+                            if !completion.subtitle.isEmpty {
+                                Text(verbatim: completion.subtitle)
+                                    .font(DesignTokens.Typography.footnote)
+                                    .foregroundStyle(DesignTokens.Color.secondaryText)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+                    }
+                    .accessibilityIdentifier(AccessibilityID.placeSearchResult(completion.id))
+                }
+                if let selected, selected.isSearchResolved {
+                    HStack {
+                        Text(verbatim: selected.name)
+                            .font(DesignTokens.Typography.headline)
+                        Spacer()
+                        GuidedAddCheck()
+                    }
+                    .accessibilityIdentifier(AccessibilityID.placeSearchSelected)
+                }
+            }
+            .padding(18)
+        }
+        .task {
+            model.search = environmentSearch
+            if let selected {
+                model.restoreSelected(selected)
+            }
+        }
+    }
+
+    private func choose(_ completion: PlaceSearchCompletion) async {
+        await model.select(completion)
+        guard let selected = model.selected else { return }
+        text = selected.name
+        onSelect(selected)
+        focused = false
     }
 }

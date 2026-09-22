@@ -38,6 +38,7 @@ struct AppRootView: View {
             }
             .accessibilityIdentifier(AccessibilityID.youTab)
         }
+        .tint(DesignTokens.Color.primaryText)
         .sheet(item: $router.presentation) { presentation in
             AppPresentationSheet(presentation: presentation, now: session.now)
         }

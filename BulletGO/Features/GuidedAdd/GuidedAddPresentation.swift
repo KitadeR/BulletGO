@@ -5,8 +5,7 @@ nonisolated enum GuidedAddStep: Hashable, Sendable {
     case activityDate
     case activityTiming
     case activityReview
-    case travelOrigin
-    case travelDestination
+    case travelPlaces
     case travelMode
     case travelSchedule
     case travelReview
@@ -24,19 +23,18 @@ nonisolated enum GuidedAddStep: Hashable, Sendable {
 
     var title: LocalizedStringResource {
         switch self {
-        case .activityWhat: "Place or activity"
-        case .activityDate: "When"
-        case .activityTiming: "Time"
-        case .activityReview: "Review"
-        case .travelOrigin: "From"
-        case .travelDestination: "To"
-        case .travelMode: "How"
-        case .travelSchedule: "When"
-        case .travelReview: "Review"
-        case .stayPlace: "Stay"
-        case .stayCheckIn: "Check-in"
-        case .stayCheckOut: "Check-out"
-        case .stayReview: "Review"
+        case .activityWhat: "予定を追加"
+        case .activityDate: "いつ"
+        case .activityTiming: "時刻"
+        case .activityReview: "確認"
+        case .travelPlaces: "移動を追加"
+        case .travelMode: "どう行く？"
+        case .travelSchedule: "いつ"
+        case .travelReview: "確認"
+        case .stayPlace: "宿泊を追加"
+        case .stayCheckIn: "チェックイン"
+        case .stayCheckOut: "チェックアウト"
+        case .stayReview: "確認"
         }
     }
 }
@@ -70,19 +68,85 @@ struct ActivityAddDraft: Equatable {
     var placeReference: PlaceReference?
 }
 
+nonisolated enum TravelTimeKind: String, Hashable, Sendable, CaseIterable, Identifiable {
+    case undecided
+    case departure
+    case arrival
+    case firstTrain
+    case lastTrain
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringResource {
+        switch self {
+        case .undecided: "まだ決めていない"
+        case .departure: "出発"
+        case .arrival: "到着"
+        case .firstTrain: "始発"
+        case .lastTrain: "終電"
+        }
+    }
+
+    var needsClock: Bool {
+        switch self {
+        case .departure, .arrival: true
+        case .undecided, .firstTrain, .lastTrain: false
+        }
+    }
+}
+
 struct LegAddDraft: Equatable {
     var origin: String = ""
     var destination: String = ""
     var mode: TransportMode?
-    var skipMode: Bool = false
     var hasDate: Bool = true
     var date: Date = Date()
-    var hasDepartureTime: Bool = false
+    var timeKind: TravelTimeKind = .undecided
+    var skippedTime: Bool = false
+    var clockConfirmed: Bool = false
     var departureTime: Date = Date()
-    var hasArrivalTime: Bool = false
     var arrivalTime: Date = Date().addingTimeInterval(7200)
     var originPlace: PlaceReference?
     var destinationPlace: PlaceReference?
+
+    var hasResolvedOrigin: Bool {
+        originPlace?.isSearchResolved == true
+    }
+
+    var hasResolvedDestination: Bool {
+        destinationPlace?.isSearchResolved == true
+    }
+}
+
+enum TravelGuidedAdd {
+    static let modes: [TransportMode] = [.airplane, .shinkansen, .localTrain]
+
+    static func modeTitle(_ mode: TransportMode) -> LocalizedStringResource {
+        switch mode {
+        case .airplane: "飛行機"
+        case .shinkansen: "新幹線"
+        case .localTrain: "在来線"
+        default: "その他"
+        }
+    }
+
+    static func modeSymbol(_ mode: TransportMode) -> String {
+        switch mode {
+        case .airplane: "airplane"
+        case .shinkansen: "train.side.front.car"
+        case .localTrain: "tram.fill"
+        default: "point.bottomleft.forward.to.point.topright.scurvepath"
+        }
+    }
+
+    static func modeImage(_ mode: TransportMode) -> String? {
+        switch mode {
+        case .airplane: "GuidedAddAirplane"
+        case .shinkansen: "GuidedAddShinkansen"
+        case .localTrain: "GuidedAddLocalTrain"
+        default: nil
+        }
+    }
 }
 
 struct StayAddDraft: Equatable {
@@ -106,7 +170,7 @@ enum GuidedAddComposer {
         case .activity:
             [.activityWhat, .activityDate, .activityTiming, .activityReview]
         case .travel:
-            [.travelOrigin, .travelDestination, .travelMode, .travelSchedule, .travelReview]
+            [.travelPlaces, .travelMode, .travelSchedule, .travelReview]
         case .stay:
             [.stayPlace, .stayCheckIn, .stayCheckOut, .stayReview]
         }

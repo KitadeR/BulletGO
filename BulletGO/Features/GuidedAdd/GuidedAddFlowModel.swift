@@ -51,15 +51,13 @@ final class GuidedAddFlowModel {
         stepIndex -= 1
     }
 
+    func jump(to step: GuidedAddStep) {
+        guard let index = steps.firstIndex(of: step) else { return }
+        stepIndex = index
+    }
+
     func skipOptional() {
         switch currentStep {
-        case .travelMode:
-            if case .travel(var value) = draft {
-                value.skipMode = true
-                value.mode = nil
-                draft = .travel(value)
-            }
-            advance()
         case .activityTiming:
             if case .activity(var value) = draft {
                 value.timing = .none
@@ -113,16 +111,21 @@ final class GuidedAddFlowModel {
             return value.timing != .range || value.endTime >= value.startTime
         case (.activityReview, .activity(let value)):
             return !trimmed(value.title).isEmpty || !trimmed(value.place).isEmpty
-        case (.travelOrigin, .travel(let value)):
-            return !trimmed(value.origin).isEmpty
-        case (.travelDestination, .travel(let value)):
-            return !trimmed(value.destination).isEmpty
-        case (.travelMode, .travel):
-            return true
-        case (.travelSchedule, .travel):
+        case (.travelPlaces, .travel(let value)):
+            return value.hasResolvedOrigin && value.hasResolvedDestination
+        case (.travelMode, .travel(let value)):
+            return value.mode != nil && TravelGuidedAdd.modes.contains(value.mode ?? .other)
+        case (.travelSchedule, .travel(let value)):
+            guard value.hasDate else { return false }
+            if value.timeKind.needsClock {
+                return value.clockConfirmed
+            }
             return true
         case (.travelReview, .travel(let value)):
-            return !trimmed(value.origin).isEmpty && !trimmed(value.destination).isEmpty
+            return value.hasResolvedOrigin
+                && value.hasResolvedDestination
+                && value.mode != nil
+                && value.hasDate
         case (.stayPlace, .stay(let value)):
             return !trimmed(value.place).isEmpty
         case (.stayCheckIn, .stay):
@@ -164,11 +167,12 @@ final class GuidedAddFlowModel {
             }
             return [.addActivity(activity, atTimelineIndex: nil)]
         case .travel(let value):
+            let includeDepartureTime = value.timeKind == .departure && value.clockConfirmed
             let scheduled = value.hasDate
                 ? try composeMoment(
                     datePicker: value.date,
-                    timePicker: value.hasDepartureTime ? value.departureTime : nil,
-                    includeTime: value.hasDepartureTime,
+                    timePicker: includeDepartureTime ? value.departureTime : nil,
+                    includeTime: includeDepartureTime,
                     timeZone: timeZone
                 )
                 : nil
@@ -181,10 +185,10 @@ final class GuidedAddFlowModel {
             leg.originPlace = PlaceReference.resolved(value.originPlace, name: trimmed(value.origin))
             leg.destinationPlace = PlaceReference.resolved(value.destinationPlace, name: trimmed(value.destination))
             var mutations: [TripMutation] = [.addLeg(leg, atTimelineIndex: nil)]
-            if let mode = value.mode, !value.skipMode {
+            if let mode = value.mode {
                 mutations.append(.setTransportMode(leg.id, mode))
             }
-            if value.hasArrivalTime {
+            if value.timeKind == .arrival, value.clockConfirmed {
                 mutations.append(.updateLegArrivesAt(leg.id, try composeMoment(
                     datePicker: value.hasDate ? value.date : value.arrivalTime,
                     timePicker: value.arrivalTime,

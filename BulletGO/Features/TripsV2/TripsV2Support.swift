@@ -1,31 +1,15 @@
 import SwiftUI
-import UIKit
 
 enum TripsV2Style {
-    static let canvas = adaptive(
-        light: rgb(249, 249, 250),
-        dark: rgb(26, 26, 31)
-    )
-    static let selectedFill = adaptive(
-        light: rgb(247, 250, 255),
-        dark: UIColor(red: 26 / 255, green: 99 / 255, blue: 245 / 255, alpha: 0.22)
-    )
-    static let selectedStroke = adaptive(
-        light: rgb(209, 222, 250),
-        dark: UIColor(red: 26 / 255, green: 99 / 255, blue: 245 / 255, alpha: 0.55)
-    )
-    static let accent = Color(red: 26 / 255, green: 99 / 255, blue: 245 / 255)
-    static let guide = Color.primary.opacity(0.12)
-    static let placeholderFill = adaptive(
-        light: rgb(240, 240, 247),
-        dark: rgb(51, 51, 61)
-    )
-    static let placeholderText = Color(red: 153 / 255, green: 153 / 255, blue: 163 / 255)
-    static let tertiaryText = Color(red: 153 / 255, green: 153 / 255, blue: 163 / 255)
-    static let divider = adaptive(
-        light: rgb(229, 229, 237),
-        dark: UIColor.white.withAlphaComponent(0.12)
-    )
+    static var canvas: Color { DesignTokens.Color.canvas }
+    static var selectedFill: Color { DesignTokens.Color.grouped }
+    static var selectedStroke: Color { DesignTokens.Color.contrastStroke }
+    static var accent: Color { DesignTokens.Color.primaryText }
+    static var guide: Color { DesignTokens.Color.stroke }
+    static var placeholderFill: Color { DesignTokens.Color.grouped }
+    static var placeholderText: Color { DesignTokens.Color.secondaryText }
+    static var tertiaryText: Color { DesignTokens.Color.secondaryText }
+    static var divider: Color { DesignTokens.Color.inputStroke }
     static let screenPadding: CGFloat = 20
     static let gutterWidth: CGFloat = 54
     static let guideWidth: CGFloat = 1
@@ -35,16 +19,6 @@ enum TripsV2Style {
     static let rowSpacing: CGFloat = 18
     static let dateChipSize = CGSize(width: 62, height: 48)
     static let dateChipSpacing: CGFloat = 8
-
-    private static func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> UIColor {
-        UIColor(red: r / 255, green: g / 255, blue: b / 255, alpha: 1)
-    }
-
-    private static func adaptive(light: UIColor, dark: UIColor) -> Color {
-        Color(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark ? dark : light
-        })
-    }
 }
 
 nonisolated enum TripsV2Formatting {

@@ -3,39 +3,56 @@ import UIKit
 
 enum DesignTokens {
     enum Color {
-        static let canvas = SwiftUI.Color(uiColor: UIColor { traits in
-            if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.10, green: 0.09, blue: 0.08, alpha: 1)
-            } else {
-                UIColor(red: 0.98, green: 0.96, blue: 0.93, alpha: 1)
-            }
-        })
-        static let grouped = SwiftUI.Color(uiColor: UIColor { traits in
-            if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.16, green: 0.14, blue: 0.13, alpha: 1)
-            } else {
-                UIColor(red: 1.0, green: 0.99, blue: 0.97, alpha: 1)
-            }
-        })
-        static let quietFill = SwiftUI.Color(uiColor: .tertiarySystemFill)
-        static let elevated = SwiftUI.Color(uiColor: UIColor { traits in
-            if traits.userInterfaceStyle == .dark {
-                UIColor(red: 0.20, green: 0.18, blue: 0.16, alpha: 1)
-            } else {
-                UIColor.white
-            }
-        })
-        static let tint = SwiftUI.Color(red: 0.86, green: 0.34, blue: 0.22)
-        static let tintSoft = SwiftUI.Color(red: 0.86, green: 0.34, blue: 0.22).opacity(0.14)
+        static let canvas = adaptive(
+            light: UIColor(red: 0.973, green: 0.973, blue: 0.980, alpha: 1),
+            dark: UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1)
+        )
+        static let grouped = adaptive(
+            light: UIColor(red: 0.941, green: 0.941, blue: 0.949, alpha: 1),
+            dark: UIColor(red: 0.22, green: 0.22, blue: 0.23, alpha: 1)
+        )
+        static let quietFill = grouped
+        static let elevated = adaptive(
+            light: .white,
+            dark: UIColor(red: 0.18, green: 0.18, blue: 0.19, alpha: 1)
+        )
+        static let ctaFill = adaptive(
+            light: UIColor(red: 0.067, green: 0.067, blue: 0.078, alpha: 1),
+            dark: .white
+        )
+        static let ctaText = adaptive(
+            light: .white,
+            dark: .black
+        )
+        static let ctaDisabledFill = adaptive(
+            light: UIColor(red: 0.878, green: 0.878, blue: 0.898, alpha: 1),
+            dark: UIColor.white.withAlphaComponent(0.12)
+        )
+        static let ctaDisabledText = adaptive(
+            light: UIColor(red: 0.569, green: 0.569, blue: 0.600, alpha: 1),
+            dark: UIColor.white.withAlphaComponent(0.35)
+        )
+        static let inputStroke = adaptive(
+            light: UIColor(red: 0.878, green: 0.878, blue: 0.898, alpha: 1),
+            dark: UIColor.white.withAlphaComponent(0.12)
+        )
+        static let tint = ctaFill
+        static let tintSoft = grouped
         static let primaryText = SwiftUI.Color.primary
         static let secondaryText = SwiftUI.Color.secondary
         static let success = SwiftUI.Color(red: 0.18, green: 0.56, blue: 0.38)
         static let caution = SwiftUI.Color(red: 0.78, green: 0.52, blue: 0.12)
         static let danger = SwiftUI.Color(red: 0.72, green: 0.28, blue: 0.24)
-        static let remembered = SwiftUI.Color(red: 0.38, green: 0.42, blue: 0.56)
-        static let now = tint
+        static let remembered = SwiftUI.Color.secondary
+        static let now = primaryText
         static let stroke = SwiftUI.Color.primary.opacity(0.08)
         static let contrastStroke = SwiftUI.Color.primary.opacity(0.45)
+
+        private static func adaptive(light: UIColor, dark: UIColor) -> SwiftUI.Color {
+            SwiftUI.Color(uiColor: UIColor { traits in
+                traits.userInterfaceStyle == .dark ? dark : light
+            })
+        }
     }
 
     enum Typography {

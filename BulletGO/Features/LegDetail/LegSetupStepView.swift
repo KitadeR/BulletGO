@@ -37,7 +37,7 @@ struct LegSetupStepView: View {
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            DesignTokens.Color.grouped,
+            DesignTokens.Color.elevated,
             in: RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
         )
         .accessibilityElement(children: isExpanded ? .contain : .combine)

@@ -54,7 +54,7 @@ struct LegCockpitContentView: View {
         .padding(DesignTokens.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            DesignTokens.Color.grouped,
+            DesignTokens.Color.elevated,
             in: RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
         )
         .accessibilityElement(children: .contain)
@@ -187,9 +187,9 @@ private struct CockpitLuggageRow: View {
             HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
                 Image(systemName: "suitcase.fill")
                     .font(DesignTokens.Typography.callout)
-                    .foregroundStyle(DesignTokens.Color.tint)
+                    .foregroundStyle(DesignTokens.Color.primaryText)
                     .frame(width: 28, height: 28)
-                    .background(DesignTokens.Color.tintSoft, in: Circle())
+                    .background(DesignTokens.Color.grouped, in: Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(
@@ -233,11 +233,11 @@ private struct CockpitMetaChip: View {
         } icon: {
             Image(systemName: systemImage)
                 .font(DesignTokens.Typography.footnote.weight(.semibold))
-                .foregroundStyle(DesignTokens.Color.tint)
+                .foregroundStyle(DesignTokens.Color.primaryText)
         }
         .padding(.horizontal, DesignTokens.Spacing.sm)
         .padding(.vertical, DesignTokens.Spacing.xs)
-        .background(DesignTokens.Color.tintSoft, in: Capsule())
+        .background(DesignTokens.Color.grouped, in: Capsule())
         .accessibilityElement(children: .combine)
     }
 }
@@ -251,9 +251,9 @@ private struct CockpitFactRow: View {
         HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
             Image(systemName: systemImage)
                 .font(DesignTokens.Typography.callout)
-                .foregroundStyle(DesignTokens.Color.tint)
+                .foregroundStyle(DesignTokens.Color.primaryText)
                 .frame(width: 28, height: 28)
-                .background(DesignTokens.Color.tintSoft, in: Circle())
+                .background(DesignTokens.Color.grouped, in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)

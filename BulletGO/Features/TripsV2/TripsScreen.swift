@@ -116,11 +116,12 @@ struct TripsScreen: View {
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
                 .multilineTextAlignment(.center)
-            Button("Create trip") {
+            PrimaryCTA(
+                title: LocalizedStringResource("Create trip", comment: "Empty Trips action that opens trip creation."),
+                accessibilityID: AccessibilityID.createTripButton
+            ) {
                 router.present(.createTrip)
             }
-            .buttonStyle(.borderedProminent)
-            .accessibilityIdentifier(AccessibilityID.createTripButton)
         }
         .padding(DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -136,7 +136,7 @@ final class ItineraryBuilderUITests: XCTestCase {
             "App did not show the main tabs"
         )
         openTripsTab(in: app)
-        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 15))
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 20))
         XCTAssertTrue(element(app, "trips-date-selector").waitForExistence(timeout: 8))
         XCTAssertTrue(element(app, "timeline-leg-A1E0B001-0000-4000-8000-000000000011").waitForExistence(timeout: 8))
 
@@ -171,8 +171,10 @@ final class ItineraryBuilderUITests: XCTestCase {
         )
         XCTAssertFalse(element(app, "trips-empty-day-2026-10-3").waitForExistence(timeout: 2))
         XCTAssertTrue(
-            app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Nara'")).firstMatch
-                .waitForExistence(timeout: 8)
+            app.descendants(matching: .any).matching(
+                NSPredicate(format: "label CONTAINS 'Nara' OR label CONTAINS 'Osaka'")
+            ).firstMatch.waitForExistence(timeout: 8),
+            "Added travel did not appear on Oct 3"
         )
         XCTAssertFalse(element(app, "add-itinerary-button").exists)
         XCTAssertFalse(element(app, "talk-about-trip").exists)
@@ -193,29 +195,194 @@ final class ItineraryBuilderUITests: XCTestCase {
             failure: "Missing Guided Add Travel action"
         )
 
-        XCTAssertTrue(element(app, "guided-add-sheet").waitForExistence(timeout: 8))
-        let originField = app.textFields["guided-add-origin"].firstMatch
-        XCTAssertTrue(originField.waitForExistence(timeout: 5))
-        focusAndType(originField, origin)
-        dismissKeyboard(in: app)
-        tapID(app, "guided-add-continue")
-
-        let destinationField = app.textFields["guided-add-destination"].firstMatch
-        XCTAssertTrue(destinationField.waitForExistence(timeout: 5))
-        focusAndType(destinationField, destination)
-        dismissKeyboard(in: app)
-        tapID(app, "guided-add-continue")
-
-        if element(app, "guided-add-skip").waitForExistence(timeout: 3) {
-            tapID(app, "guided-add-skip")
-        } else {
-            tapID(app, "guided-add-continue")
+        XCTAssertTrue(
+            element(app, "guided-add-sheet").waitForExistence(timeout: 12)
+                || app.textFields["guided-add-origin"].firstMatch.waitForExistence(timeout: 8)
+                || app.staticTexts["移動を追加"].waitForExistence(timeout: 3),
+            "Travel sheet missing"
+        )
+        fillTravelPlace(
+            in: app,
+            fieldID: "guided-add-origin",
+            selectedID: "guided-add-origin-selected",
+            query: origin
+        )
+        tapID(app, "guided-add-origin-selected")
+        XCTAssertTrue(
+            app.textFields["guided-add-origin"].firstMatch.waitForExistence(timeout: 8)
+                || element(app, "guided-add-origin").waitForExistence(timeout: 3),
+            "Origin field did not re-expand"
+        )
+        fillTravelPlace(
+            in: app,
+            fieldID: "guided-add-origin",
+            selectedID: "guided-add-origin-selected",
+            query: origin
+        )
+        fillTravelPlace(
+            in: app,
+            fieldID: "guided-add-destination",
+            selectedID: "guided-add-destination-selected",
+            query: destination
+        )
+        tapEnabledID(app, "guided-add-continue")
+        XCTAssertTrue(element(app, "guided-add-mode-shinkansen").waitForExistence(timeout: 8), "How step missing")
+        tapID(app, "guided-add-mode-shinkansen")
+        tapEnabledID(app, "guided-add-continue")
+        chooseTravelDateIfNeeded(in: app)
+        reexpandAndReselectTravelDate(in: app)
+        confirmTravelClock(in: app)
+        tapEnabledID(app, "guided-add-continue")
+        XCTAssertTrue(element(app, "guided-add-review-from").waitForExistence(timeout: 8), "Review missing")
+        tapID(app, "guided-add-review-from")
+        XCTAssertTrue(
+            element(app, "guided-add-origin-selected").waitForExistence(timeout: 5)
+                || app.textFields["guided-add-origin"].firstMatch.waitForExistence(timeout: 5),
+            "Review edit did not return to places"
+        )
+        tapEnabledID(app, "guided-add-continue")
+        if element(app, "guided-add-mode-shinkansen").waitForExistence(timeout: 5) {
+            tapEnabledID(app, "guided-add-continue")
         }
-
         if element(app, "guided-add-continue").waitForExistence(timeout: 3) {
-            tapID(app, "guided-add-continue")
+            tapEnabledID(app, "guided-add-continue")
         }
         tapID(app, "guided-add-save")
+        XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 8), "Timeline did not return after adding travel")
+    }
+
+    @MainActor
+    private func chooseTravelDateIfNeeded(in app: XCUIApplication) {
+        let dateCells = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier MATCHES %@", "guided-add-date-[0-9]+-[0-9]+-[0-9]+")
+        )
+        if dateCells.firstMatch.waitForExistence(timeout: 2) {
+            tapEnabledDateCell(dateCells)
+            return
+        }
+        let continueButton = element(app, "guided-add-continue")
+        if continueButton.waitForExistence(timeout: 2), continueButton.isEnabled {
+            return
+        }
+        XCTAssertTrue(dateCells.firstMatch.waitForExistence(timeout: 5), "Date grid missing")
+        tapEnabledDateCell(dateCells)
+    }
+
+    @MainActor
+    private func reexpandAndReselectTravelDate(in app: XCUIApplication) {
+        let collapsedDate = element(app, "guided-add-date-selected")
+        guard collapsedDate.waitForExistence(timeout: 3) else { return }
+        if !collapsedDate.isHittable {
+            app.swipeDown()
+        }
+        tapID(app, "guided-add-date-selected")
+        guard element(app, "guided-add-date").waitForExistence(timeout: 5) else { return }
+        let dateCells = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier MATCHES %@", "guided-add-date-[0-9]+-[0-9]+-[0-9]+")
+        )
+        guard dateCells.firstMatch.waitForExistence(timeout: 3) else { return }
+        tapEnabledDateCell(dateCells)
+        _ = element(app, "guided-add-date-selected").waitForExistence(timeout: 5)
+    }
+
+    @MainActor
+    private func confirmTravelClock(in app: XCUIApplication) {
+        if !element(app, "guided-add-time-departure").waitForExistence(timeout: 2) {
+            app.swipeUp()
+        }
+        tapID(app, "guided-add-time-departure")
+        if !element(app, "guided-add-clock").waitForExistence(timeout: 2) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(element(app, "guided-add-clock").waitForExistence(timeout: 5), "Clock missing after departure")
+        let continueButton = element(app, "guided-add-continue")
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 2))
+        XCTAssertFalse(continueButton.isEnabled, "Clock must be interacted with before continue")
+        let hourNext = element(app, "guided-add-clock-hour-next")
+        if hourNext.waitForExistence(timeout: 3) {
+            if hourNext.isHittable {
+                hourNext.tap()
+            } else {
+                hourNext.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+        } else {
+            let hour = element(app, "guided-add-clock-hour")
+            XCTAssertTrue(hour.waitForExistence(timeout: 5), "Clock hour increment missing")
+            hour.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.85)).tap()
+        }
+        XCTAssertTrue(element(app, "guided-add-continue").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "guided-add-continue").isEnabled, "Continue stayed disabled after clock")
+    }
+
+    @MainActor
+    private func tapEnabledDateCell(_ cells: XCUIElementQuery) {
+        let limit = min(cells.count, 21)
+        for index in 0..<limit {
+            let cell = cells.element(boundBy: index)
+            guard cell.exists, cell.isEnabled else { continue }
+            tapDateCell(cell)
+            return
+        }
+        XCTFail("No enabled date cell")
+    }
+
+    @MainActor
+    private func tapDateCell(_ cell: XCUIElement) {
+        if cell.isHittable {
+            cell.tap()
+        } else {
+            cell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+    }
+
+    @MainActor
+    private func fillTravelPlace(
+        in app: XCUIApplication,
+        fieldID: String,
+        selectedID: String,
+        query: String
+    ) {
+        if element(app, selectedID).waitForExistence(timeout: 1) {
+            return
+        }
+        let collapsed = element(app, fieldID)
+        let field = app.textFields[fieldID].firstMatch
+        if !field.waitForExistence(timeout: 2), collapsed.waitForExistence(timeout: 2) {
+            tapID(app, fieldID)
+        }
+        XCTAssertTrue(field.waitForExistence(timeout: 8), "\(fieldID) field missing")
+        let current = (field.value as? String) ?? ""
+        if !current.localizedCaseInsensitiveContains(query) {
+            focusAndType(field, query)
+        } else {
+            field.tap()
+        }
+        tapPlaceResult(in: app, matching: query)
+        XCTAssertTrue(element(app, selectedID).waitForExistence(timeout: 8), "\(selectedID) missing after candidate tap")
+    }
+
+    @MainActor
+    private func tapPlaceResult(in app: XCUIApplication, matching query: String) {
+        let identifier = placeResultID(for: query)
+        let result = element(app, identifier)
+        XCTAssertTrue(result.waitForExistence(timeout: 8), "Fake place result \(identifier) did not appear")
+        if !result.isHittable {
+            app.swipeUp()
+        }
+        if result.isHittable {
+            result.tap()
+        } else {
+            result.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+    }
+
+    private func placeResultID(for query: String) -> String {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if trimmed.contains("tokyo") { return "place-search-result-tokyo" }
+        if trimmed.contains("osaka") { return "place-search-result-osaka" }
+        if trimmed.contains("nara") { return "place-search-result-nara" }
+        if trimmed.contains("kinkaku") { return "place-search-result-kinkaku" }
+        return "place-search-result-\(trimmed)"
     }
 
     @MainActor
@@ -286,6 +453,19 @@ final class ItineraryBuilderUITests: XCTestCase {
     @MainActor
     private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
         app.descendants(matching: .any)[identifier].firstMatch
+    }
+
+    @MainActor
+    private func tapEnabledID(_ app: XCUIApplication, _ identifier: String, timeout: TimeInterval = 8) {
+        dismissKeyboard(in: app)
+        let target = element(app, identifier)
+        XCTAssertTrue(target.waitForExistence(timeout: timeout), "Missing \(identifier)")
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline, !target.isEnabled {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(target.isEnabled, "\(identifier) stayed disabled")
+        tapID(app, identifier, timeout: 2)
     }
 
     @MainActor

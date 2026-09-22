@@ -12,9 +12,9 @@ struct NowConcernCard: View {
             HStack(alignment: .center, spacing: DesignTokens.Spacing.md) {
                 Image(systemName: systemImage)
                     .font(DesignTokens.Typography.title)
-                    .foregroundStyle(DesignTokens.Color.tint)
+                    .foregroundStyle(DesignTokens.Color.primaryText)
                     .frame(minWidth: DesignTokens.TapTarget.minimum, minHeight: DesignTokens.TapTarget.minimum)
-                    .background(DesignTokens.Color.tintSoft, in: Circle())
+                    .background(DesignTokens.Color.grouped, in: Circle())
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.xxs) {
@@ -39,12 +39,6 @@ struct NowConcernCard: View {
             .padding(DesignTokens.Spacing.md)
             .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .center)
             .opaqueSurface(cornerRadius: DesignTokens.Radius.lg)
-            .overlay(alignment: .leading) {
-                Capsule()
-                    .fill(DesignTokens.Color.now)
-                    .frame(width: 5)
-                    .padding(.vertical, DesignTokens.Spacing.md)
-            }
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityID)
@@ -176,9 +170,7 @@ struct CollapsedAnswerRow: View {
 
     var body: some View {
         let row = HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(DesignTokens.Color.success)
-                .accessibilityHidden(true)
+            GuidedAddCheck()
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(DesignTokens.Typography.footnote)

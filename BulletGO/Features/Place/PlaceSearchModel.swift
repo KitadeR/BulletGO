@@ -75,6 +75,22 @@ final class PlaceSearchModel {
         selected = nil
     }
 
+    func restoreSelected(_ place: PlaceReference) {
+        selected = place
+        query = place.name
+        completions = []
+        failure = nil
+        isSearching = false
+        isResolving = false
+    }
+
+    func reopenForReselection() {
+        selected = nil
+        failure = nil
+        isResolving = false
+        scheduleSearch(immediate: true)
+    }
+
     private var trimmedQuery: String {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }

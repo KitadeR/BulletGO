@@ -23,45 +23,65 @@ struct StayDetailView: View {
     }
 
     var body: some View {
-        Form {
-            if let draftBinding = Binding($draft) {
-                PlaceSearchField(
-                    title: "Place",
-                    text: draftBinding.placeText,
-                    onSelect: { reference in
-                        draft?.placeReference = reference
-                        draft?.placeText = reference.name
-                    },
-                    onClear: { draft?.placeReference = nil }
-                )
-                Section {
-                    Toggle("Check-in date known", isOn: draftBinding.hasCheckIn)
-                    if draftBinding.wrappedValue.hasCheckIn {
-                        DatePicker("Check-in", selection: draftBinding.checkIn, displayedComponents: .date)
-                    }
-                    Toggle("Check-out date known", isOn: draftBinding.hasCheckOut)
-                    if draftBinding.wrappedValue.hasCheckOut {
-                        DatePicker("Check-out", selection: draftBinding.checkOut, displayedComponents: .date)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let draftBinding = Binding($draft) {
+                    GuidedAddPlaceEditor(
+                        title: "どこに泊まる？",
+                        fieldTitle: "Place",
+                        text: draftBinding.placeText,
+                        selected: draft?.placeReference,
+                        onSelect: { reference in
+                            draft?.placeReference = reference
+                            draft?.placeText = reference.name
+                        },
+                        onClear: { draft?.placeReference = nil }
+                    )
+                    GuidedAddCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Toggle("Check-in date known", isOn: draftBinding.hasCheckIn)
+                            if draftBinding.wrappedValue.hasCheckIn {
+                                DatePicker("Check-in", selection: draftBinding.checkIn, displayedComponents: .date)
+                                    .datePickerStyle(.compact)
+                            }
+                            Toggle("Check-out date known", isOn: draftBinding.hasCheckOut)
+                            if draftBinding.wrappedValue.hasCheckOut {
+                                DatePicker("Check-out", selection: draftBinding.checkOut, displayedComponents: .date)
+                                    .datePickerStyle(.compact)
+                            }
+                        }
+                        .padding(18)
                     }
                 }
-            }
-            ItemRecordsView(tripID: tripID, scope: .stay(stayID))
-            Section {
-                Button("Move to Unscheduled") {
-                    Task { _ = await session.process(.applyMutation(.unscheduleStay(stayID))) }
+                GuidedAddCard {
+                    Form {
+                        ItemRecordsView(tripID: tripID, scope: .stay(stayID))
+                    }
+                    .scrollDisabled(true)
+                    .scrollContentBackground(.hidden)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                .disabled(stay?.checkIn.value?.date == nil)
-                Button("Delete stay", role: .destructive) {
-                    Task {
-                        if await session.process(.applyMutation(.removeStay(stayID))) != nil {
-                            router.pop()
-                        } else {
-                            saveFailed = true
+                VStack(alignment: .leading, spacing: 8) {
+                    Button("Move to Unscheduled") {
+                        Task { _ = await session.process(.applyMutation(.unscheduleStay(stayID))) }
+                    }
+                    .disabled(stay?.checkIn.value?.date == nil)
+                    Button("Delete stay", role: .destructive) {
+                        Task {
+                            if await session.process(.applyMutation(.removeStay(stayID))) != nil {
+                                router.pop()
+                            } else {
+                                saveFailed = true
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 4)
             }
+            .padding(.horizontal, GuidedAddMetrics.horizontal)
+            .padding(.bottom, 24)
         }
+        .background(DesignTokens.Color.canvas)
         .navigationTitle("Stay")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(isDirty)
@@ -72,9 +92,16 @@ struct StayDetailView: View {
                     Button("Cancel") { attemptCancel() }
                 }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save() } }
-                    .disabled(!isDirty || isSaving || !(draft?.canSave ?? false))
+        }
+        .safeAreaInset(edge: .bottom) {
+            if isDirty {
+                PrimaryCTA(
+                    title: LocalizedStringResource("Save", comment: "Save stay edits."),
+                    isEnabled: draft?.canSave ?? false,
+                    isBusy: isSaving,
+                    action: { Task { await save() } }
+                )
+                .padding(DesignTokens.Spacing.md)
             }
         }
         .confirmationDialog("Discard changes?", isPresented: $showDiscard, titleVisibility: .visible) {

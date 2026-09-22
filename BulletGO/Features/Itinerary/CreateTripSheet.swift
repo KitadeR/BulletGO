@@ -19,21 +19,52 @@ struct CreateTripSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    TextField("Trip name", text: $draft.name)
-                        .accessibilityIdentifier(AccessibilityID.createTripName)
-                    DatePicker("Start", selection: $draft.startDate, displayedComponents: .date)
-                    DatePicker("End", selection: $draft.endDate, displayedComponents: .date)
-                }
-                if !pendingImpact.isEmpty {
-                    Section("Plans outside these dates") {
-                        ForEach(pendingImpact.items, id: \.self) { item in
-                            Text(verbatim: displayName(for: item))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    GuidedAddCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("旅の名前")
+                                .font(DesignTokens.Typography.headline)
+                                .foregroundStyle(DesignTokens.Color.primaryText)
+                            TextField("Trip name", text: $draft.name)
+                                .font(DesignTokens.Typography.headline)
+                                .padding(.horizontal, 14)
+                                .frame(height: GuidedAddMetrics.inputHeight)
+                                .background(
+                                    DesignTokens.Color.canvas,
+                                    in: RoundedRectangle(cornerRadius: GuidedAddMetrics.inputRadius, style: .continuous)
+                                )
+                                .accessibilityIdentifier(AccessibilityID.createTripName)
+                        }
+                        .padding(18)
+                    }
+                    GuidedAddCard {
+                        VStack(alignment: .leading, spacing: 16) {
+                            DatePicker("Start", selection: $draft.startDate, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                            DatePicker("End", selection: $draft.endDate, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                        }
+                        .padding(18)
+                    }
+                    if !pendingImpact.isEmpty {
+                        GuidedAddCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Plans outside these dates")
+                                    .font(DesignTokens.Typography.headline)
+                                ForEach(pendingImpact.items, id: \.self) { item in
+                                    Text(verbatim: displayName(for: item))
+                                        .foregroundStyle(DesignTokens.Color.secondaryText)
+                                }
+                            }
+                            .padding(18)
                         }
                     }
                 }
+                .padding(.horizontal, GuidedAddMetrics.horizontal)
+                .padding(.bottom, 24)
             }
+            .background(DesignTokens.Color.canvas)
             .navigationTitle(tripID == nil ? "New trip" : "Edit trip")
             .navigationBarTitleDisplayMode(.inline)
             .accessibilityIdentifier(AccessibilityID.createTripSheet)

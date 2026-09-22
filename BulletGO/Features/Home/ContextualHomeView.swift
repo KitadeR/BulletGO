@@ -54,12 +54,12 @@ struct ContextualHomeView: View {
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
                 .multilineTextAlignment(.center)
-            Button("Create trip") {
+            PrimaryCTA(
+                title: LocalizedStringResource("Create trip", comment: "Empty Home action that opens trip creation."),
+                accessibilityID: AccessibilityID.createTripButton
+            ) {
                 router.present(.createTrip)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier(AccessibilityID.createTripButton)
         }
         .padding(DesignTokens.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -144,12 +144,12 @@ struct ContextualHomeView: View {
             Text("This trip has finished.")
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
-            Button("Open in Trips") {
+            PrimaryCTA(
+                title: LocalizedStringResource("Open in Trips", comment: "Finished Home action that opens the trip timeline."),
+                accessibilityID: AccessibilityID.finishedOpenTrips
+            ) {
                 router.showTrips()
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier(AccessibilityID.finishedOpenTrips)
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
     }
@@ -172,12 +172,12 @@ struct ContextualHomeView: View {
             Text("Open Trips to arrange dates, places, and journeys.")
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
-            Button("Open Trips") {
+            PrimaryCTA(
+                title: LocalizedStringResource("Open Trips", comment: "Home action that opens the trip timeline."),
+                accessibilityID: AccessibilityID.homeOpenTrips
+            ) {
                 router.showTrips()
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .accessibilityIdentifier(AccessibilityID.homeOpenTrips)
         }
         .padding(.horizontal, DesignTokens.Spacing.md)
     }

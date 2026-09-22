@@ -197,7 +197,12 @@ struct LegDetailView: View {
             .font(DesignTokens.Typography.body)
             .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.plain)
+        .padding(.horizontal, 18)
+        .background(
+            DesignTokens.Color.grouped,
+            in: RoundedRectangle(cornerRadius: GuidedAddMetrics.howRadius, style: .continuous)
+        )
         .accessibilityIdentifier(AccessibilityID.startGuidance)
     }
 
@@ -218,73 +223,88 @@ struct LegDetailView: View {
     }
 
     private func editSection(leg: Leg) -> some View {
-        DisclosureGroup {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-                if let draftBinding = Binding($draft) {
-                    TextField("From", text: draftBinding.originText)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: draftBinding.wrappedValue.originText) { _, newValue in
-                            if draft?.originPlace?.name != newValue {
-                                draft?.originPlace = nil
-                            }
-                        }
-                    TextField("To", text: draftBinding.destinationText)
-                        .textFieldStyle(.roundedBorder)
-                        .onChange(of: draftBinding.wrappedValue.destinationText) { _, newValue in
-                            if draft?.destinationPlace?.name != newValue {
-                                draft?.destinationPlace = nil
-                            }
-                        }
-                    Toggle("Has a date", isOn: draftBinding.hasDate)
-                    if draftBinding.wrappedValue.hasDate {
-                        DatePicker("Travel date", selection: draftBinding.date, displayedComponents: .date)
-                        Toggle("Departure time", isOn: draftBinding.hasDepartureTime)
-                        if draftBinding.wrappedValue.hasDepartureTime {
-                            DatePicker("Departs", selection: draftBinding.departureTime, displayedComponents: .hourAndMinute)
-                        }
-                        Toggle("Arrival time", isOn: draftBinding.hasArrivalTime)
-                        if draftBinding.wrappedValue.hasArrivalTime {
-                            DatePicker("Arrives", selection: draftBinding.arrivalTime, displayedComponents: .hourAndMinute)
-                        }
-                    }
-                }
-                Button("Move to Unscheduled") {
-                    Task { _ = await session.process(.applyMutation(.unscheduleLeg(legID))) }
-                }
-                .disabled(leg.scheduledAt.value?.date == nil)
-                Button("Delete journey", role: .destructive) {
-                    Task {
-                        if await session.process(.applyMutation(.removeLeg(legID))) != nil {
-                            dismiss()
-                        } else {
-                            saveFailed = true
-                        }
-                    }
-                }
-                if isDirty {
-                    Button("Save journey edits") {
-                        Task { await saveEdits() }
-                    }
-                    .disabled(isSavingEdits)
-                }
-            }
-            .padding(.top, DesignTokens.Spacing.sm)
-        } label: {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Edit this journey")
                 .font(DesignTokens.Typography.headline)
+            if let draftBinding = Binding($draft) {
+                GuidedAddPlaceEditor(
+                    title: "出発地",
+                    fieldTitle: "From",
+                    text: draftBinding.originText,
+                    selected: draft?.originPlace,
+                    onSelect: { reference in
+                        draft?.originPlace = reference
+                        draft?.originText = reference.name
+                    },
+                    onClear: { draft?.originPlace = nil }
+                )
+                GuidedAddPlaceEditor(
+                    title: "到着地",
+                    fieldTitle: "To",
+                    text: draftBinding.destinationText,
+                    selected: draft?.destinationPlace,
+                    onSelect: { reference in
+                        draft?.destinationPlace = reference
+                        draft?.destinationText = reference.name
+                    },
+                    onClear: { draft?.destinationPlace = nil }
+                )
+                GuidedAddCard {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Toggle("Has a date", isOn: draftBinding.hasDate)
+                        if draftBinding.wrappedValue.hasDate {
+                            DatePicker("Travel date", selection: draftBinding.date, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                            Toggle("Departure time", isOn: draftBinding.hasDepartureTime)
+                            if draftBinding.wrappedValue.hasDepartureTime {
+                                DatePicker("Departs", selection: draftBinding.departureTime, displayedComponents: .hourAndMinute)
+                            }
+                            Toggle("Arrival time", isOn: draftBinding.hasArrivalTime)
+                            if draftBinding.wrappedValue.hasArrivalTime {
+                                DatePicker("Arrives", selection: draftBinding.arrivalTime, displayedComponents: .hourAndMinute)
+                            }
+                        }
+                    }
+                    .padding(18)
+                }
+            }
+            Button("Move to Unscheduled") {
+                Task { _ = await session.process(.applyMutation(.unscheduleLeg(legID))) }
+            }
+            .disabled(leg.scheduledAt.value?.date == nil)
+            Button("Delete journey", role: .destructive) {
+                Task {
+                    if await session.process(.applyMutation(.removeLeg(legID))) != nil {
+                        dismiss()
+                    } else {
+                        saveFailed = true
+                    }
+                }
+            }
+            if isDirty {
+                PrimaryCTA(
+                    title: LocalizedStringResource("Save journey edits", comment: "Save journey field edits."),
+                    isBusy: isSavingEdits,
+                    action: { Task { await saveEdits() } }
+                )
+            }
         }
     }
 
     private func recordsSection(tripID: TripID, legID: LegID) -> some View {
-        DisclosureGroup {
-            Form {
-                ItemRecordsView(tripID: tripID, scope: .leg(legID))
+        GuidedAddCard {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Notes and files")
+                    .font(DesignTokens.Typography.headline)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 18)
+                Form {
+                    ItemRecordsView(tripID: tripID, scope: .leg(legID))
+                }
+                .scrollDisabled(true)
+                .scrollContentBackground(.hidden)
+                .fixedSize(horizontal: false, vertical: true)
             }
-            .scrollDisabled(true)
-            .fixedSize(horizontal: false, vertical: true)
-        } label: {
-            Text("Notes and files")
-                .font(DesignTokens.Typography.headline)
         }
     }
 

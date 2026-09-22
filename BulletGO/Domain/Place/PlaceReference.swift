@@ -55,6 +55,15 @@ nonisolated struct PlaceReference: Hashable, Codable, Sendable {
         let trimmed = address?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? nil : trimmed
     }
+
+    var isSearchResolved: Bool {
+        provider == .appleMaps
+    }
+
+    var japaneseCategorySubtitle: String? {
+        let formatted = PlaceDisplayFormatting.guidedAddSubtitle(address: displayAddress, category: category)
+        return formatted.isEmpty ? nil : formatted
+    }
 }
 
 nonisolated enum PlaceSearchFailure: Error, Equatable, Sendable {
@@ -72,6 +81,53 @@ nonisolated struct PlaceSearchCompletion: Hashable, Sendable, Identifiable {
     var id: String
     var title: String
     var subtitle: String
+}
+
+nonisolated enum PlaceDisplayFormatting {
+    static func guidedAddSubtitle(address: String?, category: String?) -> String {
+        let region = regionLabel(in: address)
+        let kind = categoryLabel(category) ?? categoryLabel(in: address)
+        switch (region, kind) {
+        case (let region?, let kind?):
+            return "日本・\(region)・\(kind)"
+        case (let region?, nil):
+            return "日本・\(region)"
+        case (nil, let kind?):
+            return "日本・\(kind)"
+        default:
+            return address?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }
+    }
+
+    private static func regionLabel(in address: String?) -> String? {
+        guard let address, !address.isEmpty else { return nil }
+        if address.contains("東京") || address.localizedCaseInsensitiveContains("Tokyo") { return "東京都" }
+        if address.contains("大阪") || address.localizedCaseInsensitiveContains("Osaka") { return "大阪府" }
+        if address.contains("京都") || address.localizedCaseInsensitiveContains("Kyoto") { return "京都府" }
+        if address.contains("兵庫") || address.contains("神戸") || address.localizedCaseInsensitiveContains("Hyogo") || address.localizedCaseInsensitiveContains("Kobe") {
+            return "兵庫県"
+        }
+        if address.contains("奈良") || address.localizedCaseInsensitiveContains("Nara") { return "奈良県" }
+        return nil
+    }
+
+    private static func categoryLabel(_ category: String?) -> String? {
+        guard let category else { return nil }
+        let lowered = category.lowercased()
+        if lowered.contains("publictransport") || lowered.contains("station") { return "駅" }
+        if lowered.contains("airport") { return "空港" }
+        if lowered.contains("landmark") { return "観光名所" }
+        if lowered.contains("park") { return "公園" }
+        if lowered.contains("hotel") || lowered.contains("lodging") { return "宿泊" }
+        return nil
+    }
+
+    private static func categoryLabel(in address: String?) -> String? {
+        guard let address else { return nil }
+        if address.contains("駅") || address.localizedCaseInsensitiveContains("Station") { return "駅" }
+        if address.contains("空港") || address.localizedCaseInsensitiveContains("Airport") { return "空港" }
+        return nil
+    }
 }
 
 nonisolated enum ConnectorTransportMode: String, Hashable, Codable, Sendable {

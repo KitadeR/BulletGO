@@ -85,6 +85,30 @@ struct PlaceSearchModelTests {
         #expect(model.completions.isEmpty)
     }
 
+    @Test func restoreSelectedKeepsResolvedPlaceWithoutSearching() {
+        let model = PlaceSearchModel(search: FakePlaceSearch(), debounce: .zero)
+        model.restoreSelected(Self.kinkaku)
+        #expect(model.selected?.providerID == "poi-kinkaku")
+        #expect(model.query == "Kinkaku-ji")
+        #expect(model.completions.isEmpty)
+        #expect(model.isSearching == false)
+    }
+
+    @Test func reopenForReselectionClearsSelectionAndSearches() async throws {
+        let search = FakePlaceSearch(
+            completions: [
+                PlaceSearchCompletion(id: "kinkaku", title: "Kinkaku-ji", subtitle: "Kyoto")
+            ],
+            places: ["kinkaku": Self.kinkaku]
+        )
+        let model = PlaceSearchModel(search: search, debounce: .zero)
+        model.restoreSelected(Self.kinkaku)
+        model.reopenForReselection()
+        #expect(model.selected == nil)
+        try await waitUntil { !model.isSearching && !model.completions.isEmpty }
+        #expect(model.completions.map(\.id) == ["kinkaku"])
+    }
+
     @Test func lookupFailureLeavesManualTypingPath() async throws {
         let search = FakePlaceSearch(
             completions: [

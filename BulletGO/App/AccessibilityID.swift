@@ -71,6 +71,22 @@ enum AccessibilityID {
     static let guidedAddStayPlace = "guided-add-stay-place"
     static let guidedAddOrigin = "guided-add-origin"
     static let guidedAddDestination = "guided-add-destination"
+    static let guidedAddOriginSelected = "guided-add-origin-selected"
+    static let guidedAddDestinationSelected = "guided-add-destination-selected"
+    static let guidedAddHowSelected = "guided-add-how-selected"
+    static let guidedAddOpenMaps = "guided-add-open-maps"
+    static let guidedAddSkipTime = "guided-add-skip-time"
+    static let guidedAddDate = "guided-add-date"
+    static let guidedAddDateSelected = "guided-add-date-selected"
+    static let guidedAddClock = "guided-add-clock"
+    static let guidedAddClockHour = "guided-add-clock-hour"
+    static let guidedAddClockHourNext = "guided-add-clock-hour-next"
+    static let guidedAddClockMinute = "guided-add-clock-minute"
+    static let guidedAddReviewFrom = "guided-add-review-from"
+    static let guidedAddReviewTo = "guided-add-review-to"
+    static let guidedAddReviewHow = "guided-add-review-how"
+    static let guidedAddReviewDate = "guided-add-review-date"
+    static let guidedAddReviewTime = "guided-add-review-time"
     static let placeSearchRetry = "place-search-retry"
     static let placeSearchEmpty = "place-search-empty"
     static let placeSearchFailed = "place-search-failed"
@@ -156,6 +172,18 @@ enum AccessibilityID {
 
     static func placeSearchResult(_ id: String) -> String {
         "place-search-result-\(id)"
+    }
+
+    static func guidedAddMode(_ mode: TransportMode) -> String {
+        "guided-add-mode-\(mode.rawValue)"
+    }
+
+    static func guidedAddTimeKind(_ kind: TravelTimeKind) -> String {
+        "guided-add-time-\(kind.rawValue)"
+    }
+
+    static func guidedAddDateCell(_ date: LocalDate) -> String {
+        "guided-add-date-\(date.year)-\(date.month)-\(date.day)"
     }
 
     static func tripsDateOption(_ date: LocalDate) -> String {

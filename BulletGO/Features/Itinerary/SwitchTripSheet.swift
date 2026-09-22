@@ -30,8 +30,7 @@ struct SwitchTripSheet: View {
                             }
                             Spacer()
                             if trip.id == session.trip?.id {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(DesignTokens.Color.tint)
+                                GuidedAddCheck()
                             }
                         }
                         .frame(minHeight: DesignTokens.TapTarget.minimum)

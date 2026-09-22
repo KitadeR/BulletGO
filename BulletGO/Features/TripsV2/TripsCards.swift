@@ -86,17 +86,15 @@ struct TripsLegCard: View {
                     .padding(.horizontal, 14)
                 Button(action: onOpen) {
                     HStack(spacing: 8) {
-                        Circle()
-                            .fill(TripsV2Style.accent)
-                            .frame(width: 8, height: 8)
+                        GuidedAddCheck()
                         Text(action.title)
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(TripsV2Style.accent)
+                            .foregroundStyle(DesignTokens.Color.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
                         Text(verbatim: "›")
                             .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(TripsV2Style.accent)
+                            .foregroundStyle(DesignTokens.Color.secondaryText)
                             .accessibilityHidden(true)
                     }
                     .padding(.horizontal, 14)
@@ -150,7 +148,7 @@ struct TripsActivityCard: View {
                     if presentation.isBooked {
                         Text("Already booked")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(TripsV2Style.accent)
+                            .foregroundStyle(DesignTokens.Color.secondaryText)
                     } else if let place = presentation.place {
                         Text(verbatim: place)
                             .font(.system(size: 12))

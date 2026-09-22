@@ -12,34 +12,54 @@ struct QuestionAnswerView: View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.md) {
             switch question.uiKind {
             case .dateTime:
-                DatePicker(
-                    selection: $selectedDate,
-                    displayedComponents: .date
-                ) {
-                    Text("Suggested date")
+                GuidedAddCard {
+                    VStack(alignment: .leading, spacing: 16) {
+                        DatePicker(
+                            selection: $selectedDate,
+                            displayedComponents: .date
+                        ) {
+                            Text("Suggested date")
+                        }
+                        .datePickerStyle(.compact)
+                        .disabled(isBusy)
+                        .padding(.horizontal, 18)
+                        .padding(.top, 18)
+                        PrimaryCTA(
+                            title: LocalizedStringResource(
+                                "Use this date",
+                                comment: "Primary action confirming the suggested travel date."
+                            ),
+                            isBusy: isBusy,
+                            accessibilityID: AccessibilityID.dateConfirm,
+                            action: onConfirmDate
+                        )
+                        .padding(.horizontal, 18)
+                        .padding(.bottom, 18)
+                    }
                 }
-                .datePickerStyle(.compact)
-                .disabled(isBusy)
-                PrimaryCTA(
-                    title: LocalizedStringResource(
-                        "Use this date",
-                        comment: "Primary action confirming the suggested travel date."
-                    ),
-                    isBusy: isBusy,
-                    accessibilityID: AccessibilityID.dateConfirm,
-                    action: onConfirmDate
-                )
             case .singleChoice:
-                VStack(spacing: DesignTokens.Spacing.sm) {
+                VStack(spacing: 8) {
                     ForEach(question.choices, id: \.value) { choice in
                         Button {
                             onChoice(choice.value)
                         } label: {
-                            Text(TripContentResolver.questionChoiceTitle(choice))
-                                .font(DesignTokens.Typography.headline)
-                                .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum)
+                            HStack {
+                                Text(TripContentResolver.questionChoiceTitle(choice))
+                                    .font(DesignTokens.Typography.headline)
+                                    .foregroundStyle(DesignTokens.Color.primaryText)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text("›")
+                                    .foregroundStyle(DesignTokens.Color.secondaryText)
+                                    .accessibilityHidden(true)
+                            }
+                            .padding(.horizontal, 18)
+                            .frame(maxWidth: .infinity, minHeight: GuidedAddMetrics.howHeight, alignment: .leading)
+                            .background(
+                                DesignTokens.Color.grouped,
+                                in: RoundedRectangle(cornerRadius: GuidedAddMetrics.howRadius, style: .continuous)
+                            )
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.plain)
                         .disabled(isBusy)
                         .accessibilityIdentifier(AccessibilityID.questionChoice(choice.value))
                     }
@@ -50,8 +70,14 @@ struct QuestionAnswerView: View {
 
             if let onSkip {
                 Button(action: onSkip) {
-                    Text("I’ll answer later")
-                        .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum)
+                    HStack {
+                        Text("I’ll answer later")
+                            .font(DesignTokens.Typography.headline)
+                            .foregroundStyle(DesignTokens.Color.primaryText)
+                        Spacer()
+                        Text("→")
+                    }
+                    .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum)
                 }
                 .disabled(isBusy)
                 .accessibilityIdentifier(AccessibilityID.questionSkip(question.id))

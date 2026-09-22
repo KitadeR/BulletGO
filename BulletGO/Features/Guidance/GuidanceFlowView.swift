@@ -113,7 +113,7 @@ struct GuidanceFlowView: View {
                         .font(DesignTokens.Typography.caption)
                         .padding(.horizontal, DesignTokens.Spacing.sm)
                         .padding(.vertical, DesignTokens.Spacing.xxs)
-                        .background(DesignTokens.Color.tintSoft, in: Capsule())
+                        .background(DesignTokens.Color.grouped, in: Capsule())
                 }
                 Text("Tell us about this journey")
                     .font(DesignTokens.Typography.title)
@@ -232,7 +232,7 @@ struct GuidanceFlowView: View {
         VStack(spacing: DesignTokens.Spacing.lg) {
             Image(systemName: "sparkle")
                 .font(.system(size: 48, weight: .semibold))
-                .foregroundStyle(DesignTokens.Color.tint)
+                .foregroundStyle(DesignTokens.Color.primaryText)
                 .symbolEffect(.bounce, value: reduceMotion ? false : true)
             Text("We know what matters now")
                 .font(DesignTokens.Typography.title)

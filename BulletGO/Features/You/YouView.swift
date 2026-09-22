@@ -50,30 +50,43 @@ struct YouView: View {
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Color.secondaryText)
                 .multilineTextAlignment(.center)
-            Button("Create trip") {
+            PrimaryCTA(
+                title: LocalizedStringResource("Create trip", comment: "Empty You action that opens trip creation."),
+                accessibilityID: AccessibilityID.createTripButton
+            ) {
                 router.present(.createTrip)
             }
-            .buttonStyle(.borderedProminent)
-            .accessibilityIdentifier(AccessibilityID.createTripButton)
         }
         .padding(DesignTokens.Spacing.lg)
     }
 
     private func loadedYou(_ trip: Trip) -> some View {
-        List {
-            Section {
-                languageRow(trip)
-                luggageRow(trip)
-            } footer: {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                GuidedAddCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        languageRow(trip)
+                        luggageRow(trip)
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 8)
+                }
                 Text("These details belong to the current trip, not a global traveler profile.")
+                    .font(DesignTokens.Typography.footnote)
+                    .foregroundStyle(DesignTokens.Color.secondaryText)
+                    .padding(.horizontal, 4)
+                GuidedAddCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        comingSoonRow(.savedDocuments)
+                        comingSoonRow(.appSettings)
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 8)
+                }
             }
-
-            Section {
-                comingSoonRow(.savedDocuments)
-                comingSoonRow(.appSettings)
-            }
+            .padding(.horizontal, GuidedAddMetrics.horizontal)
+            .padding(.vertical, 16)
         }
-        .scrollContentBackground(.hidden)
         .background(DesignTokens.Color.canvas)
     }
 
@@ -81,21 +94,28 @@ struct YouView: View {
         Button {
             router.push(.comingSoon(.travelerLanguage))
         } label: {
-            LabeledContent {
-                DisplayTextLabel(text: languageLabel(trip.traveler.preferredLanguage.value))
-            } label: {
+            HStack {
                 Label("Language", systemImage: "globe")
+                    .foregroundStyle(DesignTokens.Color.primaryText)
+                Spacer()
+                DisplayTextLabel(text: languageLabel(trip.traveler.preferredLanguage.value))
+                    .foregroundStyle(DesignTokens.Color.secondaryText)
             }
+            .frame(minHeight: DesignTokens.TapTarget.minimum)
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier(AccessibilityID.youLanguage)
     }
 
     private func luggageRow(_ trip: Trip) -> some View {
-        LabeledContent {
-            Text(verbatim: "\(trip.baggageInventory.count)")
-        } label: {
+        HStack {
             Label("Luggage", systemImage: "suitcase")
+                .foregroundStyle(DesignTokens.Color.primaryText)
+            Spacer()
+            Text(verbatim: "\(trip.baggageInventory.count)")
+                .foregroundStyle(DesignTokens.Color.secondaryText)
         }
+        .frame(minHeight: DesignTokens.TapTarget.minimum)
         .accessibilityIdentifier(AccessibilityID.youLuggage)
     }
 
@@ -104,8 +124,18 @@ struct YouView: View {
         return Button {
             router.push(.comingSoon(feature))
         } label: {
-            Label(registration.title, systemImage: registration.systemImage)
+            HStack {
+                Label(registration.title, systemImage: registration.systemImage)
+                    .foregroundStyle(DesignTokens.Color.primaryText)
+                Spacer()
+                Text("›")
+                    .font(.system(size: 22))
+                    .foregroundStyle(DesignTokens.Color.secondaryText)
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: DesignTokens.TapTarget.minimum)
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier(feature == .savedDocuments ? AccessibilityID.youDocuments : AccessibilityID.youSettings)
     }
 

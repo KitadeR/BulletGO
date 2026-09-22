@@ -67,10 +67,10 @@ struct TripsQuickContextSheet: View {
             }
             onOpen(destination)
         } label: {
-            HStack(alignment: .center, spacing: DesignTokens.Spacing.sm) {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(item.title)
-                        .font(DesignTokens.Typography.body.weight(.semibold))
+                        .font(DesignTokens.Typography.headline)
                         .foregroundStyle(DesignTokens.Color.primaryText)
                         .fixedSize(horizontal: false, vertical: true)
                     if let why = item.why {
@@ -82,14 +82,17 @@ struct TripsQuickContextSheet: View {
                     }
                 }
                 Spacer(minLength: DesignTokens.Spacing.xs)
-                Image(systemName: "chevron.right")
-                    .font(DesignTokens.Typography.footnote.weight(.semibold))
+                Text("›")
+                    .font(.system(size: 22))
                     .foregroundStyle(DesignTokens.Color.secondaryText)
                     .accessibilityHidden(true)
             }
-            .padding(DesignTokens.Spacing.md)
-            .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .center)
-            .opaqueSurface(cornerRadius: DesignTokens.Radius.md)
+            .padding(.horizontal, 18)
+            .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+            .background(
+                GuidedAddPalette.card,
+                in: RoundedRectangle(cornerRadius: GuidedAddMetrics.cardRadius, style: .continuous)
+            )
         }
         .buttonStyle(.plain)
         .disabled(item.destination == nil)

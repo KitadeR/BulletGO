@@ -11,11 +11,11 @@ struct BaggageMeasurementDiagram: View {
             )
             context.fill(
                 Path(roundedRect: bodyRect, cornerRadius: 10),
-                with: .color(DesignTokens.Color.tint.opacity(0.18))
+                with: .color(DesignTokens.Color.grouped)
             )
             context.stroke(
                 Path(roundedRect: bodyRect, cornerRadius: 10),
-                with: .color(DesignTokens.Color.tint),
+                with: .color(DesignTokens.Color.primaryText),
                 lineWidth: 3
             )
 
@@ -25,7 +25,7 @@ struct BaggageMeasurementDiagram: View {
                 width: size.width * 0.20,
                 height: size.height * 0.12
             ), cornerRadius: 8)
-            context.stroke(handle, with: .color(DesignTokens.Color.tint), lineWidth: 3)
+            context.stroke(handle, with: .color(DesignTokens.Color.primaryText), lineWidth: 3)
 
             for offset in [0.28, 0.62] as [CGFloat] {
                 context.fill(
@@ -35,7 +35,7 @@ struct BaggageMeasurementDiagram: View {
                         width: size.width * 0.10,
                         height: size.height * 0.12
                     )),
-                    with: .color(DesignTokens.Color.tint.opacity(0.7))
+                    with: .color(DesignTokens.Color.primaryText.opacity(0.35))
                 )
             }
 
