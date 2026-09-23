@@ -56,22 +56,24 @@ final class BulletGOUITests: XCTestCase {
         XCTAssertTrue(element(app, "leg-setup").waitForExistence(timeout: 8))
         XCTAssertTrue(element(app, "leg-setup-current").waitForExistence(timeout: 5))
         XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "journey-condition-route").waitForExistence(timeout: 3))
         XCTAssertFalse(element(app, "known-section").exists)
         XCTAssertFalse(element(app, "still-needed-section").exists)
         XCTAssertFalse(element(app, "leg-cockpit-readiness").exists)
-        XCTAssertTrue(element(app, "start-guidance").exists)
+        XCTAssertFalse(element(app, "start-guidance").exists)
     }
 
     @MainActor
-    func testGuidanceCloseReturnsToJourney() throws {
+    func testConfirmingDateStaysOnJourney() throws {
         let app = launchApp()
 
         openTokyoKyoto(in: app)
-        tapID(app, "start-guidance")
-        XCTAssertTrue(element(app, "guidance-sheet").waitForExistence(timeout: 5))
-        tapID(app, "guidance-close")
+        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 8))
+        tapID(app, "date-confirm")
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 5))
-        XCTAssertTrue(element(app, "leg-setup").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "question-choice-shinkansen").waitForExistence(timeout: 8))
+        XCTAssertFalse(element(app, "guidance-sheet").waitForExistence(timeout: 2))
+        XCTAssertFalse(element(app, "contextual-home").exists)
     }
 
     @MainActor
@@ -87,45 +89,25 @@ final class BulletGOUITests: XCTestCase {
     }
 
     @MainActor
-    func testTalkReturnsToJourneyInsteadOfHome() throws {
+    func testConditionsStayOnJourneyAfterTransport() throws {
         let app = launchApp()
 
         openTokyoKyoto(in: app)
-        tapID(app, "start-guidance")
-        enterReferenceTalk(in: app)
-        tapID(app, "guidance-continue")
+        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 8))
+        tapID(app, "date-confirm")
+        tapID(app, "question-choice-shinkansen")
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 8))
-        XCTAssertFalse(element(app, "guidance-sheet").waitForExistence(timeout: 2))
+        XCTAssertTrue(element(app, "question-choice-notBooked").waitForExistence(timeout: 8))
         XCTAssertFalse(element(app, "contextual-home").exists)
         XCTAssertTrue(element(app, "leg-setup").waitForExistence(timeout: 5))
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 8))
     }
 
     @MainActor
     func testVerticalSliceFromTalkToBaggageResult() throws {
         let app = launchApp()
 
-        openTokyoKyoto(in: app)
-        tapID(app, "start-guidance")
-        enterReferenceTalk(in: app)
-        tapID(app, "guidance-continue")
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 10))
-        tapID(app, "date-confirm")
-        tapID(app, "question-choice-notBooked")
-        tapID(app, "question-choice-yes")
-
-        XCTAssertTrue(element(app, "leg-cockpit-summary").waitForExistence(timeout: 12))
-        if element(app, "leg-cockpit-luggage").waitForExistence(timeout: 4) {
-            tapID(app, "leg-cockpit-luggage")
-        } else {
-            tapID(app, "leg-cockpit-whats-next")
-            let capture = element(app, "now-task-capture_dimensions")
-            XCTAssertTrue(capture.waitForExistence(timeout: 8), "Missing capture dimensions")
-            if !capture.isHittable {
-                app.swipeUp()
-            }
-            capture.tap()
-        }
+        completeTokyoKyotoSetup(in: app)
+        tapID(app, "journey-condition-luggage")
 
         XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 10))
         advanceBaggageGuideIfNeeded(in: app)
@@ -135,7 +117,7 @@ final class BulletGOUITests: XCTestCase {
         if element(app, "baggage-guide-done").waitForExistence(timeout: 3) {
             tapID(app, "baggage-guide-done")
             XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 10))
-            XCTAssertFalse(element(app, "now-task-capture_dimensions").waitForExistence(timeout: 3))
+            XCTAssertFalse(element(app, "journey-condition-luggage").waitForExistence(timeout: 3))
         }
     }
 
@@ -143,44 +125,52 @@ final class BulletGOUITests: XCTestCase {
     func testBookingMethodComingSoonStaysInContext() throws {
         let app = launchApp()
 
-        openTokyoKyoto(in: app)
-        tapID(app, "start-guidance")
-        enterReferenceTalk(in: app)
-        tapID(app, "guidance-continue")
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 10))
-        tapID(app, "date-confirm")
-        tapID(app, "question-choice-notBooked")
-        tapID(app, "question-choice-yes")
-        XCTAssertTrue(element(app, "leg-cockpit-whats-next").waitForExistence(timeout: 12))
-        let capture = element(app, "now-task-capture_dimensions")
-        if !capture.exists, element(app, "leg-cockpit-luggage").waitForExistence(timeout: 4) {
-            tapID(app, "leg-cockpit-luggage")
-            XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 8))
-            advanceBaggageGuideIfNeeded(in: app)
-            fillBaggage(in: app, length: "80", width: "40", height: "40")
-            tapID(app, "baggage-submit")
-            if element(app, "baggage-guide-done").waitForExistence(timeout: 6) {
-                tapID(app, "baggage-guide-done")
-            }
-        } else if capture.waitForExistence(timeout: 6) {
-            capture.tap()
-            XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 8))
-            advanceBaggageGuideIfNeeded(in: app)
-            fillBaggage(in: app, length: "80", width: "40", height: "40")
-            tapID(app, "baggage-submit")
-            if element(app, "baggage-guide-done").waitForExistence(timeout: 6) {
-                tapID(app, "baggage-guide-done")
-            }
+        completeTokyoKyotoSetup(in: app)
+        tapID(app, "journey-condition-luggage")
+        XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 8))
+        advanceBaggageGuideIfNeeded(in: app)
+        fillBaggage(in: app, length: "80", width: "40", height: "40")
+        tapID(app, "baggage-submit")
+        if element(app, "baggage-guide-done").waitForExistence(timeout: 6) {
+            tapID(app, "baggage-guide-done")
         }
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 8))
-        if !element(app, "now-task-select_booking_method").waitForExistence(timeout: 3) {
-            tapID(app, "leg-cockpit-whats-next")
+        openHomeTab(in: app)
+        XCTAssertTrue(element(app, "contextual-home").waitForExistence(timeout: 8))
+        tapID(app, "primary-now")
+        if element(app, "task-detail").waitForExistence(timeout: 5) {
+            tapID(app, "task-primary-action")
         }
-        tapID(app, "now-task-select_booking_method", timeout: 10)
-        XCTAssertTrue(element(app, "task-detail").waitForExistence(timeout: 5))
-        tapID(app, "task-primary-action")
         XCTAssertTrue(element(app, "coming-soon-view").waitForExistence(timeout: 12))
         XCTAssertFalse(element(app, "feature-hub-list").exists)
+    }
+
+    @MainActor
+    func testBookingMethodListOpensSmartEXAndComingSoon() throws {
+        let app = launchApp()
+
+        openTokyoKyoto(in: app)
+        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 10))
+        tapID(app, "date-confirm")
+        tapID(app, "question-choice-shinkansen")
+        tapID(app, "question-choice-notBooked")
+        tapID(app, "question-choice-no")
+        XCTAssertTrue(element(app, "journey-chapter-focus").waitForExistence(timeout: 12))
+        tapID(app, "journey-chapter-focus")
+        XCTAssertTrue(element(app, "booking-methods").waitForExistence(timeout: 8))
+        tapID(app, "booking-method-smartEX")
+        XCTAssertTrue(element(app, "booking-method-smartex").waitForExistence(timeout: 8))
+        XCTAssertTrue(element(app, "booking-method-smartex-open").waitForExistence(timeout: 4))
+        XCTAssertFalse(element(app, "booking-method-smartex-oversized").exists)
+        XCTAssertFalse(element(app, "booking-method-coming-soon").exists)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(element(app, "booking-methods").waitForExistence(timeout: 8))
+        tapID(app, "booking-method-klook")
+        XCTAssertTrue(element(app, "booking-method-coming-soon").waitForExistence(timeout: 8))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 8))
+        XCTAssertTrue(element(app, "journey-chapter-focus").waitForExistence(timeout: 8))
     }
 
     @MainActor
@@ -188,8 +178,8 @@ final class BulletGOUITests: XCTestCase {
         let app = launchApp()
 
         completeTokyoKyotoSetup(in: app)
-        XCTAssertTrue(element(app, "leg-cockpit-luggage").waitForExistence(timeout: 8))
-        tapID(app, "leg-cockpit-luggage")
+        XCTAssertTrue(element(app, "journey-condition-luggage").waitForExistence(timeout: 8))
+        tapID(app, "journey-condition-luggage")
         XCTAssertTrue(element(app, "baggage-check").waitForExistence(timeout: 10))
         advanceBaggageGuideIfNeeded(in: app)
         fillBaggage(in: app, length: "80", width: "40", height: "41")
@@ -197,7 +187,7 @@ final class BulletGOUITests: XCTestCase {
         XCTAssertTrue(element(app, "baggage-result").waitForExistence(timeout: 8))
         tapID(app, "baggage-guide-done")
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 10))
-        XCTAssertFalse(element(app, "leg-cockpit-luggage").waitForExistence(timeout: 3))
+        XCTAssertFalse(element(app, "journey-condition-luggage").waitForExistence(timeout: 3))
     }
 
     @MainActor
@@ -220,14 +210,12 @@ final class BulletGOUITests: XCTestCase {
     @MainActor
     private func completeTokyoKyotoSetup(in app: XCUIApplication) {
         openTokyoKyoto(in: app)
-        tapID(app, "start-guidance")
-        enterReferenceTalk(in: app)
-        tapID(app, "guidance-continue")
         XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 10))
         tapID(app, "date-confirm")
+        tapID(app, "question-choice-shinkansen")
         tapID(app, "question-choice-notBooked")
         tapID(app, "question-choice-yes")
-        XCTAssertTrue(element(app, "leg-cockpit-summary").waitForExistence(timeout: 12))
+        XCTAssertTrue(element(app, "journey-condition-luggage").waitForExistence(timeout: 12))
     }
 
     @MainActor
@@ -265,8 +253,16 @@ final class BulletGOUITests: XCTestCase {
     private func openTokyoKyoto(in app: XCUIApplication) {
         openTripsTab(in: app)
         XCTAssertTrue(element(app, "trip-timeline").waitForExistence(timeout: 15))
-        let row = element(app, "timeline-leg-A1E0B001-0000-4000-8000-000000000011")
-        XCTAssertTrue(row.waitForExistence(timeout: 8), "Missing Tokyo → Kyoto row")
+        let row = tokyoKyotoRow(in: app)
+        let scroll = app.scrollViews.firstMatch
+        for _ in 0..<6 where !row.exists {
+            if scroll.exists {
+                scroll.swipeUp(velocity: .fast)
+            } else {
+                app.swipeUp(velocity: .fast)
+            }
+        }
+        XCTAssertTrue(row.waitForExistence(timeout: 4), "Missing Tokyo → Kyoto row")
         if !row.isHittable {
             app.swipeUp()
         }
@@ -280,6 +276,17 @@ final class BulletGOUITests: XCTestCase {
         XCTAssertTrue(element(app, "trips-quick-context").waitForExistence(timeout: 8), "Quick Context A did not open")
         tapID(app, "trips-quick-context-details")
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 12))
+    }
+
+    @MainActor
+    private func tokyoKyotoRow(in app: XCUIApplication) -> XCUIElement {
+        let byID = element(app, "timeline-leg-A1E0B001-0000-4000-8000-000000000011")
+        if byID.exists {
+            return byID
+        }
+        return app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS 'Tokyo' AND label CONTAINS 'Kyoto'"))
+            .firstMatch
     }
 
     @MainActor

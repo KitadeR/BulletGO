@@ -8,6 +8,12 @@ struct AppRouteDestination: View {
         switch route {
         case .comingSoon(let feature):
             ComingSoonView(feature: feature, registry: registry)
+        case .bookingMethods(let tripID, let legID):
+            BookingMethodListView(tripID: tripID, legID: legID)
+        case .bookingMethodSmartEX(let tripID, let legID):
+            BookingMethodSmartEXView(tripID: tripID, legID: legID)
+        case .bookingMethodComingSoon(let tripID, let legID, let method):
+            BookingMethodComingSoonView(tripID: tripID, legID: legID, method: method)
         case .legDetail(let tripID, let legID):
             LegDetailView(tripID: tripID, legID: legID)
         case .stayDetail(let tripID, let stayID):

@@ -2,6 +2,9 @@ import Foundation
 
 nonisolated enum AppRoute: Hashable, Sendable {
     case comingSoon(AppFeature)
+    case bookingMethods(TripID, LegID)
+    case bookingMethodSmartEX(TripID, LegID)
+    case bookingMethodComingSoon(TripID, LegID, BookingMethodID)
     case legDetail(TripID, LegID)
     case stayDetail(TripID, StayID)
     case activityDetail(TripID, ActivityID)

@@ -128,6 +128,23 @@ enum AccessibilityID {
     static let legCockpitReadiness = "leg-cockpit-readiness"
     static let legCockpitWhatsNext = "leg-cockpit-whats-next"
     static let legCockpitLuggage = "leg-cockpit-luggage"
+    static let journeyConditions = "journey-conditions"
+    static let journeyConditionRoute = "journey-condition-route"
+    static let journeyConditionLuggage = "journey-condition-luggage"
+    static let journeyChapterFocus = "journey-chapter-focus"
+    static let bookingMethods = "booking-methods"
+    static let bookingMethodSmartEX = "booking-method-smartex"
+    static let bookingMethodSmartEXOpen = "booking-method-smartex-open"
+    static let bookingMethodSmartEXOversized = "booking-method-smartex-oversized"
+    static let bookingMethodComingSoon = "booking-method-coming-soon"
+
+    static func bookingMethod(_ id: String) -> String {
+        "booking-method-\(id)"
+    }
+
+    static func journeyChapter(_ id: String) -> String {
+        "journey-chapter-\(id)"
+    }
 
     static func timelineLeg(_ id: LegID) -> String {
         "timeline-leg-\(id.rawValue.uuidString)"

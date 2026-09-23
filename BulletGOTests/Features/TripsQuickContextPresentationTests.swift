@@ -14,8 +14,10 @@ struct TripsQuickContextPresentationTests {
                 now: DomainTestSupport.timestamp
             )
         )
-        #expect(snapshot.items.isEmpty)
-        #expect(snapshot.heading == nil)
+        #expect(snapshot.items.count == 1)
+        #expect(snapshot.items[0].title.key == "Choose how to book")
+        #expect(snapshot.items[0].destination == .legDetail(trip.id, trip.legs[0].id))
+        #expect(snapshot.heading?.key == "Before departure")
         #expect(snapshot.detail == .legDetail(trip.id, trip.legs[0].id))
         #expect(snapshot.title.contains("Tokyo"))
     }
@@ -32,7 +34,8 @@ struct TripsQuickContextPresentationTests {
             )
         )
         #expect(snapshot.items.count == 1)
-        #expect(snapshot.items[0].title.key == "Continue setting this up")
+        #expect(snapshot.items[0].title.key == "Travel date")
+        #expect(snapshot.items[0].destination == .legDetail(trip.id, trip.legs[0].id))
         #expect(snapshot.heading?.key == "Before departure")
         #expect(snapshot.detail == .legDetail(trip.id, trip.legs[0].id))
         let detail = LegDetailComposer.snapshot(
@@ -62,16 +65,10 @@ struct TripsQuickContextPresentationTests {
                 now: DomainTestSupport.timestamp
             )
         )
-        #expect(snapshot.items.count == TripsQuickContextComposer.itemLimit)
-        #expect(snapshot.items.allSatisfy { $0.id.hasPrefix("task-") })
-        #expect(snapshot.items.contains { $0.id.contains(ActionPurpose.selectBookingMethod) })
-        #expect(snapshot.items.contains { item in
-            if case .taskDetail(_, let taskID) = item.destination {
-                return trip.tasks.first { $0.id == taskID }?.scope == .leg(trip.legs[1].id)
-            }
-            return false
-        } == false)
-        #expect(snapshot.items.first?.why?.key == TripContentResolver.taskWhyNow(ActionPurpose.captureDimensions).key)
+        #expect(snapshot.items.count == 1)
+        #expect(snapshot.items[0].title.key == "Choose how to book")
+        #expect(snapshot.items[0].destination == .legDetail(trip.id, trip.legs[0].id))
+        #expect(snapshot.items[0].id.contains(trip.legs[1].id.rawValue.uuidString) == false)
     }
 
     @Test func activityUsesBeforeYouGoAndIgnoresOtherScopes() throws {

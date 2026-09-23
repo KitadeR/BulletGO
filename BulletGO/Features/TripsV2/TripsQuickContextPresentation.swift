@@ -81,7 +81,7 @@ nonisolated enum TripsQuickContextComposer {
         now: Date,
         detail: AppRoute
     ) -> TripsQuickContextSnapshot {
-        let items = contextItems(row: row, trip: trip, catalog: catalog)
+        let items = legContextItems(trip: trip, leg: leg, catalog: catalog, detail: detail)
         let phase = TripPhaseResolver.resolve(trip: trip, now: now)
         let heading: LocalizedStringResource?
         if items.isEmpty {
@@ -144,6 +144,30 @@ nonisolated enum TripsQuickContextComposer {
             items: items,
             detail: detail
         )
+    }
+
+    private static func legContextItems(
+        trip: Trip,
+        leg: Leg,
+        catalog: QuestionCatalog?,
+        detail: AppRoute
+    ) -> [TripsQuickContextItem] {
+        let snapshot = JourneyConditionComposer.snapshot(
+            trip: trip,
+            leg: leg,
+            catalog: catalog
+        )
+        guard let item = snapshot.sheetItem else {
+            return []
+        }
+        return [
+            TripsQuickContextItem(
+                id: item.id,
+                title: item.title,
+                why: item.why,
+                destination: detail
+            )
+        ]
     }
 
     private static func contextItems(
