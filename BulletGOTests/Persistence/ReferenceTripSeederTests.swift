@@ -30,6 +30,14 @@ struct ReferenceTripSeederTests {
             .activity(ReferenceTripIdentity.hakataSightseeing),
         ])
         #expect(trip.currentContext.focus == .leg(ReferenceTripIdentity.tokyoKyoto))
+        let openingDate = try LocalDate(year: 2026, month: 10, day: 1)
+        let openingTime = try LocalTime(hour: 10, minute: 0)
+        #expect(trip.legs[0].scheduledAt.status == .confirmed)
+        #expect(trip.legs[0].scheduledAt.value?.date == openingDate)
+        #expect(trip.legs[0].scheduledAt.value?.time == openingTime)
+        #expect(trip.legs[1].scheduledAt.status == .unknown)
+        #expect(trip.legs[2].scheduledAt.status == .unknown)
+        #expect(trip.activities.allSatisfy { $0.scheduledAt.status == .unknown })
         #expect(trip.legs[0].transportMode.status == .unknown)
         #expect(trip.legs[0].transportMode.value == nil)
         #expect(trip.traveler.preferredLanguage.value == "en")
@@ -37,6 +45,51 @@ struct ReferenceTripSeederTests {
         #expect(trip.baggageInventory.isEmpty)
         #expect(trip.readinessChecks.isEmpty)
         #expect(trip.changeEvents.isEmpty)
+    }
+
+    @Test func placesAnAlreadyInstalledUnscheduledOpeningLegOnTheFirstMorning() async throws {
+        let stack = try PersistenceStack.inMemory()
+        let seeder = ReferenceTripSeeder(factory: ReferenceTripFactory(now: { timestamp }))
+        try await seeder.seedIfNeeded(using: stack.repository)
+
+        var trip = try #require(try await stack.repository.fetch(id: ReferenceTripIdentity.trip))
+        trip.legs[0].scheduledAt = try Slot.unknown(updatedAt: timestamp)
+        try await stack.repository.save(trip)
+
+        try await seeder.placeOpeningLegIfStillUnscheduled(using: stack.repository)
+
+        let loaded = try #require(try await stack.repository.fetch(id: ReferenceTripIdentity.trip))
+        let openingDate = try LocalDate(year: 2026, month: 10, day: 1)
+        let openingTime = try LocalTime(hour: 10, minute: 0)
+        #expect(loaded.legs[0].scheduledAt.status == .confirmed)
+        #expect(loaded.legs[0].scheduledAt.value?.date == openingDate)
+        #expect(loaded.legs[0].scheduledAt.value?.time == openingTime)
+        #expect(loaded.legs[1].scheduledAt.status == .unknown)
+        #expect(loaded.legs[2].scheduledAt.status == .unknown)
+        #expect(loaded.legs[0].transportMode.status == .unknown)
+    }
+
+    @Test func leavesAChosenOpeningDateAlone() async throws {
+        let stack = try PersistenceStack.inMemory()
+        let seeder = ReferenceTripSeeder(factory: ReferenceTripFactory(now: { timestamp }))
+        try await seeder.seedIfNeeded(using: stack.repository)
+
+        var trip = try #require(try await stack.repository.fetch(id: ReferenceTripIdentity.trip))
+        let chosen = try ScheduledMoment(
+            date: LocalDate(year: 2026, month: 10, day: 3),
+            timeZoneIdentifier: TripCalendar.timeZoneIdentifier
+        )
+        trip.legs[0].scheduledAt = try Slot.confirmed(
+            value: chosen,
+            source: .userStated,
+            updatedAt: timestamp
+        )
+        try await stack.repository.save(trip)
+
+        try await seeder.placeOpeningLegIfStillUnscheduled(using: stack.repository)
+
+        let loaded = try #require(try await stack.repository.fetch(id: ReferenceTripIdentity.trip))
+        #expect(loaded.legs[0].scheduledAt.value == chosen)
     }
 
     @Test func doesNotOverwriteAnExistingUserTrip() async throws {

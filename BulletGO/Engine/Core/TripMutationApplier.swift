@@ -50,18 +50,31 @@ nonisolated enum TripMutationApplier {
             updated.pruneConnectorEstimates()
         case .updateLegOrigin(let legID, let place):
             try updated.updateLeg(id: legID) { leg in
+                if leg.origin.value != place.name {
+                    leg.reservation.status = try leg.reservation.status.updating(value: nil, status: .unknown, source: nil, confidence: nil, at: now)
+                    leg.reservation.statedBoarding = nil
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
                 leg.origin = try confirmedString(leg.origin, place.name, at: now)
                 leg.originPlace = place
             }
             updated.invalidateConnectorEstimates(touching: .leg(legID))
         case .updateLegDestination(let legID, let place):
             try updated.updateLeg(id: legID) { leg in
+                if leg.destination.value != place.name {
+                    leg.reservation.status = try leg.reservation.status.updating(value: nil, status: .unknown, source: nil, confidence: nil, at: now)
+                    leg.reservation.statedBoarding = nil
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
                 leg.destination = try confirmedString(leg.destination, place.name, at: now)
                 leg.destinationPlace = place
             }
             updated.invalidateConnectorEstimates(touching: .leg(legID))
         case .unscheduleLeg(let legID):
             try updated.updateLeg(id: legID) { leg in
+                leg.reservation.status = try leg.reservation.status.updating(value: nil, status: .unknown, source: nil, confidence: nil, at: now)
+                leg.reservation.statedBoarding = nil
+                leg.reservation.details.oversizedSeatReserved = nil
                 leg.scheduledAt = try stripDate(from: leg.scheduledAt, at: now)
                 leg.arrivesAt = try stripDate(from: leg.arrivesAt, at: now)
             }
@@ -158,6 +171,11 @@ nonisolated enum TripMutationApplier {
             updated.pruneConnectorEstimates()
         case .setLegScheduledAt(let legID, let moment):
             try updated.updateLeg(id: legID) { leg in
+                if leg.scheduledAt.value?.date != moment.date {
+                    leg.reservation.status = try leg.reservation.status.updating(value: nil, status: .unknown, source: nil, confidence: nil, at: now)
+                    leg.reservation.statedBoarding = nil
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
                 leg.scheduledAt = try confirmedMoment(leg.scheduledAt, moment, at: now)
             }
         case .setTransportMode(let legID, let mode):
@@ -166,6 +184,10 @@ nonisolated enum TripMutationApplier {
             }
         case .setReservationStatus(let legID, let status, let slotStatus):
             try updated.updateLeg(id: legID) { leg in
+                if leg.reservation.status.value != status {
+                    leg.reservation.statedBoarding = nil
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
                 leg.reservation.status = try updatedSlot(
                     leg.reservation.status,
                     value: status,
@@ -177,8 +199,15 @@ nonisolated enum TripMutationApplier {
             try updated.updateLeg(id: legID) { leg in
                 leg.reservation.service = try confirmedValue(leg.reservation.service, service, at: now)
             }
+        case .setStatedBoarding(let legID, let means):
+            try updated.updateLeg(id: legID) { leg in
+                leg.reservation.statedBoarding = means
+            }
         case .setBaggagePresence(let legID, let presence, let slotStatus):
             try updated.updateLeg(id: legID) { leg in
+                if leg.baggagePresence.value != presence {
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
                 leg.baggagePresence = try updatedSlot(
                     leg.baggagePresence,
                     value: presence,
@@ -212,6 +241,11 @@ nonisolated enum TripMutationApplier {
             try updated.updateBag(id: bagID) { bag in
                 bag.dimensions = try confirmedValue(bag.dimensions, dimensions, at: now)
             }
+            for legID in updated.legs.filter({ $0.bagIDs.contains(bagID) }).map(\.id) {
+                try updated.updateLeg(id: legID) { leg in
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
+            }
         case .setSeatPreference(let legID, let preference):
             try updated.updateLeg(id: legID) { leg in
                 leg.seatPreference = try leg.seatPreference.updating(
@@ -233,6 +267,11 @@ nonisolated enum TripMutationApplier {
             }
         case .replaceLegSchedule(let legID, let departure, let arrival):
             try updated.updateLeg(id: legID) { leg in
+                if leg.scheduledAt.value?.date != departure?.date {
+                    leg.reservation.status = try leg.reservation.status.updating(value: nil, status: .unknown, source: nil, confidence: nil, at: now)
+                    leg.reservation.statedBoarding = nil
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
                 leg.scheduledAt = try optionalMoment(leg.scheduledAt, departure, at: now)
                 leg.arrivesAt = try optionalMoment(leg.arrivesAt, arrival, at: now)
             }
@@ -247,11 +286,34 @@ nonisolated enum TripMutationApplier {
                 activity.endsAt = try optionalMoment(activity.endsAt, end, at: now)
             }
         case .moveItemToDate(let item, let date):
+            let previousLegDate: LocalDate? = {
+                if case .leg(let legID) = item {
+                    return updated.legs.first(where: { $0.id == legID })?.scheduledAt.value?.date
+                }
+                return nil
+            }()
             try updated.moveItem(item, to: date, at: now)
+            if case .leg(let legID) = item, previousLegDate != date {
+                try updated.updateLeg(id: legID) { leg in
+                    leg.reservation.status = try leg.reservation.status.updating(value: nil, status: .unknown, source: nil, confidence: nil, at: now)
+                    leg.reservation.statedBoarding = nil
+                    leg.reservation.details.oversizedSeatReserved = nil
+                }
+            }
             updated.invalidateConnectorEstimates(touching: item)
             updated.pruneConnectorEstimates()
         case .updateReservationDetails(let scope, let details):
-            try updated.replaceReservation(in: scope, details: details, at: now)
+            var revisedDetails = details
+            if case .leg(let legID) = scope,
+               let previous = updated.legs.first(where: { $0.id == legID })?.reservation.details,
+               (previous.origin != details.origin || previous.destination != details.destination || previous.departureDate != details.departureDate) {
+                try updated.updateLeg(id: legID) { leg in
+                    leg.reservation.status = try leg.reservation.status.updating(value: nil, status: .unknown, source: nil, confidence: nil, at: now)
+                    leg.reservation.statedBoarding = nil
+                }
+                revisedDetails.oversizedSeatReserved = nil
+            }
+            try updated.replaceReservation(in: scope, details: revisedDetails, at: now)
         case .updateScopedReservationStatus(let scope, let status, let slotStatus):
             try updated.replaceReservation(in: scope, status: (status, slotStatus), at: now)
         case .upsertNote(let note):
@@ -431,6 +493,7 @@ nonisolated enum TripMutationApplier {
              .setTransportMode(let legID, _),
              .setReservationStatus(let legID, _, _),
              .setBookingService(let legID, _),
+             .setStatedBoarding(let legID, _),
              .setBaggagePresence(let legID, _, _),
              .addBag(let legID, _),
              .setSeatPreference(let legID, _),

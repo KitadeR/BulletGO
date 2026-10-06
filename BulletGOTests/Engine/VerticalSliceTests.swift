@@ -23,16 +23,8 @@ struct VerticalSliceTests {
         #expect(result.understandingSummary?.deferred.map(\.contentKey) == ["leg.seatPreference"])
         #expect(result.displaySnapshot.now.isEmpty)
         #expect(result.updatedTrip.tasks.isEmpty)
-        #expect(QuestionEngine.nextSetupQuestion(in: result.updatedTrip, catalog: try EngineTestSupport.catalog())?.id == .legDate)
+        #expect(QuestionEngine.nextSetupQuestion(in: result.updatedTrip, catalog: try EngineTestSupport.catalog())?.id == .ticketStatus)
 
-        let moment = try ScheduledMoment(
-            date: try #require(result.updatedTrip.startDate.value),
-            timeZoneIdentifier: "Asia/Tokyo"
-        )
-        result = try await store.process(
-            tripID: trip.id,
-            command: .answerQuestion(.legDate, .scheduledMoment(moment))
-        )
         result = try await store.process(
             tripID: trip.id,
             command: .answerQuestion(.ticketStatus, .choice("notBooked"))
@@ -47,12 +39,10 @@ struct VerticalSliceTests {
         let nowKeys = result.displaySnapshot.now.compactMap { id in
             result.updatedTrip.tasks.first { $0.id == id }?.contentKey
         }
-        #expect(Set(nowKeys).isSuperset(of: [
-            ActionPurpose.captureDimensions,
-            ActionPurpose.selectBookingMethod,
-        ]))
+        #expect(nowKeys.contains(ActionPurpose.captureDimensions))
+        #expect(!nowKeys.contains(ActionPurpose.selectBookingMethod))
         #expect(nowKeys.contains(where: { $0.contains("fuji") }) == false)
-        #expect(result.nextQuestion?.id == .selectService)
+        #expect(result.nextQuestion?.id == .baggageDimensions)
         #expect(QuestionEngine.nextSetupQuestion(in: result.updatedTrip, catalog: catalog) == nil)
 
         let bagID = try #require(result.updatedTrip.legs[0].bagIDs.first)
@@ -76,6 +66,7 @@ struct VerticalSliceTests {
         )
         #expect(!afterKeys.contains(ActionPurpose.captureDimensions))
         #expect(afterKeys.contains(ActionPurpose.reserveOversizedSeat))
+        #expect(afterKeys.contains(ActionPurpose.selectBookingMethod))
         #expect(result.updatedTrip.legs[0].seatPreference.value == .mountFujiView)
     }
 }

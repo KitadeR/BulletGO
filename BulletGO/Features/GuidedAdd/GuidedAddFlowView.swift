@@ -171,6 +171,12 @@ struct GuidedAddFlowView: View {
     private func save() async {
         if await model.commit(session: session) {
             router.dismissPresentation()
+            if case .travel(let draft) = model.draft,
+               draft.mode == .shinkansen,
+               let legID = model.createdLegID {
+                router.showTrips()
+                router.push(.legDetail(model.tripID, legID))
+            }
         }
     }
 }

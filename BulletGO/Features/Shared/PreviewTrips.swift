@@ -47,17 +47,6 @@ enum PreviewTrips {
                     .setSeatPreference(focus, .mountFujiView),
                 ])
             ).updatedTrip
-            guard let start = trip.startDate.value else {
-                preconditionFailure("Reference trip is missing a start date.")
-            }
-            let moment = try ScheduledMoment(
-                date: start,
-                timeZoneIdentifier: "Asia/Tokyo"
-            )
-            trip = try brain.process(
-                trip: trip,
-                command: .answerQuestion(.legDate, .scheduledMoment(moment))
-            ).updatedTrip
             trip = try brain.process(
                 trip: trip,
                 command: .answerQuestion(.ticketStatus, .choice("notBooked"))

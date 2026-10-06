@@ -168,6 +168,7 @@ struct StayPlaceStepView: View {
         Binding(
             get: { draft.place },
             set: { newValue in
+                placeSearch.search = search
                 placeSearch.updateQuery(newValue)
                 update {
                     $0.place = newValue

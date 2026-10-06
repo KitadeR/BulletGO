@@ -1,7 +1,7 @@
 import Foundation
 
 nonisolated struct Trip: Hashable, Codable, Sendable {
-    static let currentSchemaVersion = 7
+    static let currentSchemaVersion = 8
 
     let id: TripID
     var schemaVersion: Int

@@ -3,6 +3,10 @@ import Foundation
 nonisolated enum TripPayloadMigrator {
     static let currentDomainSchemaVersion = Trip.currentSchemaVersion
 
+    static func migrateV7Payload(_ data: Data) throws -> Data {
+        try migrate(data) { _, _ in }
+    }
+
     static func migrateV1Payload(_ data: Data) throws -> Data {
         try migrate(data) { json, timestamp in
             migrateReservations(in: &json, timestamp: timestamp)

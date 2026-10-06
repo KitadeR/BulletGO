@@ -150,6 +150,17 @@ struct ActivityWhatStepView: View {
                     ProgressView()
                         .frame(minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
                 }
+                if placeSearch.failure != nil {
+                    Text("場所を検索できませんでした")
+                        .font(DesignTokens.Typography.footnote)
+                        .foregroundStyle(GuidedAddPalette.secondaryText)
+                        .accessibilityIdentifier(AccessibilityID.placeSearchFailed)
+                } else if placeSearch.showsEmptyResults {
+                    Text("場所が見つかりません")
+                        .font(DesignTokens.Typography.footnote)
+                        .foregroundStyle(GuidedAddPalette.secondaryText)
+                        .accessibilityIdentifier(AccessibilityID.placeSearchEmpty)
+                }
                 ForEach(placeSearch.completions) { completion in
                     Button {
                         Task { await choose(completion) }
@@ -202,7 +213,14 @@ struct ActivityWhatStepView: View {
     private var titleBinding: Binding<String> {
         Binding(
             get: { draft.title },
-            set: { newValue in update { $0.title = newValue } }
+            set: { newValue in
+                placeSearch.search = search
+                update { $0.title = newValue }
+                let placeIsEmpty = draft.place.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                if placeIsEmpty, placeSearch.selected == nil {
+                    placeSearch.updateQuery(newValue)
+                }
+            }
         )
     }
 
@@ -210,6 +228,7 @@ struct ActivityWhatStepView: View {
         Binding(
             get: { draft.place },
             set: { newValue in
+                placeSearch.search = search
                 placeSearch.updateQuery(newValue)
                 update {
                     $0.place = newValue

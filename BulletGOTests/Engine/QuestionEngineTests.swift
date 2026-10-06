@@ -37,10 +37,10 @@ struct QuestionEngineTests {
         #expect(question?.id != .baggageDimensions)
     }
 
-    @Test func serviceQuestionRequiresNotBookedReservation() throws {
+    @Test func serviceQuestionIsDeferredToMethodList() throws {
         let catalog = try EngineTestSupport.catalog()
         let notBooked = try PolicyScenarioSupport.trip(reservation: .notBooked, baggagePresence: nil, bags: [])
-        #expect(QuestionEngine.nextQuestion(in: notBooked, catalog: catalog)?.id == .selectService)
+        #expect(QuestionEngine.nextQuestion(in: notBooked, catalog: catalog)?.id == .luggagePresence)
 
         let booked = try PolicyScenarioSupport.trip(reservation: .booked, baggagePresence: nil, bags: [])
         #expect(QuestionEngine.nextQuestion(in: booked, catalog: catalog)?.id == .luggagePresence)
@@ -86,7 +86,7 @@ struct QuestionEngineTests {
     @Test func setupQueueSkipsBookingServiceAndDimensions() throws {
         let catalog = try EngineTestSupport.catalog()
         let notBooked = try PolicyScenarioSupport.trip(reservation: .notBooked, baggagePresence: nil, bags: [])
-        #expect(QuestionEngine.nextQuestion(in: notBooked, catalog: catalog)?.id == .selectService)
+        #expect(QuestionEngine.nextQuestion(in: notBooked, catalog: catalog)?.id == .luggagePresence)
         #expect(QuestionEngine.nextSetupQuestion(in: notBooked, catalog: catalog)?.id == .luggagePresence)
     }
 }

@@ -4,27 +4,30 @@ import MapKit
 @MainActor
 final class MapKitPlaceSearch: NSObject, PlaceSearching, MKLocalSearchCompleterDelegate, @unchecked Sendable {
     private let completer = MKLocalSearchCompleter()
-    private var continuation: CheckedContinuation<[PlaceSearchCompletion], Error>?
+    private var pending: PendingSearch?
     private var lastQuery = ""
     private var completionCache: [String: MKLocalSearchCompletion] = [:]
 
     override init() {
         super.init()
         completer.delegate = self
-        completer.resultTypes = [.pointOfInterest, .address]
+        completer.resultTypes = [.pointOfInterest, .address, .query]
+        completer.region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 36.2, longitude: 138.25),
+            span: MKCoordinateSpan(latitudeDelta: 18, longitudeDelta: 20)
+        )
     }
 
     func completions(for query: String) async throws -> [PlaceSearchCompletion] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
-        lastQuery = trimmed
-        completer.cancel()
-        if let pending = continuation {
-            continuation = nil
-            pending.resume(returning: [])
+        if let pending {
+            self.pending = nil
+            pending.continuation.resume(returning: [])
         }
+        lastQuery = trimmed
         return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
+            pending = PendingSearch(query: trimmed, continuation: continuation)
             completer.queryFragment = trimmed
         }
     }
@@ -47,14 +50,17 @@ final class MapKitPlaceSearch: NSObject, PlaceSearching, MKLocalSearchCompleterD
     }
 
     nonisolated func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        let fragment = completer.queryFragment
+        let results = completer.results
         Task { @MainActor in
-            finish(mappedCompletions(from: completer.results))
+            finish(fragment: fragment, results: mappedCompletions(from: results))
         }
     }
 
     nonisolated func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        let fragment = completer.queryFragment
         Task { @MainActor in
-            finish([], error: PlaceSearchFailure.unavailable)
+            finish(fragment: fragment, results: [], error: PlaceSearchFailure.unavailable)
         }
     }
 
@@ -69,14 +75,23 @@ final class MapKitPlaceSearch: NSObject, PlaceSearching, MKLocalSearchCompleterD
         return mapped
     }
 
-    private func finish(_ results: [PlaceSearchCompletion], error: Error? = nil) {
-        guard completer.queryFragment == lastQuery, let continuation else { return }
-        self.continuation = nil
+    private func finish(
+        fragment: String,
+        results: [PlaceSearchCompletion],
+        error: Error? = nil
+    ) {
+        guard fragment == lastQuery, let pending, pending.query == fragment else { return }
+        self.pending = nil
         if let error {
-            continuation.resume(throwing: error)
+            pending.continuation.resume(throwing: error)
         } else {
-            continuation.resume(returning: results)
+            pending.continuation.resume(returning: results)
         }
+    }
+
+    private struct PendingSearch {
+        var query: String
+        var continuation: CheckedContinuation<[PlaceSearchCompletion], Error>
     }
 
     private func place(from item: MKMapItem, fallbackName: String, fallbackAddress: String) -> PlaceReference {

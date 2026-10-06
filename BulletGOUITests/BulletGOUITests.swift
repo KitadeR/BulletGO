@@ -55,7 +55,8 @@ final class BulletGOUITests: XCTestCase {
         openTokyoKyoto(in: app)
         XCTAssertTrue(element(app, "leg-setup").waitForExistence(timeout: 8))
         XCTAssertTrue(element(app, "leg-setup-current").waitForExistence(timeout: 5))
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(app, "question-choice-shinkansen").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "date-confirm").exists)
         XCTAssertTrue(element(app, "journey-condition-route").waitForExistence(timeout: 3))
         XCTAssertFalse(element(app, "known-section").exists)
         XCTAssertFalse(element(app, "still-needed-section").exists)
@@ -68,10 +69,10 @@ final class BulletGOUITests: XCTestCase {
         let app = launchApp()
 
         openTokyoKyoto(in: app)
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 8))
-        tapID(app, "date-confirm")
-        XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 5))
+        XCTAssertFalse(element(app, "date-confirm").exists)
         XCTAssertTrue(element(app, "question-choice-shinkansen").waitForExistence(timeout: 8))
+        tapID(app, "question-choice-shinkansen")
+        XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 5))
         XCTAssertFalse(element(app, "guidance-sheet").waitForExistence(timeout: 2))
         XCTAssertFalse(element(app, "contextual-home").exists)
     }
@@ -81,9 +82,9 @@ final class BulletGOUITests: XCTestCase {
         let app = launchApp()
 
         openTokyoKyoto(in: app)
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 8))
-        tapID(app, "date-confirm")
         XCTAssertTrue(element(app, "question-choice-shinkansen").waitForExistence(timeout: 8))
+        tapID(app, "question-choice-shinkansen")
+        XCTAssertTrue(element(app, "question-choice-notBooked").waitForExistence(timeout: 8))
         XCTAssertTrue(element(app, "leg-setup-current").exists)
         XCTAssertFalse(element(app, "leg-cockpit-summary").exists)
     }
@@ -93,8 +94,6 @@ final class BulletGOUITests: XCTestCase {
         let app = launchApp()
 
         openTokyoKyoto(in: app)
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 8))
-        tapID(app, "date-confirm")
         tapID(app, "question-choice-shinkansen")
         XCTAssertTrue(element(app, "leg-detail").waitForExistence(timeout: 8))
         XCTAssertTrue(element(app, "question-choice-notBooked").waitForExistence(timeout: 8))
@@ -150,8 +149,6 @@ final class BulletGOUITests: XCTestCase {
         let app = launchApp()
 
         openTokyoKyoto(in: app)
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 10))
-        tapID(app, "date-confirm")
         tapID(app, "question-choice-shinkansen")
         tapID(app, "question-choice-notBooked")
         tapID(app, "question-choice-no")
@@ -210,8 +207,6 @@ final class BulletGOUITests: XCTestCase {
     @MainActor
     private func completeTokyoKyotoSetup(in app: XCUIApplication) {
         openTokyoKyoto(in: app)
-        XCTAssertTrue(element(app, "date-confirm").waitForExistence(timeout: 10))
-        tapID(app, "date-confirm")
         tapID(app, "question-choice-shinkansen")
         tapID(app, "question-choice-notBooked")
         tapID(app, "question-choice-yes")

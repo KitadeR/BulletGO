@@ -33,6 +33,7 @@ nonisolated enum TripMutation: Hashable, Sendable {
     case setTransportMode(LegID, TransportMode)
     case setReservationStatus(LegID, ReservationStatus?, SlotStatus)
     case setBookingService(LegID, BookingService)
+    case setStatedBoarding(LegID, StatedBoardingMeans?)
     case setBaggagePresence(LegID, BaggagePresence?, SlotStatus)
     case addBag(LegID, BagID)
     case setBagDimensions(BagID, BaggageDimensions)
@@ -74,7 +75,7 @@ nonisolated enum TripMutation: Hashable, Sendable {
              .moveTimelineItem, .moveTimelineItemID, .updateLegArrivesAt, .updateActivityEndsAt, .moveItemToDate,
              .replaceLegSchedule, .replaceStaySchedule, .replaceActivitySchedule, .restoreItineraryItem:
             true
-        case .setLegScheduledAt, .setTransportMode, .setReservationStatus, .setBookingService,
+        case .setLegScheduledAt, .setTransportMode, .setReservationStatus, .setBookingService, .setStatedBoarding,
              .setBaggagePresence, .addBag, .setBagDimensions, .setSeatPreference,
              .updateReservationDetails, .updateScopedReservationStatus,
              .upsertNote, .removeNote, .addAttachment, .renameAttachment, .removeAttachment,

@@ -39,6 +39,7 @@ nonisolated struct PersistenceStack: Sendable {
         if seedReferenceTrip {
             try await seeder.seedIfNeeded(using: repository)
         }
+        try await seeder.placeOpeningLegIfStillUnscheduled(using: repository)
     }
 
     private static var schema: Schema {

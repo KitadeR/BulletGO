@@ -7,7 +7,7 @@ struct BaggageCheckView: View {
 
     let tripID: TripID
     let legID: LegID
-    let taskID: TaskID
+    let taskID: TaskID?
 
     @State private var lengthText = ""
     @State private var widthText = ""

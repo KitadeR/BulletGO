@@ -49,12 +49,18 @@ nonisolated enum JourneyChapterID: String, CaseIterable, Identifiable, Sendable 
     }
 }
 
+nonisolated enum JourneyChapterLink: Equatable, Sendable {
+    case bookingMethods
+    case bookingRecord
+}
+
 nonisolated struct JourneyChapterFocus: Equatable, Sendable {
     var title: LocalizedStringResource
     var why: LocalizedStringResource
+    var link: JourneyChapterLink
 
     static func == (lhs: JourneyChapterFocus, rhs: JourneyChapterFocus) -> Bool {
-        lhs.title.key == rhs.title.key && lhs.why.key == rhs.why.key
+        lhs.title.key == rhs.title.key && lhs.why.key == rhs.why.key && lhs.link == rhs.link
     }
 }
 
@@ -66,6 +72,9 @@ nonisolated struct JourneyChapter: Identifiable, Equatable, Sendable {
     var question: JourneyConditionQuestion?
     var luggageGuide: TimelineNowItem?
     var focus: JourneyChapterFocus?
+    var notes: [LocalizedStringResource] = []
+    var boardingChoices: [StatedBoardingMeans] = []
+    var canRestateBoarding: Bool = false
     var reopenQuestionID: QuestionID?
 
     static func == (lhs: JourneyChapter, rhs: JourneyChapter) -> Bool {
@@ -76,7 +85,52 @@ nonisolated struct JourneyChapter: Identifiable, Equatable, Sendable {
             && lhs.question == rhs.question
             && lhs.luggageGuide == rhs.luggageGuide
             && lhs.focus == rhs.focus
+            && lhs.notes.map(\.key) == rhs.notes.map(\.key)
+            && lhs.boardingChoices == rhs.boardingChoices
+            && lhs.canRestateBoarding == rhs.canRestateBoarding
             && lhs.reopenQuestionID == rhs.reopenQuestionID
+    }
+}
+
+nonisolated extension StatedBoardingMeans {
+    var choiceTitle: LocalizedStringResource {
+        switch self {
+        case .designatedIC:
+            LocalizedStringResource(
+                "A transit IC card is designated",
+                comment: "Choice for a traveler who saw an IC card designated on the completion screen."
+            )
+        case .paperTicket:
+            LocalizedStringResource(
+                "The reservation screen says to pick up a paper ticket",
+                comment: "Choice for a traveler who saw that this reservation says to pick up a paper ticket."
+            )
+        case .qrTicket:
+            LocalizedStringResource(
+                "This reservation has a QR ticket",
+                comment: "Choice for a traveler who saw a QR ticket on this reservation."
+            )
+        }
+    }
+
+    var guidance: LocalizedStringResource {
+        switch self {
+        case .designatedIC:
+            LocalizedStringResource(
+                "Board with the designated transit IC card.",
+                comment: "Boarding guidance after the traveler says an IC card is designated."
+            )
+        case .paperTicket:
+            LocalizedStringResource(
+                "Pick up a paper ticket before you ride.",
+                comment: "Boarding guidance after the traveler says the reservation screen says to pick up a paper ticket."
+            )
+        case .qrTicket:
+            LocalizedStringResource(
+                "Board with this reservation's QR ticket.",
+                comment: "Boarding guidance after the traveler says this reservation has a QR ticket."
+            )
+        }
     }
 }
 
@@ -90,6 +144,24 @@ nonisolated struct JourneySheetItem: Equatable, Sendable {
     }
 }
 
+nonisolated struct JourneyCockpit: Equatable, Sendable {
+    var rideSummary: String
+    var bookingLine: LocalizedStringResource
+    var boardingChoices: [StatedBoardingMeans]
+    var statedGuidance: LocalizedStringResource?
+    var canRestateBoarding: Bool
+    var notes: [LocalizedStringResource]
+
+    static func == (lhs: JourneyCockpit, rhs: JourneyCockpit) -> Bool {
+        lhs.rideSummary == rhs.rideSummary
+            && lhs.bookingLine.key == rhs.bookingLine.key
+            && lhs.boardingChoices == rhs.boardingChoices
+            && lhs.statedGuidance?.key == rhs.statedGuidance?.key
+            && lhs.canRestateBoarding == rhs.canRestateBoarding
+            && lhs.notes.map(\.key) == rhs.notes.map(\.key)
+    }
+}
+
 nonisolated struct JourneyConditionSnapshot: Equatable, Sendable {
     var title: String
     var modeTitle: LocalizedStringResource
@@ -98,6 +170,7 @@ nonisolated struct JourneyConditionSnapshot: Equatable, Sendable {
     var current: JourneyConditionQuestion?
     var luggageGuide: TimelineNowItem?
     var isBookedStop: Bool
+    var cockpit: JourneyCockpit?
     var chapters: [JourneyChapter]
     var sheetItem: JourneySheetItem?
 
@@ -109,6 +182,7 @@ nonisolated struct JourneyConditionSnapshot: Equatable, Sendable {
             && lhs.current == rhs.current
             && lhs.luggageGuide == rhs.luggageGuide
             && lhs.isBookedStop == rhs.isBookedStop
+            && lhs.cockpit == rhs.cockpit
             && lhs.chapters == rhs.chapters
             && lhs.sheetItem == rhs.sheetItem
     }
@@ -155,6 +229,7 @@ nonisolated enum JourneyConditionComposer {
             current: current,
             luggageGuide: guide,
             isBookedStop: isBooked(focusedLeg),
+            cockpit: cockpit(trip: focused, leg: focusedLeg),
             chapters: chapters,
             sheetItem: sheetItem(in: chapters)
         )
@@ -352,17 +427,46 @@ nonisolated enum JourneyConditionComposer {
                 isOpen: isOpen,
                 question: isOpen ? current : nil,
                 luggageGuide: isOpen ? luggageGuide : nil,
-                focus: isOpen && id == .reservation ? bookingFocus(leg: leg, current: current, luggageGuide: luggageGuide) : nil,
+                focus: isOpen && id == .reservation ? reservationFocus(leg: leg, current: current, luggageGuide: luggageGuide) : nil,
+                notes: isOpen && id == .boarding ? boardingNotes(trip: trip, leg: leg) : [],
+                boardingChoices: isOpen && id == .boarding ? boardingChoices(leg: leg) : [],
+                canRestateBoarding: isOpen && id == .boarding && leg.reservation.statedBoarding != nil,
                 reopenQuestionID: reopenQuestionID(for: id, facts: facts)
             )
         }
+    }
+
+    private static func cockpit(trip: Trip, leg: Leg) -> JourneyCockpit? {
+        guard isBooked(leg), BookingRecord.hasRideDetails(leg.reservation.details) else { return nil }
+        let means = leg.reservation.statedBoarding
+        return JourneyCockpit(
+            rideSummary: BookingRecord.rideSummary(leg.reservation.details),
+            bookingLine: bookingLine(leg),
+            boardingChoices: means == nil ? Array(StatedBoardingMeans.allCases) : [],
+            statedGuidance: means?.guidance,
+            canRestateBoarding: means != nil,
+            notes: boardingNotes(trip: trip, leg: leg)
+        )
+    }
+
+    private static func bookingLine(_ leg: Leg) -> LocalizedStringResource {
+        if leg.reservation.service.status == .confirmed, leg.reservation.service.value == .smartEX {
+            return LocalizedStringResource(
+                "Booked · SmartEX",
+                comment: "Header line when this journey is booked with SmartEX."
+            )
+        }
+        return LocalizedStringResource(
+            "Booked",
+            comment: "Reservation booked status, not the same as ready."
+        )
     }
 
     private static func openChapter(
         leg: Leg,
         current: JourneyConditionQuestion?,
         luggageGuide: TimelineNowItem?
-    ) -> JourneyChapterID {
+    ) -> JourneyChapterID? {
         if let current {
             switch current.spec.id {
             case .legDate, .transport:
@@ -379,25 +483,59 @@ nonisolated enum JourneyConditionComposer {
         if continuesPreBooking(leg) {
             return .reservation
         }
+        if isBooked(leg), !BookingRecord.hasRideDetails(leg.reservation.details) {
+            return .reservation
+        }
         if isBooked(leg) {
-            return .boarding
+            return nil
         }
         return .conditions
     }
 
-    private static func bookingFocus(
+    private static func reservationFocus(
         leg: Leg,
         current: JourneyConditionQuestion?,
         luggageGuide: TimelineNowItem?
     ) -> JourneyChapterFocus? {
-        guard current == nil, luggageGuide == nil, continuesPreBooking(leg) else {
-            return nil
+        guard current == nil, luggageGuide == nil else { return nil }
+        if continuesPreBooking(leg) {
+            let content = TripContentResolver.task(contentKey: ActionPurpose.selectBookingMethod)
+            return JourneyChapterFocus(
+                title: content.title,
+                why: TripContentResolver.taskWhyNow(ActionPurpose.selectBookingMethod),
+                link: .bookingMethods
+            )
         }
-        let content = TripContentResolver.task(contentKey: ActionPurpose.selectBookingMethod)
-        return JourneyChapterFocus(
-            title: content.title,
-            why: TripContentResolver.taskWhyNow(ActionPurpose.selectBookingMethod)
-        )
+        if isBooked(leg), !BookingRecord.hasRideDetails(leg.reservation.details) {
+            return JourneyChapterFocus(
+                title: LocalizedStringResource(
+                    "Record what the completion screen shows",
+                    comment: "Opens the screen for writing down the train, car, and seat."
+                ),
+                why: LocalizedStringResource(
+                    "Look at the completion email, or the reservation screen in SmartEX.",
+                    comment: "Tells the traveler to check the SmartEX completion email or reservation screen."
+                ),
+                link: .bookingRecord
+            )
+        }
+        return nil
+    }
+
+    private static func boardingChoices(leg: Leg) -> [StatedBoardingMeans] {
+        guard isBooked(leg), leg.reservation.statedBoarding == nil else { return [] }
+        return Array(StatedBoardingMeans.allCases)
+    }
+
+    private static func boardingNotes(trip: Trip, leg: Leg) -> [LocalizedStringResource] {
+        guard isBooked(leg),
+              let pack = try? PackLoader.loadProduction(from: .main),
+              SmartEXGuidance.needsOversizedSeat(trip: trip, leg: leg, pack: pack)
+        else { return [] }
+        return [LocalizedStringResource(
+            "Check that the seat includes an oversized-baggage space.",
+            comment: "Boarding reminder when a measured bag needs an oversized seat."
+        )]
     }
 
     private static func sheetItem(in chapters: [JourneyChapter]) -> JourneySheetItem? {
@@ -474,7 +612,9 @@ nonisolated enum JourneyConditionComposer {
                     comment: "Chapter status before booking conditions are known."
                 ))
         case .reservation:
-            if isBooked(leg), let booking = facts.first(where: { $0.id == .booking }) {
+            if isBooked(leg), BookingRecord.hasRideDetails(leg.reservation.details) {
+                .verbatim(BookingRecord.rideSummary(leg.reservation.details))
+            } else if isBooked(leg), let booking = facts.first(where: { $0.id == .booking }) {
                 booking.value
             } else if let booking = facts.first(where: { $0.id == .booking }), !continuesPreBooking(leg) {
                 booking.value
@@ -485,14 +625,28 @@ nonisolated enum JourneyConditionComposer {
                 ))
             }
         case .boarding:
-            .localized(LocalizedStringResource(
-                "After you book",
-                comment: "Chapter status for boarding preparation before a ticket path exists."
-            ))
+            if isBooked(leg), let means = leg.reservation.statedBoarding {
+                .localized(means.guidance)
+            } else if isBooked(leg), BookingRecord.hasRideDetails(leg.reservation.details) {
+                .localized(LocalizedStringResource(
+                    "The gate method hasn't been checked yet.",
+                    comment: "Boarding chapter status after the ride is recorded and the gate method is still unknown."
+                ))
+            } else if isBooked(leg) {
+                .localized(LocalizedStringResource(
+                    "After you record the booking",
+                    comment: "Boarding chapter status while the train, car, and seat are still unrecorded."
+                ))
+            } else {
+                .localized(LocalizedStringResource(
+                    "After you book",
+                    comment: "Chapter status for boarding preparation before a ticket path exists."
+                ))
+            }
         case .travelDay:
             .localized(LocalizedStringResource(
-                "On the day",
-                comment: "Chapter status for guidance that waits until the travel day."
+                "On the day, from the gate through boarding.",
+                comment: "Travel-day chapter status. The day stays a plan, without steps."
             ))
         }
     }

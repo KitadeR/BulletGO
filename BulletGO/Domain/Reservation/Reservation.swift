@@ -20,6 +20,16 @@ nonisolated enum BookingService: String, Hashable, Codable, Sendable {
     case other
 }
 
+/// What the traveler said the completion screen showed for this reservation.
+/// A statement only. It does not mark boarding ready, and it is not a boarding-access policy.
+nonisolated enum StatedBoardingMeans: String, Hashable, Codable, Sendable, CaseIterable, Identifiable {
+    case designatedIC
+    case paperTicket
+    case qrTicket
+
+    var id: String { rawValue }
+}
+
 nonisolated struct ReservationDetails: Hashable, Codable, Sendable {
     var origin: String?
     var destination: String?
@@ -30,6 +40,8 @@ nonisolated struct ReservationDetails: Hashable, Codable, Sendable {
     var car: String?
     var seat: String?
     var confirmationNumber: String?
+    /// Traveler's statement about the reserved oversized baggage seat or space.
+    var oversizedSeatReserved: Bool?
     var providerName: String?
     var location: String?
     var notes: String?
@@ -41,7 +53,7 @@ nonisolated struct ReservationDetails: Hashable, Codable, Sendable {
     enum CodingKeys: String, CodingKey {
         case origin, destination, departureDate, departureTime, arrivalTime
         case trainName, car, seat
-        case confirmationNumber, providerName, location, notes
+        case confirmationNumber, oversizedSeatReserved, providerName, location, notes
         case startDate, startTime, endDate, endTime
     }
 
@@ -55,6 +67,7 @@ nonisolated struct ReservationDetails: Hashable, Codable, Sendable {
         car: String? = nil,
         seat: String? = nil,
         confirmationNumber: String? = nil,
+        oversizedSeatReserved: Bool? = nil,
         providerName: String? = nil,
         location: String? = nil,
         notes: String? = nil,
@@ -72,6 +85,7 @@ nonisolated struct ReservationDetails: Hashable, Codable, Sendable {
         self.car = car
         self.seat = seat
         self.confirmationNumber = confirmationNumber
+        self.oversizedSeatReserved = oversizedSeatReserved
         self.providerName = providerName
         self.location = location
         self.notes = notes
@@ -92,6 +106,7 @@ nonisolated struct ReservationDetails: Hashable, Codable, Sendable {
         car = try container.decodeIfPresent(String.self, forKey: .car)
         seat = try container.decodeIfPresent(String.self, forKey: .seat)
         confirmationNumber = try container.decodeIfPresent(String.self, forKey: .confirmationNumber)
+        oversizedSeatReserved = try container.decodeIfPresent(Bool.self, forKey: .oversizedSeatReserved)
         providerName = try container.decodeIfPresent(String.self, forKey: .providerName)
         location = try container.decodeIfPresent(String.self, forKey: .location)
         notes = try container.decodeIfPresent(String.self, forKey: .notes)
@@ -110,4 +125,41 @@ nonisolated struct Reservation: Hashable, Codable, Sendable {
     var evidenceLevel: ReservationEvidenceLevel
     var evidenceHistory: [ReservationEvidenceRecord]
     var details: ReservationDetails
+    var statedBoarding: StatedBoardingMeans? = nil
+
+    private enum CodingKeys: String, CodingKey {
+        case id, status, service, progress, evidenceLevel, evidenceHistory, details, statedBoarding
+    }
+
+    init(
+        id: ReservationID,
+        status: Slot<ReservationStatus>,
+        service: Slot<BookingService>,
+        progress: ReservationProgress,
+        evidenceLevel: ReservationEvidenceLevel,
+        evidenceHistory: [ReservationEvidenceRecord],
+        details: ReservationDetails,
+        statedBoarding: StatedBoardingMeans? = nil
+    ) {
+        self.id = id
+        self.status = status
+        self.service = service
+        self.progress = progress
+        self.evidenceLevel = evidenceLevel
+        self.evidenceHistory = evidenceHistory
+        self.details = details
+        self.statedBoarding = statedBoarding
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(ReservationID.self, forKey: .id)
+        status = try values.decode(Slot<ReservationStatus>.self, forKey: .status)
+        service = try values.decode(Slot<BookingService>.self, forKey: .service)
+        progress = try values.decode(ReservationProgress.self, forKey: .progress)
+        evidenceLevel = try values.decode(ReservationEvidenceLevel.self, forKey: .evidenceLevel)
+        evidenceHistory = try values.decode([ReservationEvidenceRecord].self, forKey: .evidenceHistory)
+        details = try values.decode(ReservationDetails.self, forKey: .details)
+        statedBoarding = try values.decodeIfPresent(StatedBoardingMeans.self, forKey: .statedBoarding)
+    }
 }

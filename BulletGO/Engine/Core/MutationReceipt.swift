@@ -86,6 +86,13 @@ nonisolated enum MutationReceiptPlanner {
             )
         case .cacheConnectorEstimate:
             return MutationReceipt(tripID: trip.id, inverse: [], fileEffects: [])
+        case .setStatedBoarding(let legID, _):
+            let previous = trip.legs.first { $0.id == legID }?.reservation.statedBoarding
+            return MutationReceipt(
+                tripID: trip.id,
+                inverse: [.setStatedBoarding(legID, previous)],
+                fileEffects: []
+            )
         default:
             return MutationReceipt(tripID: trip.id, inverse: [], fileEffects: [])
         }

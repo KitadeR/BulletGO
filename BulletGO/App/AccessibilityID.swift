@@ -135,6 +135,26 @@ enum AccessibilityID {
     static let bookingMethods = "booking-methods"
     static let bookingMethodSmartEX = "booking-method-smartex"
     static let bookingMethodSmartEXOpen = "booking-method-smartex-open"
+    static let bookingMethodSmartEXConfirm = "booking-method-smartex-confirm"
+    static let bookingConfirmation = "booking-confirmation"
+    static let bookingConfirmationDone = "booking-confirmation-done"
+    static let bookingRecord = "booking-record"
+    static let bookingRecordSave = "booking-record-save"
+    static let bookingRecordTrain = "booking-record-train"
+    static let bookingRecordCar = "booking-record-car"
+    static let bookingRecordSeat = "booking-record-seat"
+    static let bookingRecordReference = "booking-record-reference"
+    static let bookingRecordOpen = "booking-record-open"
+    static let journeyCockpit = "journey-cockpit"
+    static let journeyBoardingGuidance = "journey-boarding-guidance"
+    static let journeyBoardingBridge = "journey-boarding-bridge"
+    static let journeyBoardingEntrance = "journey-boarding-entrance"
+    static let journeyBoardingUnknown = "journey-boarding-unknown"
+    static let journeyBoardingChange = "journey-boarding-change"
+
+    static func boardingChoice(_ id: String) -> String {
+        "journey-boarding-choice-\(id)"
+    }
     static let bookingMethodSmartEXOversized = "booking-method-smartex-oversized"
     static let bookingMethodComingSoon = "booking-method-coming-soon"
 

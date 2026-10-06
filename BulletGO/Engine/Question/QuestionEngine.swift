@@ -60,7 +60,9 @@ nonisolated enum QuestionEngine {
         return catalog.questions
             .sorted { $0.priority < $1.priority }
             .filter { question in
-                (role == nil || question.role == role)
+                // Booking method selection lives in the post-baggage method list.
+                question.id != .selectService
+                    && (role == nil || question.role == role)
                     && conditionHolds(question.when, in: trip)
                     && collectionTimingHasArrived(
                         question.target,

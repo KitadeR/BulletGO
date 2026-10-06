@@ -33,24 +33,36 @@ nonisolated enum ActionResolver {
                evaluation.resultFields[pack.resultKey] == BaggagePolicyPack.ReservationRequirement.required.rawValue
             {
                 if leg.reservation.status.value == .booked, leg.reservation.status.status == .confirmed {
-                    actions.append(makeAction(ActionPurpose.verifyReservationMeetsBaggage, pack: pack))
+                    if leg.reservation.details.oversizedSeatReserved != true {
+                        actions.append(makeAction(ActionPurpose.verifyReservationMeetsBaggage, pack: pack))
+                    }
                 } else {
                     actions.append(makeAction(ActionPurpose.reserveOversizedSeat, pack: pack))
                 }
             }
         }
-        if shouldSelectBookingMethod(leg) {
+        if shouldSelectBookingMethod(leg, trip: trip, pack: pack) {
             actions.append(makeAction(ActionPurpose.selectBookingMethod, pack: pack))
         }
         return uniqued(actions)
     }
 
-    private static func shouldSelectBookingMethod(_ leg: Leg) -> Bool {
-        leg.transportMode.status == .confirmed
+    private static func shouldSelectBookingMethod(_ leg: Leg, trip: Trip, pack: BaggagePolicyPack) -> Bool {
+        guard leg.transportMode.status == .confirmed
             && leg.transportMode.value == .shinkansen
             && leg.reservation.status.status == .confirmed
             && leg.reservation.status.value == .notBooked
             && !leg.reservation.service.isSatisfiedForQuestioning
+        else { return false }
+        if leg.baggagePresence.status == .confirmed && leg.baggagePresence.value == .no { return true }
+        guard leg.baggagePresence.status == .confirmed, leg.baggagePresence.value == .yes,
+              !leg.bagIDs.isEmpty else { return false }
+        return leg.bagIDs.allSatisfy { bagID in
+            guard let bag = trip.baggageInventory.first(where: { $0.id == bagID }),
+                  bag.dimensions.status == .confirmed,
+                  let total = bag.dimensions.value?.totalCM else { return false }
+            return pack.requirement(forTotalCM: total) != .notAllowed
+        }
     }
 
     private static func makeAction(

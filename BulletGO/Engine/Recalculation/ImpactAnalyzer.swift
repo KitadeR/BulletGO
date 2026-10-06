@@ -44,7 +44,8 @@ nonisolated enum ImpactAnalyzer {
                     changedPaths: [.leg(legID, .transportMode)]
                 )
             )
-        case .setReservationStatus(let legID, _, _), .setBookingService(let legID, _):
+        case .setReservationStatus(let legID, _, _), .setBookingService(let legID, _),
+             .setStatedBoarding(let legID, _):
             (
                 .reservationUpdated,
                 ImpactAssessment(

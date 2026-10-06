@@ -277,6 +277,7 @@ struct TravelPlacesStepView: View {
 
     private func applyQuery(_ newValue: String, field: TravelPlaceField, model: PlaceSearchModel) {
         let hadSelection = model.selected != nil
+        model.search = search
         model.updateQuery(newValue)
         update { draft in
             switch field {

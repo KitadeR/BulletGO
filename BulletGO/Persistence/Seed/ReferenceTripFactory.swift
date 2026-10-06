@@ -32,13 +32,14 @@ nonisolated struct ReferenceTripFactory: Sendable {
 
     func makeReferenceTrip() throws -> Trip {
         let timestamp = now()
-        let tokyoKyoto = try leg(
+        var tokyoKyoto = try leg(
             id: ReferenceTripIdentity.tokyoKyoto,
             reservationID: ReferenceTripIdentity.tokyoKyotoReservation,
             origin: "Tokyo",
             destination: "Kyoto",
             updatedAt: timestamp
         )
+        tokyoKyoto.scheduledAt = try Self.openingMorning(updatedAt: timestamp)
         let kyotoOsaka = try leg(
             id: ReferenceTripIdentity.kyotoOsaka,
             reservationID: ReferenceTripIdentity.kyotoOsakaReservation,
@@ -126,6 +127,18 @@ nonisolated struct ReferenceTripFactory: Sendable {
         )
         try trip.validate()
         return trip
+    }
+
+    static func openingMorning(updatedAt: Date) throws -> Slot<ScheduledMoment> {
+        try Slot.confirmed(
+            value: try ScheduledMoment(
+                date: LocalDate(year: 2026, month: 10, day: 1),
+                time: LocalTime(hour: 10, minute: 0),
+                timeZoneIdentifier: TripCalendar.timeZoneIdentifier
+            ),
+            source: .userStated,
+            updatedAt: updatedAt
+        )
     }
 
     private func leg(

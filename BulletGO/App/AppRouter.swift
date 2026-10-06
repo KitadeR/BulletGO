@@ -39,6 +39,17 @@ final class AppRouter {
         path.removeLast()
     }
 
+    func popToLegDetail() {
+        guard let index = path.lastIndex(where: { route in
+            if case .legDetail = route { return true }
+            return false
+        }) else {
+            pop()
+            return
+        }
+        path = Array(path.prefix(index + 1))
+    }
+
     func popToRoot() {
         path.removeAll()
     }

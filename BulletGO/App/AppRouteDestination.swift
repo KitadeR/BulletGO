@@ -12,6 +12,12 @@ struct AppRouteDestination: View {
             BookingMethodListView(tripID: tripID, legID: legID)
         case .bookingMethodSmartEX(let tripID, let legID):
             BookingMethodSmartEXView(tripID: tripID, legID: legID)
+        case .bookingConfirmation(let tripID, let legID):
+            BookingConfirmationView(tripID: tripID, legID: legID)
+        case .bookingRecord(let tripID, let legID):
+            BookingRecordView(tripID: tripID, legID: legID)
+        case .bookingRecordSmartEX(let tripID, let legID):
+            BookingRecordView(tripID: tripID, legID: legID, bookingService: .smartEX)
         case .bookingMethodComingSoon(let tripID, let legID, let method):
             BookingMethodComingSoonView(tripID: tripID, legID: legID, method: method)
         case .legDetail(let tripID, let legID):
@@ -24,6 +30,8 @@ struct AppRouteDestination: View {
             TaskDetailView(tripID: tripID, taskID: taskID)
         case .baggageCheck(let tripID, let legID, let taskID):
             BaggageCheckView(tripID: tripID, legID: legID, taskID: taskID)
+        case .legBaggageCheck(let tripID, let legID):
+            BaggageCheckView(tripID: tripID, legID: legID, taskID: nil)
         case .tripMap(let tripID):
             TripMapView(tripID: tripID)
         case .savedPlaces(let tripID):

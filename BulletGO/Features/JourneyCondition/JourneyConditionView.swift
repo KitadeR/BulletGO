@@ -53,6 +53,16 @@ struct JourneyConditionView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 JourneyConditionHeader(snapshot: snapshot)
+                if let cockpit = snapshot.cockpit {
+                    JourneyCockpitCard(
+                        cockpit: cockpit,
+                        isBusy: isAnswering,
+                        hasError: stepError,
+                        onStateBoarding: { means in
+                            Task { await stateBoarding(means) }
+                        }
+                    )
+                }
                 ForEach(snapshot.chapters) { chapter in
                     JourneyChapterCard(
                         chapter: chapter,
@@ -75,8 +85,13 @@ struct JourneyConditionView: View {
                         onOpenLuggage: { item in
                             openLuggageGuide(item, trip: trip)
                         },
-                        onOpenBookingMethods: {
-                            router.push(.bookingMethods(trip.id, leg.id))
+                        onOpenFocus: { link in
+                            switch link {
+                            case .bookingMethods:
+                                router.push(.bookingMethods(trip.id, leg.id))
+                            case .bookingRecord:
+                                router.push(.bookingRecord(trip.id, leg.id))
+                            }
                         }
                     )
                 }
@@ -143,6 +158,16 @@ struct JourneyConditionView: View {
         reopenedQuestionID = nil
         stepError = false
     }
+
+    private func stateBoarding(_ means: StatedBoardingMeans?) async {
+        isAnswering = true
+        defer { isAnswering = false }
+        guard await session.process(.applyMutation(.setStatedBoarding(legID, means))) != nil else {
+            stepError = true
+            return
+        }
+        stepError = false
+    }
 }
 
 private struct JourneyConditionHeader: View {
@@ -161,9 +186,136 @@ private struct JourneyConditionHeader: View {
                     .font(DesignTokens.Typography.body)
                     .foregroundStyle(GuidedAddPalette.secondaryText)
             }
+            if let cockpit = snapshot.cockpit {
+                Text(verbatim: cockpit.rideSummary)
+                    .font(DesignTokens.Typography.body)
+                    .foregroundStyle(GuidedAddPalette.primaryText)
+                Text(cockpit.bookingLine)
+                    .font(DesignTokens.Typography.body)
+                    .foregroundStyle(GuidedAddPalette.primaryText)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct JourneyCockpitCard: View {
+    var cockpit: JourneyCockpit
+    var isBusy: Bool
+    var hasError: Bool
+    var onStateBoarding: (StatedBoardingMeans?) -> Void
+
+    @State private var showsBoardingChoices = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("What to do now")
+                .font(DesignTokens.Typography.headline)
+                .foregroundStyle(GuidedAddPalette.primaryText)
+            if cockpit.canRestateBoarding {
+                if let guidance = cockpit.statedGuidance {
+                    Text(guidance)
+                        .font(DesignTokens.Typography.body)
+                        .foregroundStyle(GuidedAddPalette.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button("Choose again") {
+                    showsBoardingChoices = false
+                    onStateBoarding(nil)
+                }
+                .buttonStyle(.plain)
+                .font(DesignTokens.Typography.footnote)
+                .foregroundStyle(GuidedAddPalette.secondaryText)
+                .disabled(isBusy)
+                .accessibilityIdentifier(AccessibilityID.journeyBoardingChange)
+                boardingNotes
+            } else if showsBoardingChoices {
+                Text("On the reservation screen, which one is shown for the gate?")
+                    .font(DesignTokens.Typography.body)
+                    .foregroundStyle(GuidedAddPalette.primaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(cockpit.boardingChoices) { means in
+                    Button {
+                        onStateBoarding(means)
+                    } label: {
+                        Text(means.choiceTitle)
+                            .font(DesignTokens.Typography.headline)
+                            .foregroundStyle(GuidedAddPalette.primaryText)
+                            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .background(
+                                GuidedAddPalette.mutedFill,
+                                in: RoundedRectangle(cornerRadius: GuidedAddMetrics.howRadius, style: .continuous)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isBusy)
+                    .accessibilityIdentifier(AccessibilityID.boardingChoice(means.rawValue))
+                }
+                Button("Not sure yet") {
+                    showsBoardingChoices = false
+                }
+                .buttonStyle(.plain)
+                .font(DesignTokens.Typography.footnote)
+                .foregroundStyle(GuidedAddPalette.secondaryText)
+                .disabled(isBusy)
+                .accessibilityIdentifier(AccessibilityID.journeyBoardingUnknown)
+                boardingNotes
+            } else {
+                Text("Check how you'll pass the gate")
+                    .font(DesignTokens.Typography.headline)
+                    .foregroundStyle(GuidedAddPalette.primaryText)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("The booking is recorded. How you pass the gate is separate.")
+                    Text("You can leave it only after you look at the reservation screen.")
+                }
+                .font(DesignTokens.Typography.body)
+                .foregroundStyle(GuidedAddPalette.primaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier(AccessibilityID.journeyBoardingBridge)
+                Button("Leave it from the reservation screen") {
+                    showsBoardingChoices = true
+                }
+                .buttonStyle(.plain)
+                .font(DesignTokens.Typography.headline)
+                .foregroundStyle(GuidedAddPalette.primaryText)
+                .frame(maxWidth: .infinity, minHeight: DesignTokens.TapTarget.minimum, alignment: .leading)
+                .disabled(isBusy)
+                .accessibilityIdentifier(AccessibilityID.journeyBoardingEntrance)
+                boardingNotes
+            }
+            if hasError {
+                Text("Couldn’t save that. Try this step again.")
+                    .font(DesignTokens.Typography.footnote)
+                    .foregroundStyle(DesignTokens.Color.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            GuidedAddPalette.card,
+            in: RoundedRectangle(cornerRadius: GuidedAddMetrics.cardRadius, style: .continuous)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(AccessibilityID.journeyCockpit)
+    }
+
+    @ViewBuilder
+    private var boardingNotes: some View {
+        if !cockpit.notes.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(cockpit.notes.enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(DesignTokens.Typography.body)
+                        .foregroundStyle(GuidedAddPalette.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .accessibilityIdentifier(AccessibilityID.journeyBoardingGuidance)
+        }
     }
 }
 
@@ -177,7 +329,7 @@ private struct JourneyChapterCard: View {
     var onChoice: (String, QuestionSpec) -> Void
     var onSkip: (QuestionSpec) -> Void
     var onOpenLuggage: (TimelineNowItem) -> Void
-    var onOpenBookingMethods: () -> Void
+    var onOpenFocus: (JourneyChapterLink) -> Void
 
     var body: some View {
         let card = VStack(alignment: .leading, spacing: 16) {
@@ -238,7 +390,9 @@ private struct JourneyChapterCard: View {
                 onOpenLuggage(item)
             }
         } else if let focus = chapter.focus {
-            Button(action: onOpenBookingMethods) {
+            Button {
+                onOpenFocus(focus.link)
+            } label: {
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(focus.title)
@@ -263,7 +417,11 @@ private struct JourneyChapterCard: View {
                 )
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier(AccessibilityID.journeyChapterFocus)
+            .accessibilityIdentifier(
+                focus.link == .bookingRecord
+                    ? AccessibilityID.bookingRecordOpen
+                    : AccessibilityID.journeyChapterFocus
+            )
         }
     }
 

@@ -1,11 +1,18 @@
 import SwiftUI
 
 struct LegDetailView: View {
+    @Environment(TripSessionModel.self) private var session
     let tripID: TripID
     let legID: LegID
 
     var body: some View {
-        JourneyConditionView(tripID: tripID, legID: legID)
+        if session.trip?.id == tripID,
+           let leg = session.trip?.legs.first(where: { $0.id == legID }),
+           leg.transportMode.value == .shinkansen {
+            ShinkansenJourneyView(tripID: tripID, legID: legID)
+        } else {
+            JourneyConditionView(tripID: tripID, legID: legID)
+        }
     }
 }
 

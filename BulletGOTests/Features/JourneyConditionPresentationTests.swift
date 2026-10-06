@@ -50,12 +50,18 @@ struct JourneyConditionPresentationTests {
         #expect(snapshot.facts.contains(where: { $0.id == .booking }) == true)
         #expect(snapshot.facts.contains(where: { $0.id == .luggage }) == false)
         #expect(snapshot.luggageGuide == nil)
-        #expect(snapshot.chapters.first { $0.isOpen }?.id == .boarding)
+        #expect(snapshot.chapters.first { $0.isOpen }?.id == .reservation)
+        #expect(snapshot.chapters.first { $0.id == .reservation }?.focus?.title.key == "Record what the completion screen shows")
+        #expect(snapshot.chapters.first { $0.id == .reservation }?.focus?.link == .bookingRecord)
         #expect(snapshot.chapters.first { $0.id == .boarding }?.status == .localized(LocalizedStringResource(
-            "After you book",
-            comment: "Chapter status for boarding preparation before a ticket path exists."
+            "After you record the booking",
+            comment: "Boarding chapter status while the train, car, and seat are still unrecorded."
         )))
-        #expect(snapshot.sheetItem == nil)
+        #expect(snapshot.chapters.first { $0.id == .travelDay }?.status == .localized(LocalizedStringResource(
+            "On the day, from the gate through boarding.",
+            comment: "Travel-day chapter status. The day stays a plan, without steps."
+        )))
+        #expect(snapshot.sheetItem?.title.key == "Record what the completion screen shows")
     }
 
     @Test func notBookedShinkansenAsksLuggage() throws {

@@ -12,6 +12,7 @@ final class GuidedAddFlowModel {
     var stepIndex: Int = 0
     var isSaving = false
     var saveFailed = false
+    private(set) var createdLegID: LegID?
     var showDiscardConfirmation = false
 
     init(tripID: TripID, kind: ItineraryAddKind, initialDate: LocalDate?, now: Date, seedPlace: PlaceReference? = nil) {
@@ -94,6 +95,10 @@ final class GuidedAddFlowModel {
                 saveFailed = true
                 return false
             }
+            createdLegID = mutations.compactMap { mutation -> LegID? in
+                if case .addLeg(let leg, _) = mutation { return leg.id }
+                return nil
+            }.first
             return true
         } catch {
             saveFailed = true

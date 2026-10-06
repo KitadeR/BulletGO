@@ -4,14 +4,39 @@ import Testing
 
 @MainActor
 struct PayloadMigrationTests {
+    @Test func v7PayloadGainsOptionalOversizedSeatStatement() throws {
+        let trip = try DomainTestSupport.sampleTrip()
+        var encoded = try TripRecordMapper.encode(trip)
+        encoded.payloadVersion = 7
+        encoded.domainSchemaVersion = 7
+        encoded.payload = try mutatedPayload(encoded.payload) { json in
+            json["schemaVersion"] = 7
+            var legs = json["legs"] as! [[String: Any]]
+            for index in legs.indices {
+                var reservation = legs[index]["reservation"] as! [String: Any]
+                var details = reservation["details"] as! [String: Any]
+                details.removeValue(forKey: "oversizedSeatReserved")
+                reservation.removeValue(forKey: "statedBoarding")
+                reservation["details"] = details
+                legs[index]["reservation"] = reservation
+            }
+            json["legs"] = legs
+        }
+        let decoded = try TripRecordMapper.decodeWithMigration(encoded)
+        #expect(decoded.trip.schemaVersion == 8)
+        #expect(decoded.rewritten?.payloadVersion == 8)
+        #expect(decoded.trip.legs.allSatisfy { $0.reservation.details.oversizedSeatReserved == nil })
+        #expect(decoded.trip.legs.allSatisfy { $0.reservation.statedBoarding == nil })
+    }
+
     @Test func v1UnknownReservationBecomesValuelessUnknownSlot() throws {
         let trip = try DomainTestSupport.sampleTrip()
         let encoded = try v1Record(from: trip, statuses: ["unknown", "unknown", "unknown"])
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
         #expect(decoded.trip.id == trip.id)
-        #expect(decoded.trip.schemaVersion == 7)
-        #expect(decoded.rewritten?.payloadVersion == 7)
-        #expect(decoded.rewritten?.domainSchemaVersion == 7)
+        #expect(decoded.trip.schemaVersion == 8)
+        #expect(decoded.rewritten?.payloadVersion == 8)
+        #expect(decoded.rewritten?.domainSchemaVersion == 8)
         for leg in decoded.trip.legs {
             #expect(leg.reservation.status.status == .unknown)
             #expect(leg.reservation.status.value == nil)
@@ -52,12 +77,12 @@ struct PayloadMigrationTests {
         )
 
         let loaded = try await repository.fetch(id: trip.id)
-        #expect(loaded?.schemaVersion == 7)
+        #expect(loaded?.schemaVersion == 8)
         #expect(loaded?.legs[0].reservation.status.value == .notBooked)
 
         let reloaded = try await repository.fetch(id: trip.id)
         #expect(reloaded == loaded)
-        #expect(reloaded?.schemaVersion == 7)
+        #expect(reloaded?.schemaVersion == 8)
         #expect(reloaded?.legs[0].seatPreference.status == .unknown)
     }
 
@@ -75,8 +100,8 @@ struct PayloadMigrationTests {
             json["legs"] = legs
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 7)
-        #expect(decoded.rewritten?.payloadVersion == 7)
+        #expect(decoded.trip.schemaVersion == 8)
+        #expect(decoded.rewritten?.payloadVersion == 8)
         #expect(decoded.trip.legs.allSatisfy { $0.seatPreference.status == .unknown })
         #expect(decoded.trip.id == trip.id)
         #expect(decoded.trip.name.revisions == trip.name.revisions)
@@ -93,8 +118,8 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "stays")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 7)
-        #expect(decoded.rewritten?.payloadVersion == 7)
+        #expect(decoded.trip.schemaVersion == 8)
+        #expect(decoded.rewritten?.payloadVersion == 8)
         #expect(decoded.trip.stays.isEmpty)
         #expect(decoded.trip.id == trip.id)
         #expect(decoded.trip.savedPlaces.isEmpty)
@@ -115,8 +140,8 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "connectorEstimates")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 7)
-        #expect(decoded.rewritten?.payloadVersion == 7)
+        #expect(decoded.trip.schemaVersion == 8)
+        #expect(decoded.rewritten?.payloadVersion == 8)
         #expect(decoded.trip.savedPlaces.isEmpty)
         #expect(decoded.trip.notes.isEmpty)
         #expect(decoded.trip.attachments.isEmpty)
@@ -136,9 +161,9 @@ struct PayloadMigrationTests {
             json.removeValue(forKey: "daySubtitles")
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 7)
-        #expect(decoded.rewritten?.payloadVersion == 7)
-        #expect(decoded.rewritten?.domainSchemaVersion == 7)
+        #expect(decoded.trip.schemaVersion == 8)
+        #expect(decoded.rewritten?.payloadVersion == 8)
+        #expect(decoded.rewritten?.domainSchemaVersion == 8)
         #expect(decoded.trip.daySubtitles.isEmpty)
         #expect(decoded.trip.id == trip.id)
     }
@@ -180,8 +205,8 @@ struct PayloadMigrationTests {
             json["activities"] = activities
         }
         let decoded = try TripRecordMapper.decodeWithMigration(encoded)
-        #expect(decoded.trip.schemaVersion == 7)
-        #expect(decoded.rewritten?.payloadVersion == 7)
+        #expect(decoded.trip.schemaVersion == 8)
+        #expect(decoded.rewritten?.payloadVersion == 8)
         #expect(decoded.trip.connectorEstimates.isEmpty)
         #expect(decoded.trip.activities[0].scheduledAt.value?.time?.hour == 10)
         #expect(decoded.trip.activities[0].endsAt.value?.time?.hour == 12)
